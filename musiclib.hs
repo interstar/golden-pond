@@ -26,11 +26,8 @@ noteToNum n oct = fromEnum(n) + 21 + (12 * oct)
 
 -- chords
 data Modality = Major | Minor deriving (Eq, Ord, Show, Read, Enum)
-data Annotate = Open | Seventh | Ninth | Rootless | Spread | Invert deriving (Eq, Ord, Show, Read, Enum)
 data Chord = Chord Int Modality [Annotate] deriving (Eq, Show, Read)
 
-ann :: Chord -> Annotate -> Chord
-ann (Chord root mod (at:ats)) an = (Chord root mod (an:at:ats))
 
 major3 :: Int -> [Int]
 major3 n = [n, n+4, n+7]
@@ -38,25 +35,31 @@ major3 n = [n, n+4, n+7]
 minor3 :: Int -> [Int]
 minor3 n = [n, n+3, n+7]
 
-addx :: Int -> [Int] -> Int -> [Int]
-addx root ns x = ns ++ [root+x] 
+add :: Int -> [Int] -> Int -> [Int]
+add root ns x = ns ++ [root+x] 
 
-add7 root ns = addx 7
-add9 root ns = addx 9
-		
+data Annotate = Open | Seventh | Ninth | Rootless | Spread | Invert deriving (Eq, Ord, Show, Read, Enum)		
+txChordNotes :: Int -> Annotate -> [Int] -> [Int]
+txChordNotes root Seventh notes = add root notes 11
+txChordNotes root Ninth notes = add root (txChordNotes root Seventh notes) 14
+txChordNotes root Rootless notes = [x | x <- notes, x /= root]
+
+
+
 notesFrom :: Chord -> [Int]	
-notesFrom (Chord root modality anns)
-	| modality == Major = major3 root
-	| otherwise         = minor3 root
-
-
+notesFrom (Chord root modality anns) =
+    let base = (if (modality==Major) then (major3 root) else (minor3 root) )
+        f = (txChordNotes root)
+    in foldr f base anns
+    
 
 
 data Point = Note Int | AChord Chord | Rest deriving (Show)
 type Melody = [Point]
 type MidiEvent = (Ticks, Message)
 
-
+ann :: Chord -> Annotate -> Chord
+ann (Chord root mod ats) an = Chord root mod (an:ats)
 
 midiSkeleton :: Track Ticks -> Midi
 midiSkeleton mel =  Midi {
@@ -123,27 +126,49 @@ testSeq1 = chordSeq Minor 3 [
 	]
 
 
--- second simplifications	
-i =   c C Major 
-ii =  c D Minor
-iii = c E Minor
-iv =  c F Major
-v =   c G Major
-vi =  c A Minor
+-- second simplifications
+
+an :: Point -> Annotate -> Point
+an (Rest) a = Rest
+an (Note i) a = Note i
+an (AChord (Chord root modality atts)) a = AChord (ann (Chord root modality atts) a)
+
+chordSeqInkey :: NNote -> [(Int->Point)]
+chordSeqInkey key  = 
+    let
+        i =   c (nup key 0) Major 
+        ii =  c (nup key 2) Minor
+        iii = c (nup key 4) Minor
+        iv =  c (nup key 5) Major
+        v =   c (nup key 7) Major
+        vi =  c (nup key 9) Minor
+    in
+        [i,ii,iii,iv,v,vi]
+
+[i,ii,iii,iv,v,vi] = chordSeqInkey C
 
 
 ta = intersperse Rest [
-	i   2,
-	v   2,
-	vi  2,
-	iv  3
+	    i   2,
+	    v   2,
+        vi  2,
+	    iv  3
 	] 
+	
 tb = intersperse Rest [
 	ii  2,
 	iii 2,
-	vi  3,
+    vi  3,
 	v	2
 	]
-	
-song = ta ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ tb ++ [Rest]
-	
+
+tb2 = intersperse Rest [
+	ii  2,
+	iii 2,
+    vi  3,
+	v	2
+	]
+	where [i,ii,iii,iv,v,vi] = chordSeqInkey G
+
+song = ta ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ tb ++ [Rest] ++ tb2 ++ [Rest] ++ tb2 ++ [Rest]
+
