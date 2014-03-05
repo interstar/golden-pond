@@ -43,7 +43,14 @@ txChordNotes :: Int -> Annotate -> [Int] -> [Int]
 txChordNotes root Seventh notes = add root notes 11
 txChordNotes root Ninth notes = add root (txChordNotes root Seventh notes) 14
 txChordNotes root Rootless notes = [x | x <- notes, x /= root]
+txChordNotes root Spread [] = []
+txChordNotes root Spread (n:ns)
+    | (length ns) `mod` 2 == 0 = n:rest 
+    | otherwise = n+12:rest
+    where rest = (txChordNotes root Spread ns)
+        
 
+    
 
 
 notesFrom :: Chord -> [Int]	
@@ -61,53 +68,81 @@ type MidiEvent = (Ticks, Message)
 ann :: Chord -> Annotate -> Chord
 ann (Chord root mod ats) an = Chord root mod (an:ats)
 
-midiSkeleton :: Track Ticks -> Midi
-midiSkeleton mel =  Midi {
+midiSkeleton :: Track Ticks -> Track Ticks -> Midi
+midiSkeleton t1 t2 =  Midi {
          fileType = MultiTrack, 
          timeDiv = TicksPerBeat 480, 
          tracks = [
-          [
-           (0,ChannelPrefix 0),
-           (0,TrackName " Grand Piano  "),
-           (0,InstrumentName "GM Device  1"),
-           (0,TimeSignature 4 2 24 8),
-           (0,KeySignature 0 0)
-          ]
-          ++
-          mel
-          ++
-          [
-           (0,TrackEnd)
-          ]
+           [
+             (0,ChannelPrefix 0),
+             (0,TrackName " Grand Piano  "),
+             (0,InstrumentName "GM Device  1"),
+             (0,TimeSignature 4 2 24 8),
+             (0,KeySignature 0 0)
+           ] ++ t1 ++ [
+             (0,TrackEnd)
+           ],
+           [
+             (1,ChannelPrefix 1),
+             (1,TrackName " Track 2  "),
+             (37,InstrumentName "GM Device  1"),
+             (1,TimeSignature 4 2 24 8),
+             (1,KeySignature 0 0)
+           ] ++ t2 ++ [
+             (1,TrackEnd)
+           ]
          ]
        }  
 
 
-keydown_ :: Int -> Int -> MidiEvent
-keydown_ dur k =  (dur,NoteOn {channel = 0, key = k, velocity = 80})
+keydown_ :: Int -> Int -> Int -> MidiEvent
+keydown_ dur chan k =  (dur,NoteOn {channel = chan, key = k, velocity = 80})
 
 keydown = keydown_ 0
 
-keyup_ :: Int -> Int -> MidiEvent
-keyup_ dur k =  (dur,NoteOn {channel = 0, key = k, velocity = 0})
+keyup_ :: Int -> Int -> Int -> MidiEvent
+keyup_ dur chan k =  (dur,NoteOn {channel = chan, key = k, velocity = 0})
 
 keyup0 = keyup_ 0
 keyup = keyup_ 480
 
-renderEvent :: Event -> Track Ticks
-renderEvent (Rest)     = [keyup 0]
-renderEvent (Note n)   = [ keydown n, keyup n]
-renderEvent (AChord (Chord root modality attributes)) = map keydown ns ++ [keyup (head ns)] ++ map keyup0 (tail ns)
+renderEvent :: Int -> Event -> Track Ticks
+renderEvent chan (Rest)     = [keyup chan 0]
+renderEvent chan (Note n)   = [ keydown chan n, keyup chan n]
+renderEvent chan (AChord (Chord root modality attributes)) = map ckeydown ns ++ [keyup chan (head ns)] ++ map ckeyup0 (tail ns)
 	where ns = notesFrom (Chord root modality attributes)
-
+	      ckeydown = keydown chan
+	      ckeyup0 = keyup0 chan
 
 	
-	
-createMidi :: FilePath -> Melody -> IO()
-createMidi f notes = exportFile  f $ midiSkeleton $ concat $ map  renderEvent notes
+ticks :: Int -> [Event] -> Track Ticks
+ticks chan events = concat $ map crenderEvent events
+    where crenderEvent = renderEvent chan
+
+createMidi :: FilePath -> Melody -> Melody -> IO()
+createMidi f track1 track2 = exportFile  f $ midiSkeleton (ticks 0 track1) (ticks 1 track2)
 
 c :: NNote -> Modality -> Int -> Event
 c note mod oct = (AChord (Chord (noteToNum note oct) mod []))
+
+chordToBassNote :: Chord -> Event
+chordToBassNote (Chord root modality attributes) 
+    | root < 24 = (Note root)
+    | otherwise = (Note (root-12))
+
+extractBassline :: [Event] -> Event -> [Event]
+extractBassline [] _ = []
+extractBassline ((Note n):es) event = (Rest):extractBassline es (Note n)
+extractBassline ((AChord (Chord root modality attributes)):es) event =
+    (chordToBassNote chord):extractBassline es (AChord chord)
+    where chord = (Chord root modality attributes)
+    
+extractBassline ((Rest):es) (AChord (Chord root modality attributes)) = 
+    (chordToBassNote chord):extractBassline es (Rest)
+    where chord = (Chord root modality attributes)
+
+extractBassline ((Rest):es) event = (Rest):extractBassline es (Rest)
+    
 
 -- first simplifications
 chordSeq :: Modality -> Int -> [(NNote,Int)] -> [Event]
@@ -128,6 +163,11 @@ testSeq1 = chordSeq Minor 3 [
 
 -- second simplifications
 
+rep :: Int -> [a] -> [a]
+rep 0 _  = []
+rep i xs = xs ++ (rep (i-1) xs)
+
+
 an :: Event -> Annotate -> Event
 an (Rest) a = Rest
 an (Note i) a = Note i
@@ -147,27 +187,37 @@ chordSeqInkey key  =
 
 [i,ii,iii,iv,v,vi] = chordSeqInkey C
 
-ta = intersperse Rest [
-	    i   2,
-	    v   2,
-        vi  2,
-	    iv  3
-	] 
-	
-tb = intersperse Rest [
-	ii  2,
-	iii 2,
-    vi  3,
-	v	2
-	]
+every :: Int -> Event -> [Event]
+every n e = [e] ++ replicate (n-1) (Rest)
 
-tb2 = intersperse Rest [
-	ii  2,
-	iii 2,
-    vi  3,
-	v	2
+e4 = every 4
+
+ta = concat [
+        e4 (i  2),
+	    e4 (v  2),
+        e4 (vi 2),
+	    e4 (an (iv  3) Seventh)
+	]
+	
+tb = concat [
+	e4 (ii  2),
+	e4 (iii 2),
+    e4 (an (vi  3) Spread),
+	e4 (v	2)
+	] 
+
+tb2 = concat [
+	e4 (ii  2),
+	e4 (an (iii 2) Spread),
+    e4 (an (vi  3) Spread),
+	e4 (an (an (v	2) Seventh) Spread)
 	]
 	where [i,ii,iii,iv,v,vi] = chordSeqInkey G
 
-song = ta ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ ta ++ [Rest] ++ tb ++ [Rest] ++ tb ++ [Rest] ++ tb2 ++ [Rest] ++ tb2 ++ [Rest]
+t = rep 2
+q = rep 4
+
+line1 = (q ta) ++ (t tb) ++ (q ta ++ t tb) ++ (t tb2) ++ (q ta)
+line2 = extractBassline line1 Rest
+
 
