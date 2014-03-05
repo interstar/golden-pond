@@ -54,8 +54,8 @@ notesFrom (Chord root modality anns) =
     
 
 
-data Point = Note Int | AChord Chord | Rest deriving (Show)
-type Melody = [Point]
+data Event = Note Int | AChord Chord | Rest deriving (Show)
+type Melody = [Event]
 type MidiEvent = (Ticks, Message)
 
 ann :: Chord -> Annotate -> Chord
@@ -94,23 +94,23 @@ keyup_ dur k =  (dur,NoteOn {channel = 0, key = k, velocity = 0})
 keyup0 = keyup_ 0
 keyup = keyup_ 480
 
-playpoint :: Point -> Track Ticks
-playpoint (Rest)     = [keyup 0]
-playpoint (Note n)   = [ keydown n, keyup n]
-playpoint (AChord (Chord root modality attributes)) = map keydown ns ++ [keyup (head ns)] ++ map keyup0 (tail ns)
+renderEvent :: Event -> Track Ticks
+renderEvent (Rest)     = [keyup 0]
+renderEvent (Note n)   = [ keydown n, keyup n]
+renderEvent (AChord (Chord root modality attributes)) = map keydown ns ++ [keyup (head ns)] ++ map keyup0 (tail ns)
 	where ns = notesFrom (Chord root modality attributes)
 
 
 	
 	
 createMidi :: FilePath -> Melody -> IO()
-createMidi f notes = exportFile  f $ midiSkeleton $ concat $ map  playpoint notes
+createMidi f notes = exportFile  f $ midiSkeleton $ concat $ map  renderEvent notes
 
-c :: NNote -> Modality -> Int -> Point
+c :: NNote -> Modality -> Int -> Event
 c note mod oct = (AChord (Chord (noteToNum note oct) mod []))
 
 -- first simplifications
-chordSeq :: Modality -> Int -> [(NNote,Int)] -> [Point]
+chordSeq :: Modality -> Int -> [(NNote,Int)] -> [Event]
 chordSeq _ _ [] = []
 chordSeq mod numrests ((note,oct):ns) = 
 	((c note mod oct) : rests) ++ (chordSeq mod numrests ns)
@@ -128,12 +128,12 @@ testSeq1 = chordSeq Minor 3 [
 
 -- second simplifications
 
-an :: Point -> Annotate -> Point
+an :: Event -> Annotate -> Event
 an (Rest) a = Rest
 an (Note i) a = Note i
 an (AChord (Chord root modality atts)) a = AChord (ann (Chord root modality atts) a)
 
-chordSeqInkey :: NNote -> [(Int->Point)]
+chordSeqInkey :: NNote -> [(Int->Event)]
 chordSeqInkey key  = 
     let
         i =   c (nup key 0) Major 
@@ -146,7 +146,6 @@ chordSeqInkey key  =
         [i,ii,iii,iv,v,vi]
 
 [i,ii,iii,iv,v,vi] = chordSeqInkey C
-
 
 ta = intersperse Rest [
 	    i   2,
