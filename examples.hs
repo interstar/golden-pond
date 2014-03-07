@@ -36,7 +36,7 @@ every n e = [e] ++ replicate (n-1) (Rest)
 e4 = every 4
 
 ta = concat [
-        e4 (i  2),
+        e4 (i  2 // Spread ),
 	    e4 (v  2 ),
         e4 (vi 2),
 	    e4 (iv 3 // Seventh )
