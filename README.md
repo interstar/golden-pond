@@ -22,13 +22,17 @@ Now load the library
 
     :l musiclib.hs
     
-Have a look at the example "song" 
+Have a look at the example chord sequence
 
-    song
+    line1
+	
+And the derived bassline
+
+	line2
         
 And try writing it to a file
 
-    createMidi "test.mid" song
+    createMidi "test.mid" line1 line2
 
 
 Open the new test.mid file in totem, a sequencer or similar Midi file player.

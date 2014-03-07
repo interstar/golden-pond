@@ -14,11 +14,13 @@ module Musiclib (
 ,	MidiEvent
 ,	midiSkeleton
 ,	ticks
-,	extractBassline
 ,	createMidi
 ,	ann
 ,	newChord
+,	chordsInKey
+,	(//)
 ,	chordToBassNote
+,	chordsToMelody
 
 	
 ) where
@@ -148,23 +150,33 @@ createMidi f track1 track2 = exportFile  f $ midiSkeleton (ticks 0 track1) (tick
 
 newChord :: NNote -> Modality -> Int -> Event
 newChord note mod oct = (AChord (Chord (noteToNum note oct) mod []))
+    
+infixl 8 //
+(//) :: Event -> Annotate -> Event
+(//) (Rest) a = Rest
+(//) (Note i) a = Note i
+(//) (AChord (Chord root modality atts)) a = AChord (ann (Chord root modality atts) a)
+
+chordsInKey :: NNote -> [(Int->Event)]
+chordsInKey key  = 
+    let
+        c = newChord
+        i =   c (nup key 0) Major 
+        ii =  c (nup key 2) Minor
+        iii = c (nup key 4) Minor
+        iv =  c (nup key 5) Major
+        v =   c (nup key 7) Major
+        vi =  c (nup key 9) Minor
+    in
+        [i,ii,iii,iv,v,vi]
+
+
+chordsToMelody :: (Event -> Event -> Event) -> [Event] -> Event -> [Event]
+chordsToMelody _ [] _ = []
+chordsToMelody f ((AChord chord):es) memory = (f (AChord chord) (AChord chord)):(chordsToMelody f es (AChord chord))
+chordsToMelody f (e:es) memory = (f e memory):(chordsToMelody f es memory)
 
 chordToBassNote :: Chord -> Event
 chordToBassNote (Chord root modality attributes) 
     | root < 24 = (Note root)
     | otherwise = (Note (root-12))
-
-extractBassline :: [Event] -> Event -> [Event]
-extractBassline [] _ = []
-extractBassline ((Note n):es) event = (Rest):extractBassline es (Note n)
-extractBassline ((AChord (Chord root modality attributes)):es) event =
-    (chordToBassNote chord):extractBassline es (AChord chord)
-    where chord = (Chord root modality attributes)
-    
-extractBassline ((Rest):es) (AChord (Chord root modality attributes)) = 
-    (chordToBassNote chord):extractBassline es (Rest)
-    where chord = (Chord root modality attributes)
-
-extractBassline ((Rest):es) event = (Rest):extractBassline es (Rest)
-    
-
