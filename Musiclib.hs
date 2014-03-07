@@ -5,7 +5,7 @@ module Musiclib (
 ,	noteToNum
 ,	Modality (..)
 ,	Annotate (..)
-,	Chord (..)
+,	AChord (..)
 ,	major3
 ,	minor3
 ,	notesFrom
@@ -51,7 +51,7 @@ noteToNum n oct = fromEnum(n) + 21 + (12 * oct)
 
 -- chords
 data Modality = Major | Minor deriving (Eq, Ord, Show, Read, Enum)
-data Chord = Chord Int Modality [Annotate] deriving (Eq, Show, Read)
+data AChord = AChord Int Modality [Annotate] deriving (Eq, Show, Read)
 
 
 major3 :: Int -> [Int]
@@ -78,20 +78,20 @@ txChordNotes root Spread (n:ns)
     
 
 
-notesFrom :: Chord -> [Int]	
-notesFrom (Chord root modality anns) =
+notesFrom :: AChord -> [Int]	
+notesFrom (AChord root modality anns) =
     let base = (if (modality==Major) then (major3 root) else (minor3 root) )
         f = (txChordNotes root)
     in foldr f base anns
     
 
 
-data Event = Note Int | AChord Chord | Rest deriving (Eq, Show, Read)
+data Event = Note Int | Chord AChord | Rest deriving (Eq, Show, Read)
 type Melody = [Event]
 type MidiEvent = (Ticks, Message)
 
-ann :: Chord -> Annotate -> Chord
-ann (Chord root mod ats) an = Chord root mod (an:ats)
+ann :: AChord -> Annotate -> AChord
+ann (AChord root mod ats) an = AChord root mod (an:ats)
 
 midiSkeleton :: Track Ticks -> Track Ticks -> Midi
 midiSkeleton t1 t2 =  Midi {
@@ -134,8 +134,8 @@ keyup = keyup_ 480
 renderEvent :: Int -> Event -> Track Ticks
 renderEvent chan (Rest)     = [keyup chan 0]
 renderEvent chan (Note n)   = [ keydown chan n, keyup chan n]
-renderEvent chan (AChord (Chord root modality attributes)) = map ckeydown ns ++ [keyup chan (head ns)] ++ map ckeyup0 (tail ns)
-	where ns = notesFrom (Chord root modality attributes)
+renderEvent chan (Chord (AChord root modality attributes)) = map ckeydown ns ++ [keyup chan (head ns)] ++ map ckeyup0 (tail ns)
+	where ns = notesFrom (AChord root modality attributes)
 	      ckeydown = keydown chan
 	      ckeyup0 = keyup0 chan
 
@@ -149,13 +149,13 @@ createMidi f track1 track2 = exportFile  f $ midiSkeleton (ticks 0 track1) (tick
 
 
 newChord :: NNote -> Modality -> Int -> Event
-newChord note mod oct = (AChord (Chord (noteToNum note oct) mod []))
+newChord note mod oct = (Chord (AChord (noteToNum note oct) mod []))
     
 infixl 8 //
 (//) :: Event -> Annotate -> Event
 (//) (Rest) a = Rest
 (//) (Note i) a = Note i
-(//) (AChord (Chord root modality atts)) a = AChord (ann (Chord root modality atts) a)
+(//) (Chord (AChord root modality atts)) a = Chord (ann (AChord root modality atts) a)
 
 chordsInKey :: NNote -> [(Int->Event)]
 chordsInKey key  = 
@@ -173,10 +173,10 @@ chordsInKey key  =
 
 chordsToMelody :: (Event -> Event -> Event) -> [Event] -> Event -> [Event]
 chordsToMelody _ [] _ = []
-chordsToMelody f ((AChord chord):es) memory = (f (AChord chord) (AChord chord)):(chordsToMelody f es (AChord chord))
+chordsToMelody f ((Chord chord):es) memory = (f (Chord chord) (Chord chord)):(chordsToMelody f es (Chord chord))
 chordsToMelody f (e:es) memory = (f e memory):(chordsToMelody f es memory)
 
-chordToBassNote :: Chord -> Event
-chordToBassNote (Chord root modality attributes) 
+chordToBassNote :: AChord -> Event
+chordToBassNote (AChord root modality attributes)
     | root < 24 = (Note root)
     | otherwise = (Note (root-12))

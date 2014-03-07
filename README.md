@@ -61,12 +61,12 @@ Look at the examples.hs source-code, you'll see music is currently defined like 
     song = ta ++ ta ++ tb ++ ta ++ tb ++ tab
 	
 
-Music is a list of Events. In this example, AChord events.
+Music is a list of Events. In this example, Chord events.
 
 The functions that create chords are called i, ii, iii, iv etc. By default they're in the key of C but you can redefine them using the 
 chordInKey function which takes an NNote (named note) as an argument. NNotes are enums that have the values A B C Bb Db etc.
 
-You can annotate AChords using the infix // operator. It takes an Event value and an Annotation and adds the Annotation to the Event (though this is only currently meaningful for Chords)
+You can annotate Chords using the infix // operator. It takes an Event value and an Annotation and adds the Annotation to the Event (though this is only currently meaningful for Chords)
 
 The e4 function is a convenience that takes an Event and puts 3 Rests after it.
 
