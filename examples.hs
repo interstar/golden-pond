@@ -61,7 +61,7 @@ t = rep 2
 q = rep 4
 
 line1 = (q ta) ++ (t tb) ++ (q ta ++ t tb) ++ (t tb2) ++ (q ta)
-newBass = chordsToMelody (\e (AChord memchord) -> chordToBassNote memchord)
+newBass = chordsToMelody (\e (Chord memchord) -> chordToBassNote memchord)
 line2 = newBass line1 Rest
 
 
