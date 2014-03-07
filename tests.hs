@@ -1,5 +1,6 @@
 import Musiclib
 
+
 -- first simplifications
 chordSeq :: Modality -> Int -> [(NNote,Int)] -> [Event]
 chordSeq _ _ [] = []
@@ -24,7 +25,6 @@ testSeq1 = chordSeq Minor 3 [
 rep :: Int -> [a] -> [a]
 rep 0 _  = []
 rep i xs = xs ++ (rep (i-1) xs)
-
 
 
 
@@ -64,6 +64,5 @@ line1 = (q ta) ++ (t tb) ++ (q ta ++ t tb) ++ (t tb2) ++ (q ta)
 newBass = chordsToMelody (\e (AChord memchord) -> chordToBassNote memchord)
 line2 = newBass line1 Rest
 
--- experiments
 
 	
