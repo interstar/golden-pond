@@ -18,6 +18,7 @@ module Musiclib (
 ,	createMidi
 ,	ann
 ,	newChord
+,	chordToBassNote
 
 	
 ) where
@@ -83,7 +84,7 @@ notesFrom (Chord root modality anns) =
     
 
 
-data Event = Note Int | AChord Chord | Rest deriving (Show)
+data Event = Note Int | AChord Chord | Rest deriving (Eq, Show, Read)
 type Melody = [Event]
 type MidiEvent = (Ticks, Message)
 
