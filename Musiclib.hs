@@ -19,6 +19,8 @@ module Musiclib (
 ,	newChord
 ,	chordsInKey
 ,	(//)
+,	(%)
+,	(.*)
 ,	chordToBassNote
 ,	chordsToMelody
 
@@ -180,3 +182,12 @@ chordToBassNote :: AChord -> Event
 chordToBassNote (AChord root modality attributes)
     | root < 24 = (Note root)
     | otherwise = (Note (root-12))
+
+infixl 9 %
+(%) :: Event -> Int -> [Event]
+(%) e n = [e] ++ (replicate (n-1) Rest)
+
+infixl 3 .*
+(.*) :: Int -> [Event] -> [Event]
+(.*) 0 _ = []
+(.*) n xs = xs ++ ((n-1) .* xs)

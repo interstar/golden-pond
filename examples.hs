@@ -22,45 +22,33 @@ testSeq1 = chordSeq Minor 3 [
 -- second simplifications
 
 
-rep :: Int -> [a] -> [a]
-rep 0 _  = []
-rep i xs = xs ++ (rep (i-1) xs)
-
-
-
 [i,ii,iii,iv,v,vi] = chordsInKey C
 
-every :: Int -> Event -> [Event]
-every n e = [e] ++ replicate (n-1) (Rest)
-
-e4 = every 4
 
 ta = concat [
-        e4 (i  2 // Spread ),
-	    e4 (v  2 ),
-        e4 (vi 2),
-	    e4 (iv 3 // Seventh )
+        (i  2 // Spread ) % 4,
+        (vi 2) % 4,
+	    (iv 3) % 4,
+		(v  2) % 4
 	]
 	
 tb = concat [
-	e4 (ii  2),
-	e4 (iii 2),
-    e4 (vi  3 // Spread),
-	e4 (v	2)
+	(ii  2) % 4,
+	(v	2) % 4,
+	(iii 2) % 4,
+    (vi  3 // Spread) % 4
 	] 
 
 tb2 = concat [
-	e4 (ii  2),
-	e4 (iii 2 // Spread),
-    e4 (vi  3 // Spread),
-	e4 (v	2 // Seventh // Spread)
+	(ii  2) % 4,
+	(v 2 // Spread) % 4,
+    (vi  3 // Spread) % 4,
+	(vi	3 // Seventh // Spread) % 4
 	]
 	where [i,ii,iii,iv,v,vi] = chordsInKey G
 
-t = rep 2
-q = rep 4
 
-line1 = (q ta) ++ (t tb) ++ (q ta ++ t tb) ++ (t tb2) ++ (q ta)
+line1 = (4 .* ta) ++ (2 .* tb) ++ (4 .* ta) ++ (4 .* tb) ++ (2 .* tb2) ++ (4 .* ta)
 newBass = chordsToMelody (\e (Chord memchord) -> chordToBassNote memchord)
 line2 = newBass line1 Rest
 
