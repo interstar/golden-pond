@@ -92,17 +92,11 @@ So (i 3) % 4 means "the i chord in the third octave, then 3 Rests"
 I've defined another convenience operator :  n .* [Event] which just repeats the Event list n times. You see it in the above example 
 being used to repeat the ta section 4 times and the tb sections twice.
 
-The function chordsToMelody is a higher-order function that takes a function f and a list of (typically Chord) Events and returns a second list of 
-Events derived from the first, according to the criteria in f. 
+The function chordsToMelody is a higher-order function that takes a function f and a list of (typically Chord) Events and returns a second list of Events derived from the first, according to the criteria in f. 
 
-f is defined as taking two arguments : the current Event at any time step and a "memory" which contains the last Chord event. In my example above, 
-my f is a lambda expression (\e (Chord memchord) -> chordToBassNote memchord) which uses the function chordToBassNote. chordToBassNote itself just 
-takes a chord and returns its root one octave down (unless the chord is already fairly low in which case it just returns the root).
+f is defined as taking two arguments : the current Event at any time step and a "memory" which contains the last Chord event. In my example above, my f is a lambda expression (\e (Chord memchord) -> chordToBassNote memchord) which uses the function chordToBassNote. chordToBassNote itself just takes a chord and returns its root one octave down (unless the chord is already fairly low in which case it just returns the root).
 
-The effect of putting this f through chordsToMelody is to return a simplistic bass-line. But you can design as sophisticated f as you like to try to 
-derive more complex and interesting melodies.
-
-
+The effect of putting this f through chordsToMelody is to return a simplistic bass-line. But you can design as sophisticated f as you like to try to derive more complex and interesting melodies.
 
 
 
