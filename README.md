@@ -24,9 +24,9 @@ I then further developed some of my ideas for generating chord progressions in a
 
 The latest incarnation of GoldenPond is rewritted from scratch in Python. And was initially inspired by the fact that FL Studio now supports Python scripting for its piano-roll. This is the first time I decided to include a parser. Previously the little language of the music had to be embedded in the syntax of the hosting language, whether Haskell, Python or Ruby (Sonic Py) and was therefore constrained by them.
 
-Now, though, we can have the language and syntax for describing music that we actually want.
+Now, though, we can have the language and syntax for describing music that we actually want. Yay!
 
-This version of GoldenPond includes a generic Python library for parsing the language and creating data-structures representing chords and arpeggios. These can then be used in a number of contexts. The initial one is FL Studio's piano-roll. But there is also a simple FluidSynth player for testing. And my aim is to have it working with FoxDot soon.
+This version includes a generic Python library for parsing what we will now call the GoldenPond language, and creating data-structures representing chords and arpeggios from it. These can then be used in a number of contexts. The initial one is FL Studio's piano-roll. But there is also a simple FluidSynth player for testing. And my aim is to have it working with FoxDot soon.
 
 You can find it in the `current/python` sub-directory.
 
