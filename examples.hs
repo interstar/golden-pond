@@ -28,22 +28,22 @@ testSeq1 = chordSeq Minor 3 [
 ta = concat [
         (i  2 // Spread ) % 4,
         (vi 2) % 4,
-	    (iv 3) % 4,
-		(v  2) % 4
+	(iv 3) % 4,
+        (v  2) % 4
 	]
 	
 tb = concat [
 	(ii  2) % 4,
-	(v	2) % 4,
+	(v   2) % 4,
 	(iii 2) % 4,
-    (vi  3 // Spread) % 4
+        (vi  3 // Spread) % 4
 	] 
 
 tb2 = concat [
 	(ii  2) % 4,
-	(v 2 // Spread) % 4,
-    (vi  3 // Spread) % 4,
-	(vi	3 // Seventh // Spread) % 4
+	(v   2 // Spread) % 4,
+        (vi  3 // Spread) % 4,
+	(vi  3 // Seventh // Spread) % 4
 	]
 	where [i,ii,iii,iv,v,vi] = chordsInKey G
 
