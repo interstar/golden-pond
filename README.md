@@ -35,4 +35,4 @@ Then there's a more ambitious goal. The problem with writing music software is t
 
 These experiments are under way and will end up in this git repo when there's something worth showing.
 
-Meanwhile, GoldenPond as an idea, and actually usable code, is now a thing. And I'm very excited about it. I'm starting to consolidate it, together with some of my other music/code projects under a new "micro-research lab" : [Gilbert Lister Research](http://gilbertlisterresearch.com)
+Meanwhile, GoldenPond as an idea, and actually usable code, is now a thing. And I'm very excited about it. I'm starting to consolidate it, together with some of my other music/code projects under a new "micro-research lab" : [Gilbert Lister Research](http://gilbertlisterresearch.com) That's where you'll find more documentation / tutorials too.
