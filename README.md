@@ -26,11 +26,12 @@ The latest incarnation of GoldenPond is rewritted from scratch in Python. And wa
 
 Now, though, we can have the language and syntax for describing music that we actually want. Yay!
 
-This version includes a generic Python library for parsing what we will now call the GoldenPond language, and creating data-structures representing chords and arpeggios from it. These can then be used in a number of contexts. The initial one is FL Studio's piano-roll. But there is also a simple FluidSynth player for testing. And my aim is to have it working with FoxDot soon.
+This version includes a generic Python library for parsing what we will now call the GoldenPond language, and creating data-structures representing chords and arpeggios from it. This library can then be used from a number of contexts. The main one right now is FL Studio's piano-roll. But there is also a simple FluidSynth player for testing. And my aim is to have it working with FoxDot soon.
 
-You can find it in the `current/python` sub-directory.
+The library is in `current/python/library`. The FL Studio script in `current/python/fl studio`. You'll notice that we currently just copy and paste the whole library into the pyscript file. This is for the convenience of FL Studio users, to give them a single file download.
 
-Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking to (with the help of ChatGPT, natch) automatic translation of this Python code to other languages. My first goal is to have a version in ClojureScript that I can run in browser based applications. And then thinking how to have a version in VST form. 
+
+Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into (with the help of ChatGPT, natch) automatic translation of this Python code to other languages. My first goal is to have a version in ClojureScript that I can run in browser based applications. And longer term thinking how to have a version in VST form. 
 
 These experiments are under way and will end up in this git repo when there's something worth showing.
 
