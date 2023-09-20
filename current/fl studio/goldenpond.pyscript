@@ -562,7 +562,7 @@ Generate Type: %s\r\n
 Division : %s\r\n
 Note Proportion : %s\r\n
 Chord Length : %s\r\n
-Euclidean: k=%s, n=%s
+Euclidean: k=%s, n=%s\r\n
 ...........................................
      
 """ % (self.root, self.mode, self.chordSeq, self.gtype, self.division,
