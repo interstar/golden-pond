@@ -1,5 +1,5 @@
 from chords import *
-from myparser import *
+from parser import *
 
 import numpy as np
 import sounddevice as sd

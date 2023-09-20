@@ -1,5 +1,5 @@
-from myparser import ChordParser, ChordThing
-from myparser import MAJOR, MINOR, MODAL_INTERCHANGE, SEVENTH, NINTH, SECONDARY, VOICE_LEADING
+from parser import ChordParser, ChordThing
+from parser import MAJOR, MINOR, MODAL_INTERCHANGE, SEVENTH, NINTH, SECONDARY, VOICE_LEADING
 
 
 
