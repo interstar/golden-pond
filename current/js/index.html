@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldenPond Testing</title>
+    <script src="https://g200kg.github.io/webaudio-tinysynth/webaudio-tinysynth.js"></script>
+</head>
+<body>
+    <h1>GoldenPond Test Results:</h1>
+    <h2>Chord Sequence</h2>
+<textarea id="chordSequence" rows="4" cols="50">
+1,4,5,1
+</textarea>
+<br>
+<button onclick="playChords()">Play Chords</button>
+
+    <script src="goldenpond.js"></script>
+    <script>
+
+        
+        function playChords() {
+            // Retrieve the chord sequence from the text box
+            let chordSeq = document.getElementById('chordSequence').value;
+
+            // Create the ChordMaker and generate the chord sequence
+            let cm = new ChordMaker();
+            let seq = cm.chordProgressionFromString(60, MAJOR, chordSeq);
+
+            // Use TimingInfo to generate timing data for the chords
+            let timingInfo = new TimingInfo(4, 0.8, 4, 96);  // using sample values here
+            let all_notes = timingInfo.arpeggiate(seq, 9, 13, 0);
+
+            // Play the chord sequence using TinySynth
+            let audioCtx = new AudioContext();  // Create a new AudioContext instance
+            let currentTime = audioCtx.currentTime;  // Get the current time from the new AudioContext instance
+            for (let noteData of all_notes) {
+                let noteValue = noteData.note;
+                let startTime = currentTime + (noteData.startTime / 96);  // converting to seconds and adding current time
+
+                let beatLengthInSeconds = 0.8;  // This value should be retrieved dynamically if it varies
+                let noteDuration = noteData.length * beatLengthInSeconds;
+
+                console.log("Raw Start:", noteData.startTime, "Raw Duration:", noteData.length);  // Debugging
+                console.log("Note:", noteValue, "Start:", startTime, "Duration:", noteDuration);  // Logging for debugging
+
+                // Schedule the note
+                synth.noteOn(0, noteValue, 127, startTime);
+                synth.noteOff(0, noteValue, startTime + noteDuration);
+            }
+
+        }
+
+                
+        // Create an instance of TinySynth
+        var synth = new WebAudioTinySynth();
+
+        // Set to the piano sound (typically 0 in general MIDI)
+        synth.setProgram(0, 0);
+ 
+        
+    </script>
+    <p>Check the browser console for unit-test results.</p>
+</body>
+</html>
+
