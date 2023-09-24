@@ -94,6 +94,11 @@ testit("VOICE_LEADING Parser Test",
             "ChordThing(60,MAJOR,6,0,1) + {'VOICE_LEADING'}"],
            "Parsing & separator for voice leading")       
            
+ti = TimingInfo(4,0.8,16,960)
+seq = cm.chordProgressionFromString(60,MAJOR,'72,75,71')
+s = "%s"%ti.arpeggiate(seq, 3, 8, 0)
+s = s.replace("""'""",'"').replace(" ","").replace(".0","").replace("start_time","startTime")
+print(s)
 
 #TODO Unit test this
 print(voice_lead([60, 63, 66],[60,63,66]))          
@@ -105,6 +110,16 @@ testit("Secondary chords",
         ["ChordThing(60,MAJOR,(5/4),0,1) + {'SECONDARY'}",
          "ChordThing(60,MAJOR,4,0,1) + set()"],
          "Testing secondary chords")
+         
+testit("Making secondary chords",
+    "%s" % cm.chordProgressionFromString(60,MAJOR,'(5/2),2,5,1'),
+    "[[69, 73, 76], [62, 65, 69], [67, 71, 74], [60, 64, 67]]",    
+    "Making a secondary (5/2)")
+    
+testit("Making secondary chords with modifiers",
+    "%s" % cm.chordProgressionFromString(60,MAJOR,'7(5/2),72,75,71'),
+    "[[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]]",    
+    "Making a secondary 7(5/2)")
 
 __SYNTH__ = '__fluid__'
                
