@@ -93,12 +93,25 @@ testit("VOICE_LEADING Parser Test",
            ["ChordThing(60,MAJOR,1,0,1) + set()",
             "ChordThing(60,MAJOR,6,0,1) + {'VOICE_LEADING'}"],
            "Parsing & separator for voice leading")       
-           
-ti = TimingInfo(4,0.8,16,960)
-seq = cm.chordProgressionFromString(60,MAJOR,'72,75,71')
-s = "%s"%ti.arpeggiate(seq, 3, 8, 0)
-s = s.replace("""'""",'"').replace(" ","").replace(".0","").replace("start_time","startTime")
-print(s)
+
+def testTiming() :
+    ti = TimingInfo(4,0.8,16,960)
+    seq = cm.chordProgressionFromString(60,MAJOR,'72,75,71')
+    testit("TimingInfo Chords",
+        ("%s"%ti.chords(seq, 0)),
+        "[{'note': 62, 'start_time': 0, 'length': 1536.0}, {'note': 65, 'start_time': 0, 'length': 1536.0}, {'note': 69, 'start_time': 0, 'length': 1536.0}, {'note': 72, 'start_time': 0, 'length': 1536.0}, {'note': 67, 'start_time': 3840.0, 'length': 1536.0}, {'note': 71, 'start_time': 3840.0, 'length': 1536.0}, {'note': 74, 'start_time': 3840.0, 'length': 1536.0}, {'note': 77, 'start_time': 3840.0, 'length': 1536.0}, {'note': 60, 'start_time': 7680.0, 'length': 1536.0}, {'note': 64, 'start_time': 7680.0, 'length': 1536.0}, {'note': 67, 'start_time': 7680.0, 'length': 1536.0}, {'note': 71, 'start_time': 7680.0, 'length': 1536.0}]",
+        "Chord Times")
+    testit("TimingInfo Bass",
+        ("%s"%ti.bassline(seq, 3, 8, 0)),
+        "[{'note': 50, 'start_time': 0, 'length': 192.0}, {'note': 50, 'start_time': 720.0, 'length': 192.0}, {'note': 50, 'start_time': 1200.0, 'length': 192.0}, {'note': 50, 'start_time': 1920.0, 'length': 192.0}, {'note': 50, 'start_time': 2640.0, 'length': 192.0}, {'note': 50, 'start_time': 3120.0, 'length': 192.0}, {'note': 55, 'start_time': 3840.0, 'length': 192.0}, {'note': 55, 'start_time': 4560.0, 'length': 192.0}, {'note': 55, 'start_time': 5040.0, 'length': 192.0}, {'note': 55, 'start_time': 5760.0, 'length': 192.0}, {'note': 55, 'start_time': 6480.0, 'length': 192.0}, {'note': 55, 'start_time': 6960.0, 'length': 192.0}, {'note': 48, 'start_time': 7680.0, 'length': 192.0}, {'note': 48, 'start_time': 8400.0, 'length': 192.0}, {'note': 48, 'start_time': 8880.0, 'length': 192.0}, {'note': 48, 'start_time': 9600.0, 'length': 192.0}, {'note': 48, 'start_time': 10320.0, 'length': 192.0}, {'note': 48, 'start_time': 10800.0, 'length': 192.0}]",
+        "Bassline Times")
+    testit("TimingInfo Arpeggiate",
+        ("%s"%ti.arpeggiate(seq, 3, 8, 0)),
+        "[{'note': 62, 'start_time': 0, 'length': 192.0}, {'note': 65, 'start_time': 720.0, 'length': 192.0}, {'note': 69, 'start_time': 1200.0, 'length': 192.0}, {'note': 72, 'start_time': 1920.0, 'length': 192.0}, {'note': 62, 'start_time': 2640.0, 'length': 192.0}, {'note': 65, 'start_time': 3120.0, 'length': 192.0}, {'note': 67, 'start_time': 3840.0, 'length': 192.0}, {'note': 71, 'start_time': 4560.0, 'length': 192.0}, {'note': 74, 'start_time': 5040.0, 'length': 192.0}, {'note': 77, 'start_time': 5760.0, 'length': 192.0}, {'note': 67, 'start_time': 6480.0, 'length': 192.0}, {'note': 71, 'start_time': 6960.0, 'length': 192.0}, {'note': 60, 'start_time': 7680.0, 'length': 192.0}, {'note': 64, 'start_time': 8400.0, 'length': 192.0}, {'note': 67, 'start_time': 8880.0, 'length': 192.0}, {'note': 71, 'start_time': 9600.0, 'length': 192.0}, {'note': 60, 'start_time': 10320.0, 'length': 192.0}, {'note': 64, 'start_time': 10800.0, 'length': 192.0}]",
+        "Arp Times")
+        
+    
+testTiming()    
 
 #TODO Unit test this
 print(voice_lead([60, 63, 66],[60,63,66]))          
@@ -143,6 +156,9 @@ if __SYNTH__ == '__native__' :
         # Generate a square wave for the note
         frequency = 440 * 2**((note - 69) / 12)
         return 0.5 * (1 + np.sign(np.sin(2 * np.pi * frequency * t)))
+
+import sys
+print(sys.path)
 
 import fluidsynth
 import time 

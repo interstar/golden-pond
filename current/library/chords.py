@@ -24,6 +24,16 @@ def chordTypes() :
     ct['sus4'] = lambda root : buildChord(root,[5,2])
     ct['aug'] = lambda root : buildChord(root,[4,4])    
     ct['dimM7'] = lambda root : buildChord(root,[3,3,4])
+    # Adding Ninth Chords
+    ct['M9'] = lambda root: buildChord(root, [4, 3, 4, 3])  # Major Ninth: R-M3-P5-M7-M9
+    ct['9'] = lambda root: buildChord(root, [4, 3, 3, 4])   # Dominant Ninth: R-M3-P5-m7-M9
+    ct['m9'] = lambda root: buildChord(root, [3, 4, 3, 4])  # Minor Ninth: R-m3-P5-m7-M9
+    ct['dim9'] = lambda root: buildChord(root, [3, 3, 3, 6])  # Diminished Ninth: R-m3-d5-d7-M9 (Rare, more common would be a half-diminished 9th)
+    ct['halfdim9'] = lambda root: buildChord(root, [3, 3, 4, 3])  # Half-Diminished Ninth: R-m3-d5-m7-M9
+    # Altered Ninth Chords (Examples)
+    ct['7b9'] = lambda root: buildChord(root, [4, 3, 3, 3])  # Dominant 7th Flat Nine: R-M3-P5-m7-m9
+    ct['7#9'] = lambda root: buildChord(root, [4, 3, 3, 5])  # Dominant 7th Sharp Nine: R-M3-P5-m7-A9
+     
     return ct
 
 
