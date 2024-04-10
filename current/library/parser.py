@@ -61,9 +61,9 @@ class ChordParser:
             parts = item_string.split('(')
             if len(parts[0]) > 0:
                 extension = int(parts[0])
-            secondary_base, secondary_target = map(int, parts[1][:-1].split('/'))
-            chord = ChordThing(self.key, self.mode, secondary_target)
-            chord.set_as_secondary(secondary_base, secondary_target)
+            secondary_degree, degree = map(int, parts[1][:-1].split('/'))
+            chord = ChordThing(self.key, self.mode, degree)
+            chord.set_as_secondary(secondary_degree)
             chord.set_inversion(inversion)
             if extension in [7, 9]:  # Add logic for other extensions if needed
                 chord.seventh() if extension == 7 else chord.ninth()

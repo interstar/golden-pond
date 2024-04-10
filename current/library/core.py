@@ -81,13 +81,11 @@ class ChordThing:
         self.length = length
         self.modifiers: Set[Modifier] = set()
         self.inversion = 0
-        self.secondary_base = None
-        self.secondary_target = None        
+        self.secondary_degree = None        
 
-    def set_as_secondary(self, secondary_base, secondary_target):
+    def set_as_secondary(self, secondary_degree):
         self.modifiers.add(Modifier.SECONDARY)
-        self.secondary_base = secondary_base
-        self.secondary_target = secondary_target
+        self.secondary_degree = secondary_degree
         return self
 
     def swap_mode(self):
@@ -127,7 +125,7 @@ class ChordThing:
         
         # Check if it's a secondary chord and adjust the degree representation accordingly
         if Modifier.SECONDARY in self.modifiers:
-            degree_repr = f"({self.secondary_base}/{self.secondary_target})"
+            degree_repr = f"({self.secondary_degree}/{self.degree})"
         else:
             degree_repr = str(self.degree)
         
@@ -140,8 +138,7 @@ class ChordThing:
         ct = ChordThing(self.key, self.mode, self.degree, self.length)
         ct.modifiers = self.modifiers.copy()
         ct.inversion = self.inversion
-        ct.secondary_base = self.secondary_base
-        ct.secondary_target = self.secondary_target
+        ct.secondary_degree = self.secondary_degree
         return ct
 
     def has_extensions(self):
@@ -167,11 +164,16 @@ class ChordFactory :
     
     @classmethod 
     def calculateSecondaryChord(cls,chordThing) :
-        new_tonic = chordThing.get_mode().nth_from(chordThing.key,chordThing.secondary_base)
-        ct = ChordThing(new_tonic,MAJOR,chordThing.secondary_target,chordThing.length)
+        new_tonic = chordThing.get_mode().nth_from(chordThing.key,chordThing.degree)
+        print("Calculating secondary : %s / %s" % (chordThing.secondary_degree,chordThing.degree))
+        print("new tonic %s" % new_tonic)
+        
+        ct = ChordThing(new_tonic,MAJOR,chordThing.secondary_degree,chordThing.length)
+
         if Modifier.SEVENTH in chordThing.modifiers : ct.seventh()
         if Modifier.NINTH in chordThing.modifiers : ct.ninth()
         ct.set_inversion(chordThing.inversion)
+        print("new chordThing %s" % ct)
         return ct
    
     @classmethod

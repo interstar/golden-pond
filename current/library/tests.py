@@ -122,7 +122,7 @@ testit("Minor Ninth A",
         
 
 testit("Secondary Dominant of iii chord in C",
-	   ChordFactory.generateChordNotes(ChordThing(60, MAJOR, 3).set_as_secondary(3,5).seventh()),
+	   ChordFactory.generateChordNotes(ChordThing(60, MAJOR, 3).set_as_secondary(5).seventh()),
 	   [71,75,78,81],
 	   "Secondary dominantof iii in C not correctly generated")
 
@@ -184,7 +184,7 @@ testit("Modulate to new mode",ChordProgression(60,MAJOR,"1|4|5|7|!|1|4|5|7").toN
        
 testit("Secondary chords",
         ChordProgression(60,MAJOR,"(5/4),4").toChordThings(),
-        [ChordThing(60,MAJOR,4).set_as_secondary(5,4),
+        [ChordThing(60,MAJOR,4).set_as_secondary(5),
          ChordThing(60,MAJOR,4)],
          "Testing secondary chords")
          
@@ -195,7 +195,7 @@ testit("Making secondary chords",
     
 testit("Making secondary chords with modifiers",
     ChordProgression(60,MAJOR,'7(5/2),72,75,71').toNotes(),
-    "[[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]]",    
+    [[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]],    
     "Making a secondary 7(5/2)")       
 
        
