@@ -122,6 +122,10 @@ testit("Minor Ninth A",
        "Minor ninth A not correctly generated.")
         
 
+testit("Secondary Dominant of iii chord in C",
+	   ChordFactory.generateChordNotes(ChordThing(60, MAJOR, 3).set_as_secondary(3,5).seventh()),
+	   [71,75,78,81],
+	   "Secondary dominantof iii in C not correctly generated")
 
 
 

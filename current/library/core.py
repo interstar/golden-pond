@@ -164,12 +164,8 @@ class ChordFactory :
    
     @classmethod
     def generateChordNotes(cls,chordThing) :
-        print("Testing %s " % chordThing)
         if Modifier.SECONDARY in chordThing.modifiers:
-            print("Triggering secondary")
-            print(chordThing)
-            chordThing = calculateSecondaryChord(chordThing)
-            print(chordThing)
+            chordThing = cls.calculateSecondaryChord(chordThing)
         mode = chordThing.get_mode()
 
         chord = mode.make_triad(chordThing.key,chordThing.degree)
