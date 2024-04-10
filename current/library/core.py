@@ -117,6 +117,10 @@ class ChordThing:
     def set_inversion(self, inversion):
         self.inversion = inversion
         return self
+        
+    def set_voice_leading(self) :
+        self.modifiers.add(Modifier.VOICE_LEADING)
+        return self     
 
     def __str__(self):
         mode = "MAJOR" if self.mode == MAJOR else "MINOR"
@@ -128,6 +132,9 @@ class ChordThing:
             degree_repr = str(self.degree)
         
         return "ChordThing(%s,%s,%s,%s,%s) + %s" % (self.key, mode, degree_repr, self.inversion, self.length, self.modifiers)    
+    
+    def __repr__(self):
+        return self.__str__()        
 
     def clone(self):
         ct = ChordThing(self.key, self.mode, self.degree, self.length)
@@ -146,8 +153,13 @@ class ChordThing:
         else :
             return self.mode
             
-            
+    def __eq__(self,other) :
+        return self.__str__() == other.__str__()            
 
+
+def voice_lead(chord) :
+    return chord
+    
 class ChordFactory :
     """
     Generates actual chords from data in ChordThing
@@ -178,6 +190,21 @@ class ChordFactory :
         for _ in range(chordThing.inversion):
             chord = chord[1:] + [chord[0] + 12]
             
-        return chord            
+        return chord     
+
+    @classmethod        
+    def chordProgression(cls, chordThings):
+        chords = []
+        prev_chord = None
+
+        for ct in chordThings:
+            chord = cls.generateChordNotes(ct)
+            if prev_chord is not None and Modifier.VOICE_LEADING in ct.modifiers :
+                chord = voice_lead(prev_chord, chord)
+            chords.append(chord)
+            prev_chord = chord
+
+        return chords
+               
                         
 

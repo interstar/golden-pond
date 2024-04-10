@@ -1,90 +1,7 @@
-MAJOR = 0
-MINOR = 1
-
-MODAL_INTERCHANGE="MODAL_INTERCHANGE"
-SEVENTH="SEVENTH"
-NINTH="NINTH"
-SECONDARY = "SECONDARY"
-VOICE_LEADING = "VOICE_LEADING"
-
-
-# Displaying the most up-to-date ChordThing class
-
-class ChordThing:
-    """ChordThing objects are what we parse score strings into.
-       They hold all the data needed to create a chord and modify it.
-    """
-    def __init__(self, key, mode, degree, length=1):
-        self.key = key
-        self.mode = mode
-        self.degree = degree
-        self.length = length
-        self.modifiers = set()
-        self.inversion = 0
-        self.secondary_base = None
-        self.secondary_target = None        
-
-    def set_as_secondary(self, secondary_base, secondary_target):
-        self.modifiers.add(SECONDARY)
-        self.secondary_base = secondary_base
-        self.secondary_target = secondary_target
-        return self
-
-    def swap_mode(self):
-        if self.mode == MAJOR:
-            self.mode = MINOR
-        else:
-            self.mode = MAJOR
-        return self
-        
-    def modal_interchange(self):
-        self.modifiers.add(MODAL_INTERCHANGE)
-        return self
-
-    def has_modal_interchange(self):
-        return MODAL_INTERCHANGE in self.modifiers        
-        
-    def seventh(self):
-        self.modifiers.add(SEVENTH)
-        self.modifiers.discard(NINTH)
-        return self
-
-    def ninth(self):
-        self.modifiers.add(NINTH)
-        self.modifiers.discard(SEVENTH)                    
-        return self
-        
-    def set_inversion(self, inversion):
-        self.inversion = inversion
-        return self
-
-    def __str__(self):
-        mode = "MAJOR" if self.mode == MAJOR else "MINOR"
-        
-        # Check if it's a secondary chord and adjust the degree representation accordingly
-        if SECONDARY in self.modifiers:
-            degree_repr = f"({self.secondary_base}/{self.secondary_target})"
-        else:
-            degree_repr = str(self.degree)
-        
-        return "ChordThing(%s,%s,%s,%s,%s) + %s" % (self.key, mode, degree_repr, self.inversion, self.length, self.modifiers)    
-
-    def clone(self):
-        ct = ChordThing(self.key, self.mode, self.degree, self.length)
-        ct.modifiers = self.modifiers.copy()
-        ct.inversion = self.inversion
-        ct.secondary_base = self.secondary_base
-        ct.secondary_target = self.secondary_target
-        return ct
-
-    def has_extensions(self):
-        return self.modifiers.intersection({SEVENTH, NINTH}) != set()
  
+from core import ChordThing, Mode, ChordFactory, MAJOR, MINOR
 
 
-
- 
-# Displaying the most up-to-date ChordParser class
 
 class ChordParser:
     def __init__(self, key, mode):
@@ -190,8 +107,24 @@ class ChordParser:
                     item_string, input_string = self._parse_item(input_string)
                     chord = self._interpret_item(item_string)
                     if voice_lead_next:
-                        chord.modifiers.add(VOICE_LEADING)
+                        print("ADDING VOICE_LEADING")
+                        chord.set_voice_leading()
                     chords.append(chord)
         
         return chords
+        
+        
+class ChordProgression :
+    def __init__(self,key,mode: Mode,scoreString) :
+        self.key = key
+        self.mode = mode
+        self.scoreString = scoreString
+    
+    def toChordThings(self) :
+    	return ChordParser(self.key,self.mode).parse(self.scoreString)
+    	
+    def toNotes(self) :
+        return ChordFactory.chordProgression(self.toChordThings())
+        
+        
  

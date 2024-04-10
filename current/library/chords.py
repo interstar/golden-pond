@@ -1,43 +1,7 @@
-from parser import ChordParser, ChordThing
-from parser import MAJOR, MINOR, MODAL_INTERCHANGE, SEVENTH, NINTH, SECONDARY, VOICE_LEADING
+ 
 
 
-
-def buildChord(root,intervals) :
-    chord = [root]
-    for i in intervals :
-        chord.append(chord[-1]+i)
-    return chord
-
-
-def chordTypes() :
-    ct = {}
-    ct['M'] = lambda root : buildChord(root,[4,3])
-    ct['m'] = lambda root : buildChord(root,[3,4])
-    ct['dim'] = lambda root : buildChord(root,[3,3])
-    ct['M7'] = lambda root : buildChord(root,[4,3,4])
-    ct['m7'] = lambda root : buildChord(root,[3,4,3])
-    ct['dom7'] = lambda root : buildChord(root,[4,3,3])
-    ct['dim7'] = lambda root : buildChord(root,[3,3,3])
-    ct['halfdim'] = lambda root : buildChord(root,[3,3,4])
-    ct['sus2'] = lambda root : buildChord(root,[2,5])
-    ct['sus4'] = lambda root : buildChord(root,[5,2])
-    ct['aug'] = lambda root : buildChord(root,[4,4])    
-    ct['dimM7'] = lambda root : buildChord(root,[3,3,4])
-    # Adding Ninth Chords
-    ct['M9'] = lambda root: buildChord(root, [4, 3, 4, 3])  # Major Ninth: R-M3-P5-M7-M9
-    ct['9'] = lambda root: buildChord(root, [4, 3, 3, 4])   # Dominant Ninth: R-M3-P5-m7-M9
-    ct['m9'] = lambda root: buildChord(root, [3, 4, 3, 4])  # Minor Ninth: R-m3-P5-m7-M9
-    ct['dim9'] = lambda root: buildChord(root, [3, 3, 3, 6])  # Diminished Ninth: R-m3-d5-d7-M9 (Rare, more common would be a half-diminished 9th)
-    ct['halfdim9'] = lambda root: buildChord(root, [3, 3, 4, 3])  # Half-Diminished Ninth: R-m3-d5-m7-M9
-    # Altered Ninth Chords (Examples)
-    ct['7b9'] = lambda root: buildChord(root, [4, 3, 3, 3])  # Dominant 7th Flat Nine: R-M3-P5-m7-m9
-    ct['7#9'] = lambda root: buildChord(root, [4, 3, 3, 5])  # Dominant 7th Sharp Nine: R-M3-P5-m7-A9
-     
-    return ct
-
-
-#######################
+ 
 
 
 def octave_transform(input_chord, root=60):
@@ -130,90 +94,8 @@ def voice_lead(chord_a, chord_b):
 
 
 
-#######################
     
-class ChordMaker :
-    def __init__(self) :
-        self.ct = chordTypes()
 
-    def buildChord(self,root,chordType) :
-        return self.ct[chordType](root)
-        
-    def findDegreeNoteAndChordType(self,root,mode,degree) :
-        if mode == MAJOR :
-            dnc = [[0,'M','M7'],[2,'m','m7'],[4,'m','m7'],[5,'M','M7'],[7,'M','dom7'],
-            [9,'m','m7'],[11,'dim','halfdim']][degree-1]
-        else :
-            dnc = [[0,'m','m7'],[2,'dim','halfdim'],[3,'M','M7'],[5,'m','m7'],[7,'m','m7'],
-                [8,'M','M7'],[10,'M','dom7']][degree-1]
-        return [dnc[0]+root, dnc[1], dnc[2]]
-
-    def generate_secondary_chord(self, chordThing):
-        # Determine the tonicized key
-        tonicized_key = self.findDegreeNoteAndChordType(chordThing.key, chordThing.mode, chordThing.secondary_target)[0]
-
-        # Create a new ChordThing for the secondary chord based on the tonicized key
-        secondary_chord_thing = ChordThing(tonicized_key, MAJOR, chordThing.secondary_base)  # We'll use MAJOR mode since we're tonicizing
-
-        # Copy modifiers from the original chordThing to the new secondary_chord_thing (excluding the SECONDARY modifier)
-        secondary_chord_thing.modifiers = chordThing.modifiers - {SECONDARY}
-        secondary_chord_thing.inversion = chordThing.inversion
-
-        # Return the chord generated for the secondary_chord_thing
-        return self.oneChord(secondary_chord_thing)
-    
-    def oneChord(self, chordThing, previous_chord=None):
-        # Check if it's a secondary chord
-        if SECONDARY in chordThing.modifiers:
-            chord = self.generate_secondary_chord(chordThing)
-        else:
-            if chordThing.has_modal_interchange():
-                nct = chordThing.clone()
-                nct.swap_mode()
-                nct.modifiers.discard(MODAL_INTERCHANGE)
-                return self.oneChord(nct, previous_chord)
-
-            dnc = ChordMaker().findDegreeNoteAndChordType(chordThing.key, chordThing.mode, chordThing.degree)
-
-            if not chordThing.has_extensions():
-                chord = self.buildChord(dnc[0], dnc[1])
-            if SEVENTH in chordThing.modifiers:
-                chord = self.buildChord(dnc[0], dnc[2])
-            if NINTH in chordThing.modifiers:
-                chord = self.buildChord(dnc[0], dnc[2])
-
-            # generate chord in the correct inversion
-            inversion = chordThing.inversion
-            while inversion > 0:
-                chord = chord[1:] + [chord[0] + 12]
-                inversion -= 1
-
-        # Apply voice leading if previous_chord is provided and VOICE_LEADING modifier exists
-        if previous_chord and VOICE_LEADING in chordThing.modifiers:
-            chord = voice_lead(previous_chord, chord)
-
-        return chord
-
-
-
-    
-    def chordProgression(self, chordThings):
-        chords = []
-        prev_chord = None
-
-        for ct in chordThings:
-            chord = self.oneChord(ct, prev_chord)
-            chords.append(chord)
-            prev_chord = chord
-
-        return chords
-
- 
-        
-    def chordProgressionFromString(self,root,mode,scoreString):
-        cp = ChordParser(root,mode)
-        chordThings = cp.parse(scoreString)
-        return self.chordProgression(chordThings)
 
 
 class Note :
