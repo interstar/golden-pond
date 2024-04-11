@@ -1,6 +1,7 @@
 from core import Mode, MAJOR, MINOR, ChordThing, ChordFactory
 
 from parser import ChordParser, ChordProgression
+from timed_sequences import TimeManipulator
 
 ERRORS=0
 def testit(id,val,target,msg) :
@@ -195,13 +196,41 @@ testit("Making secondary chords",
     
 testit("Making secondary chords with modifiers",
     ChordProgression(60,MAJOR,'7(5/2),72,75,71').toNotes(),
-    [[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]],    
+    [[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]]	,    
     "Making a secondary 7(5/2)")       
 
-       
+
+print("Testing Voice Leading")       
 testit("VOICE_LEADING Parser Test",
            cp.parse("1&6"),
            [ChordThing(60,MAJOR,1),ChordThing(60,MAJOR,6).set_voice_leading()],
            "Parsing & separator for voice leading")       
 
+
+from voiceleading import voice_lead
+#TODO Unit test this
+print("-------------------------\nVoice Lead diagnostics")
+print(voice_lead([60, 63, 66],[60,63,66]))          
+print(voice_lead([60, 63, 66],[65,69,72]))          
+print(voice_lead([60, 63, 66],[55,58,62]))          
+print("-------------------------")  
+       
+print("Testing Timed Sequences")
+
+
+ti = TimeManipulator(4,0.8,16,960)
+seq = ChordProgression(60,MAJOR,'72,75,71').toNotes()
+testit("TimeManipulator Chords",
+    ti.chords(seq, 0),
+    [{'note': 62, 'start_time': 0, 'length': 1536.0}, {'note': 65, 'start_time': 0, 'length': 1536.0}, {'note': 69, 'start_time': 0, 'length': 1536.0}, {'note': 72, 'start_time': 0, 'length': 1536.0}, {'note': 67, 'start_time': 3840.0, 'length': 1536.0}, {'note': 71, 'start_time': 3840.0, 'length': 1536.0}, {'note': 74, 'start_time': 3840.0, 'length': 1536.0}, {'note': 77, 'start_time': 3840.0, 'length': 1536.0}, {'note': 60, 'start_time': 7680.0, 'length': 1536.0}, {'note': 64, 'start_time': 7680.0, 'length': 1536.0}, {'note': 67, 'start_time': 7680.0, 'length': 1536.0}, {'note': 71, 'start_time': 7680.0, 'length': 1536.0}],
+    "Chord Times")
+testit("TimeManipulator Bass",
+    ti.bassline(seq, 3, 8, 0),
+    [{'note': 50, 'start_time': 0, 'length': 192.0}, {'note': 50, 'start_time': 720.0, 'length': 192.0}, {'note': 50, 'start_time': 1200.0, 'length': 192.0}, {'note': 50, 'start_time': 1920.0, 'length': 192.0}, {'note': 50, 'start_time': 2640.0, 'length': 192.0}, {'note': 50, 'start_time': 3120.0, 'length': 192.0}, {'note': 55, 'start_time': 3840.0, 'length': 192.0}, {'note': 55, 'start_time': 4560.0, 'length': 192.0}, {'note': 55, 'start_time': 5040.0, 'length': 192.0}, {'note': 55, 'start_time': 5760.0, 'length': 192.0}, {'note': 55, 'start_time': 6480.0, 'length': 192.0}, {'note': 55, 'start_time': 6960.0, 'length': 192.0}, {'note': 48, 'start_time': 7680.0, 'length': 192.0}, {'note': 48, 'start_time': 8400.0, 'length': 192.0}, {'note': 48, 'start_time': 8880.0, 'length': 192.0}, {'note': 48, 'start_time': 9600.0, 'length': 192.0}, {'note': 48, 'start_time': 10320.0, 'length': 192.0}, {'note': 48, 'start_time': 10800.0, 'length': 192.0}],
+    "Bassline Times")
+testit("TimeManipulator Arpeggiate",
+    ti.arpeggiate(seq, 3, 8, 0),
+    [{'note': 62, 'start_time': 0, 'length': 192.0}, {'note': 65, 'start_time': 720.0, 'length': 192.0}, {'note': 69, 'start_time': 1200.0, 'length': 192.0}, {'note': 72, 'start_time': 1920.0, 'length': 192.0}, {'note': 62, 'start_time': 2640.0, 'length': 192.0}, {'note': 65, 'start_time': 3120.0, 'length': 192.0}, {'note': 67, 'start_time': 3840.0, 'length': 192.0}, {'note': 71, 'start_time': 4560.0, 'length': 192.0}, {'note': 74, 'start_time': 5040.0, 'length': 192.0}, {'note': 77, 'start_time': 5760.0, 'length': 192.0}, {'note': 67, 'start_time': 6480.0, 'length': 192.0}, {'note': 71, 'start_time': 6960.0, 'length': 192.0}, {'note': 60, 'start_time': 7680.0, 'length': 192.0}, {'note': 64, 'start_time': 8400.0, 'length': 192.0}, {'note': 67, 'start_time': 8880.0, 'length': 192.0}, {'note': 71, 'start_time': 9600.0, 'length': 192.0}, {'note': 60, 'start_time': 10320.0, 'length': 192.0}, {'note': 64, 'start_time': 10800.0, 'length': 192.0}],
+    "Arp Times")
+    
 

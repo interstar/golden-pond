@@ -154,8 +154,7 @@ class ChordThing:
         return self.__str__() == other.__str__()            
 
 
-def voice_lead(chord) :
-    return chord
+from voiceleading import voice_lead
     
 class ChordFactory :
     """
@@ -165,15 +164,11 @@ class ChordFactory :
     @classmethod 
     def calculateSecondaryChord(cls,chordThing) :
         new_tonic = chordThing.get_mode().nth_from(chordThing.key,chordThing.degree)
-        print("Calculating secondary : %s / %s" % (chordThing.secondary_degree,chordThing.degree))
-        print("new tonic %s" % new_tonic)
-        
         ct = ChordThing(new_tonic,MAJOR,chordThing.secondary_degree,chordThing.length)
 
         if Modifier.SEVENTH in chordThing.modifiers : ct.seventh()
         if Modifier.NINTH in chordThing.modifiers : ct.ninth()
         ct.set_inversion(chordThing.inversion)
-        print("new chordThing %s" % ct)
         return ct
    
     @classmethod

@@ -107,7 +107,6 @@ class ChordParser:
                     item_string, input_string = self._parse_item(input_string)
                     chord = self._interpret_item(item_string)
                     if voice_lead_next:
-                        print("ADDING VOICE_LEADING")
                         chord.set_voice_leading()
                     chords.append(chord)
         
