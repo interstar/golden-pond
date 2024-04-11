@@ -3,6 +3,8 @@ from core import Mode, MAJOR, MINOR, ChordThing, ChordFactory
 from parser import ChordParser, ChordProgression
 from timed_sequences import TimeManipulator
 
+from voiceleading import voice_lead
+
 ERRORS=0
 def testit(id,val,target,msg) :
     if val != target :
@@ -207,7 +209,6 @@ testit("VOICE_LEADING Parser Test",
            "Parsing & separator for voice leading")       
 
 
-from voiceleading import voice_lead
 #TODO Unit test this
 print("-------------------------\nVoice Lead diagnostics")
 print(voice_lead([60, 63, 66],[60,63,66]))          
