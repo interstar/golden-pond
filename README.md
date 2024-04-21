@@ -98,7 +98,8 @@ midi_data.write('./gp_example.mid')
 
 
 ```
+### Future
 
-Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into translation of this Python code to other languages. I've experimented with using ChatGPT (natch) to translate it into Javascript, Clojurescript and others. I'm now coming around to looking at Haxe. Maybe eventually I'll migrate it to Haxe and make Python and FL Studio scripting, one target of several. When there is progress in any of these experiments, I'll add them to this repository.
+There is a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into translation of this Python code to other languages. I've experimented with using ChatGPT (natch) to translate it into Javascript, Clojurescript and others. I'm now coming around to looking at Haxe. Maybe eventually I'll migrate it to Haxe and make Python and FL Studio scripting, one target of several. When there is progress in any of these experiments, I'll add them to this repository.
 
 Meanwhile, GoldenPond as an idea, and actually usable code, is now a thing. And I'm very excited about it. I'm starting to consolidate it, together with some of my other music/code projects under a new "micro-research lab" : [Gilbert Lister Research](http://gilbertlisterresearch.com) That's where you'll find more documentation / tutorials too.
