@@ -1,5 +1,38 @@
-from enum import Enum, auto
 from typing import Set
+
+# ===========================================
+# FAKE ENUMS
+
+class UIDMaker :
+    def __init__(self) :
+        self.id = -1
+    
+    def new(self) :
+        self.id = self.id+1
+        return self.id
+
+gensym = UIDMaker()
+    
+class Modifier:
+    "Fake Enum"
+    MODAL_INTERCHANGE=gensym.new()
+    SEVENTH=gensym.new()
+    NINTH=gensym.new()
+    SECONDARY=gensym.new()
+    VOICE_LEADING=gensym.new()
+
+class SeqTypes :
+    "Fake Enum"
+    CHORDS = gensym.new()
+    EUCLIDEAN = gensym.new()
+    BASS = gensym.new()
+    TOP = gensym.new()
+    RANDOM = gensym.new()
+    SCALE = gensym.new()
+    
+
+
+#==============================================================================
 
 class Mode:
     major_intervals = [2, 2, 1, 2, 2, 2, 1]
@@ -58,13 +91,7 @@ class Mode:
         
 MAJOR = Mode.getMajorMode()
 MINOR = Mode.getMinorMode()
-
-class Modifier(Enum):
-    MODAL_INTERCHANGE=auto()
-    SEVENTH=auto()
-    NINTH=auto()
-    SECONDARY = auto()
-    VOICE_LEADING = auto()
+ 
 
 
 # Displaying the most up-to-date ChordThing class

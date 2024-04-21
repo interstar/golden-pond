@@ -1,4 +1,4 @@
-from core import Mode, MAJOR, MINOR, ChordThing, ChordFactory
+from core import Mode, MAJOR, MINOR, ChordThing, ChordFactory, SeqTypes
 
 from parser import ChordParser, ChordProgression
 from timed_sequences import TimeManipulator
@@ -229,9 +229,37 @@ testit("TimeManipulator Bass",
     ti.bassline(seq, 3, 8, 0),
     [{'note': 50, 'start_time': 0, 'length': 192.0}, {'note': 50, 'start_time': 720.0, 'length': 192.0}, {'note': 50, 'start_time': 1200.0, 'length': 192.0}, {'note': 50, 'start_time': 1920.0, 'length': 192.0}, {'note': 50, 'start_time': 2640.0, 'length': 192.0}, {'note': 50, 'start_time': 3120.0, 'length': 192.0}, {'note': 55, 'start_time': 3840.0, 'length': 192.0}, {'note': 55, 'start_time': 4560.0, 'length': 192.0}, {'note': 55, 'start_time': 5040.0, 'length': 192.0}, {'note': 55, 'start_time': 5760.0, 'length': 192.0}, {'note': 55, 'start_time': 6480.0, 'length': 192.0}, {'note': 55, 'start_time': 6960.0, 'length': 192.0}, {'note': 48, 'start_time': 7680.0, 'length': 192.0}, {'note': 48, 'start_time': 8400.0, 'length': 192.0}, {'note': 48, 'start_time': 8880.0, 'length': 192.0}, {'note': 48, 'start_time': 9600.0, 'length': 192.0}, {'note': 48, 'start_time': 10320.0, 'length': 192.0}, {'note': 48, 'start_time': 10800.0, 'length': 192.0}],
     "Bassline Times")
+    
+testit("TimeManipulator Top",
+    ti.topline(seq, 3, 8, 0),
+    [{'note': 84, 'start_time': 0, 'length': 192.0}, {'note': 84, 'start_time': 720.0, 'length': 192.0}, {'note': 84, 'start_time': 1200.0, 'length': 192.0}, {'note': 84, 'start_time': 1920.0, 'length': 192.0}, {'note': 84, 'start_time': 2640.0, 'length': 192.0}, {'note': 84, 'start_time': 3120.0, 'length': 192.0}, {'note': 89, 'start_time': 3840.0, 'length': 192.0}, {'note': 89, 'start_time': 4560.0, 'length': 192.0}, {'note': 89, 'start_time': 5040.0, 'length': 192.0}, {'note': 89, 'start_time': 5760.0, 'length': 192.0}, {'note': 89, 'start_time': 6480.0, 'length': 192.0}, {'note': 89, 'start_time': 6960.0, 'length': 192.0}, {'note': 83, 'start_time': 7680.0, 'length': 192.0}, {'note': 83, 'start_time': 8400.0, 'length': 192.0}, {'note': 83, 'start_time': 8880.0, 'length': 192.0}, {'note': 83, 'start_time': 9600.0, 'length': 192.0}, {'note': 83, 'start_time': 10320.0, 'length': 192.0}, {'note': 83, 'start_time': 10800.0, 'length': 192.0}],
+    "Bassline Times")
+
+testit("TimeManipulator Silent",
+    ti.silentline(seq, 3, 8, 0),
+    [],
+    "Silence")
+    
+    
 testit("TimeManipulator Arpeggiate",
     ti.arpeggiate(seq, 3, 8, 0),
     [{'note': 62, 'start_time': 0, 'length': 192.0}, {'note': 65, 'start_time': 720.0, 'length': 192.0}, {'note': 69, 'start_time': 1200.0, 'length': 192.0}, {'note': 72, 'start_time': 1920.0, 'length': 192.0}, {'note': 62, 'start_time': 2640.0, 'length': 192.0}, {'note': 65, 'start_time': 3120.0, 'length': 192.0}, {'note': 67, 'start_time': 3840.0, 'length': 192.0}, {'note': 71, 'start_time': 4560.0, 'length': 192.0}, {'note': 74, 'start_time': 5040.0, 'length': 192.0}, {'note': 77, 'start_time': 5760.0, 'length': 192.0}, {'note': 67, 'start_time': 6480.0, 'length': 192.0}, {'note': 71, 'start_time': 6960.0, 'length': 192.0}, {'note': 60, 'start_time': 7680.0, 'length': 192.0}, {'note': 64, 'start_time': 8400.0, 'length': 192.0}, {'note': 67, 'start_time': 8880.0, 'length': 192.0}, {'note': 71, 'start_time': 9600.0, 'length': 192.0}, {'note': 60, 'start_time': 10320.0, 'length': 192.0}, {'note': 64, 'start_time': 10800.0, 'length': 192.0}],
     "Arp Times")
     
+testit("Grab combo",
+    ti.grabCombo(seq,3,8,0,set([SeqTypes.TOP,SeqTypes.EUCLIDEAN])),
+    [{'note': 84, 'start_time': 0, 'length': 192.0}, {'note': 84, 'start_time': 720.0, 'length': 192.0}, {'note': 84, 'start_time': 1200.0, 'length': 192.0}, {'note': 84, 'start_time': 1920.0, 'length': 192.0}, {'note': 84, 'start_time': 2640.0, 'length': 192.0}, {'note': 84, 'start_time': 3120.0, 'length': 192.0}, {'note': 89, 'start_time': 3840.0, 'length': 192.0}, {'note': 89, 'start_time': 4560.0, 'length': 192.0}, {'note': 89, 'start_time': 5040.0, 'length': 192.0}, {'note': 89, 'start_time': 5760.0, 'length': 192.0}, {'note': 89, 'start_time': 6480.0, 'length': 192.0}, {'note': 89, 'start_time': 6960.0, 'length': 192.0}, {'note': 83, 'start_time': 7680.0, 'length': 192.0}, {'note': 83, 'start_time': 8400.0, 'length': 192.0}, {'note': 83, 'start_time': 8880.0, 'length': 192.0}, {'note': 83, 'start_time': 9600.0, 'length': 192.0}, {'note': 83, 'start_time': 10320.0, 'length': 192.0}, {'note': 83, 'start_time': 10800.0, 'length': 192.0},
+    {'note': 62, 'start_time': 0, 'length': 192.0}, {'note': 65, 'start_time': 720.0, 'length': 192.0}, {'note': 69, 'start_time': 1200.0, 'length': 192.0}, {'note': 72, 'start_time': 1920.0, 'length': 192.0}, {'note': 62, 'start_time': 2640.0, 'length': 192.0}, {'note': 65, 'start_time': 3120.0, 'length': 192.0}, {'note': 67, 'start_time': 3840.0, 'length': 192.0}, {'note': 71, 'start_time': 4560.0, 'length': 192.0}, {'note': 74, 'start_time': 5040.0, 'length': 192.0}, {'note': 77, 'start_time': 5760.0, 'length': 192.0}, {'note': 67, 'start_time': 6480.0, 'length': 192.0}, {'note': 71, 'start_time': 6960.0, 'length': 192.0}, {'note': 60, 'start_time': 7680.0, 'length': 192.0}, {'note': 64, 'start_time': 8400.0, 'length': 192.0}, {'note': 67, 'start_time': 8880.0, 'length': 192.0}, {'note': 71, 'start_time': 9600.0, 'length': 192.0}, {'note': 60, 'start_time': 10320.0, 'length': 192.0}, {'note': 64, 'start_time': 10800.0, 'length': 192.0}],
+    "Grab both TOP and EUCLIDEAN")
 
+testit("Grab combo of one",
+    ti.grabCombo(seq,3,8,0,set([SeqTypes.TOP])),
+    [{'note': 84, 'start_time': 0, 'length': 192.0}, {'note': 84, 'start_time': 720.0, 'length': 192.0}, {'note': 84, 'start_time': 1200.0, 'length': 192.0}, {'note': 84, 'start_time': 1920.0, 'length': 192.0}, {'note': 84, 'start_time': 2640.0, 'length': 192.0}, {'note': 84, 'start_time': 3120.0, 'length': 192.0}, {'note': 89, 'start_time': 3840.0, 'length': 192.0}, {'note': 89, 'start_time': 4560.0, 'length': 192.0}, {'note': 89, 'start_time': 5040.0, 'length': 192.0}, {'note': 89, 'start_time': 5760.0, 'length': 192.0}, {'note': 89, 'start_time': 6480.0, 'length': 192.0}, {'note': 89, 'start_time': 6960.0, 'length': 192.0}, {'note': 83, 'start_time': 7680.0, 'length': 192.0}, {'note': 83, 'start_time': 8400.0, 'length': 192.0}, {'note': 83, 'start_time': 8880.0, 'length': 192.0}, {'note': 83, 'start_time': 9600.0, 'length': 192.0}, {'note': 83, 'start_time': 10320.0, 'length': 192.0}, {'note': 83, 'start_time': 10800.0, 'length': 192.0}],
+    "Grab TOP only")
+    
+testit("Grab Bass and Scale",
+    ti.grabCombo(seq,3,8,0,set([SeqTypes.BASS,SeqTypes.SCALE])),
+    [{'note': 50, 'start_time': 0, 'length': 192.0}, {'note': 50, 'start_time': 720.0, 'length': 192.0}, {'note': 50, 'start_time': 1200.0, 'length': 192.0}, {'note': 50, 'start_time': 1920.0, 'length': 192.0}, {'note': 50, 'start_time': 2640.0, 'length': 192.0}, {'note': 50, 'start_time': 3120.0, 'length': 192.0}, {'note': 55, 'start_time': 3840.0, 'length': 192.0}, {'note': 55, 'start_time': 4560.0, 'length': 192.0}, {'note': 55, 'start_time': 5040.0, 'length': 192.0}, {'note': 55, 'start_time': 5760.0, 'length': 192.0}, {'note': 55, 'start_time': 6480.0, 'length': 192.0}, {'note': 55, 'start_time': 6960.0, 'length': 192.0}, {'note': 48, 'start_time': 7680.0, 'length': 192.0}, {'note': 48, 'start_time': 8400.0, 'length': 192.0}, {'note': 48, 'start_time': 8880.0, 'length': 192.0}, {'note': 48, 'start_time': 9600.0, 'length': 192.0}, {'note': 48, 'start_time': 10320.0, 'length': 192.0}, {'note': 48, 'start_time': 10800.0, 'length': 192.0}
+    
+    ],
+    "Grab both BASS and SCALE")
