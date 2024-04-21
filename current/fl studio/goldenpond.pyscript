@@ -2,14 +2,126 @@ import flpianoroll as flp
 from flpianoroll import *
 
 import time
-MAJOR = 0
-MINOR = 1
 
-MODAL_INTERCHANGE="MODAL_INTERCHANGE"
-SEVENTH="SEVENTH"
-NINTH="NINTH"
-SECONDARY = "SECONDARY"
-VOICE_LEADING = "VOICE_LEADING"
+# Needed for FL Studio
+def rand_int(seed=None):
+    """
+    Generate a random non-negative integer
+
+    seed: int or None (generate a seed from current time)
+    """
+    state = time.time_ns() if seed is None else seed
+
+    while True:
+        state = (1103515245 * state + 12345) & 0x7fffffff
+        yield state
+
+def rand_uniform(seed=None):
+    """
+    Generate a random float in the range [0, 1)
+
+    seed: int or None (generate a seed from current time)
+    """
+    gen = rand_int(seed)
+
+    while True:
+        yield next(gen) / 0x80000000
+ 
+rand = rand_uniform(3)
+ 
+def choice(xs): 
+    r = int(next(rand) * len(xs))
+    return xs[r]
+    
+# FAKE ENUMS
+
+class UIDMaker :
+    def __init__(self) :
+        self.id = -1
+    
+    def new(self) :
+        self.id = self.id+1
+        return self.id
+
+gensym = UIDMaker()
+    
+class Modifier:
+    "Fake Enum"
+    MODAL_INTERCHANGE=gensym.new()
+    SEVENTH=gensym.new()
+    NINTH=gensym.new()
+    SECONDARY=gensym.new()
+    VOICE_LEADING=gensym.new()
+
+class SeqTypes :
+    "Fake Enum"
+    CHORDS = gensym.new()
+    EUCLIDEAN = gensym.new()
+    BASS = gensym.new()
+    TOP = gensym.new()
+    RANDOM = gensym.new()
+    SCALE = gensym.new()
+    
+
+
+#===============================================================
+class Mode:
+    major_intervals = [2, 2, 1, 2, 2, 2, 1]
+    minor_intervals = [2, 1, 2, 2, 1, 2, 2]
+
+    # Singleton instances
+    _major_mode = None
+    _minor_mode = None
+
+    def __init__(self, intervals):
+        self.intervals = intervals
+
+    @classmethod
+    def getMajorMode(cls):
+        """Return the singleton instance of the Major mode."""
+        if cls._major_mode is None:
+            cls._major_mode = Mode(cls.major_intervals)
+        return cls._major_mode
+
+    @classmethod
+    def getMinorMode(cls):
+        """Return the singleton instance of the Minor mode."""
+        if cls._minor_mode is None:
+            cls._minor_mode = Mode(cls.minor_intervals)
+        return cls._minor_mode
+
+
+    def nth_from(self, root, n):
+        """Return the MIDI note number for the nth degree of the scale from the root.
+        For the first degree, return the root note itself."""
+        if n == 1:
+            return root  # Return the root note for the first degree
+
+        note = root
+        # Start interval addition from the first interval for the second degree
+        for i in range(n - 2 + 1):  # Adjust for 0-indexed intervals list
+            note += self.intervals[i % len(self.intervals)]
+        return note
+
+    def make_chord_from_pattern(self,root,n,pat) :
+        "Given a generic pattern of form [1,3,6] for example, give us the chord of the 1st, 3rd and 6th degree counting up from n, of the scale starting on root"
+        return [self.nth_from(root,n+x-1) for x in pat] 
+        
+    def make_triad(self,root,n):
+        "Return triad on degree n of this scale starting at root"
+        return self.make_chord_from_pattern(root,n,[1,3,5])
+        
+    def make_seventh(self,root,n):
+        "Return seventh on degree n of this scale starting at root"
+        return self.make_chord_from_pattern(root,n,[1,3,5,7])
+
+    def make_ninth(self,root,n):
+        "Return seventh on degree n of this scale starting at root"
+        return self.make_chord_from_pattern(root,n,[1,3,5,7,9])
+        
+        
+MAJOR = Mode.getMajorMode()
+MINOR = Mode.getMinorMode()
 
 
 # Displaying the most up-to-date ChordThing class
@@ -17,21 +129,20 @@ VOICE_LEADING = "VOICE_LEADING"
 class ChordThing:
     """ChordThing objects are what we parse score strings into.
        They hold all the data needed to create a chord and modify it.
+       Note that mode should now be an instance of Mode
     """
-    def __init__(self, key, mode, degree, length=1):
+    def __init__(self, key, mode: Mode, degree, length=1):
         self.key = key
         self.mode = mode
         self.degree = degree
         self.length = length
-        self.modifiers = set()
+        self.modifiers: Set[Modifier] = set()
         self.inversion = 0
-        self.secondary_base = None
-        self.secondary_target = None        
+        self.secondary_degree = None        
 
-    def set_as_secondary(self, secondary_base, secondary_target):
-        self.modifiers.add(SECONDARY)
-        self.secondary_base = secondary_base
-        self.secondary_target = secondary_target
+    def set_as_secondary(self, secondary_degree):
+        self.modifiers.add(Modifier.SECONDARY)
+        self.secondary_degree = secondary_degree
         return self
 
     def swap_mode(self):
@@ -42,194 +153,113 @@ class ChordThing:
         return self
         
     def modal_interchange(self):
-        self.modifiers.add(MODAL_INTERCHANGE)
+        self.modifiers.add(Modifier.MODAL_INTERCHANGE)
         return self
 
     def has_modal_interchange(self):
-        return MODAL_INTERCHANGE in self.modifiers        
+        return Modifier.MODAL_INTERCHANGE in self.modifiers        
         
     def seventh(self):
-        self.modifiers.add(SEVENTH)
-        self.modifiers.discard(NINTH)
+        self.modifiers.add(Modifier.SEVENTH)
+        self.modifiers.discard(Modifier.NINTH)
         return self
 
     def ninth(self):
-        self.modifiers.add(NINTH)
-        self.modifiers.discard(SEVENTH)                    
+        self.modifiers.add(Modifier.NINTH)
+        self.modifiers.discard(Modifier.SEVENTH)                    
         return self
         
     def set_inversion(self, inversion):
         self.inversion = inversion
         return self
+        
+    def set_voice_leading(self) :
+        self.modifiers.add(Modifier.VOICE_LEADING)
+        return self     
 
     def __str__(self):
         mode = "MAJOR" if self.mode == MAJOR else "MINOR"
         
         # Check if it's a secondary chord and adjust the degree representation accordingly
-        if SECONDARY in self.modifiers:
-            degree_repr = f"({self.secondary_base}/{self.secondary_target})"
+        if Modifier.SECONDARY in self.modifiers:
+            degree_repr = f"({self.secondary_degree}/{self.degree})"
         else:
             degree_repr = str(self.degree)
         
         return "ChordThing(%s,%s,%s,%s,%s) + %s" % (self.key, mode, degree_repr, self.inversion, self.length, self.modifiers)    
+    
+    def __repr__(self):
+        return self.__str__()        
 
     def clone(self):
         ct = ChordThing(self.key, self.mode, self.degree, self.length)
         ct.modifiers = self.modifiers.copy()
         ct.inversion = self.inversion
-        ct.secondary_base = self.secondary_base
-        ct.secondary_target = self.secondary_target
+        ct.secondary_degree = self.secondary_degree
         return ct
 
     def has_extensions(self):
-        return self.modifiers.intersection({SEVENTH, NINTH}) != set()
+        return self.modifiers.intersection({Modifier.SEVENTH, Modifier.NINTH}) != set()
+        
+    def get_mode(self) :
+        if self.has_modal_interchange() :
+            return MAJOR if self.mode is MINOR else MINOR
+        else :
+            return self.mode
+            
+    def __eq__(self,other) :
+        return self.__str__() == other.__str__()            
+
  
-
-
-
- 
-# Displaying the most up-to-date ChordParser class
-
-class ChordParser:
-    def __init__(self, key, mode):
-        self.key = key
-        self.mode = mode
-        
-    def _parse_separator(self, input_string):
-        separators = ['|', ',', '&']
-        if input_string and (input_string[0] in separators):
-            return input_string[0], input_string[1:]
-        else:
-            return None, input_string
     
-    def _parse_transpose(self, input_string):
-        transpose_chars = []
-        while input_string and input_string[0] not in [',', '|']:
-            transpose_chars.append(input_string[0])
-            input_string = input_string[1:]
-        transpose_string = ''.join(transpose_chars).strip()
-        if transpose_string[0] not in ['>', '<']:
-            raise ValueError(f"Expected '>' or '<' at the start of '{transpose_string}'")
-        transpose_value = int(transpose_string[1:])
-        if transpose_string[0] == '>':
-            self.key += transpose_value
-        else:
-            self.key -= transpose_value
-        return input_string
+class ChordFactory :
+    """
+    Generates actual chords from data in ChordThing
+    """
     
-    def _parse_item(self, input_string):
-        item_chars = []
-        inside_parentheses = False
-        while input_string and (inside_parentheses or (input_string[0] not in [',', '|', '&', '>', '<'])):
-            char = input_string[0]
-            if char == '(':
-                inside_parentheses = True
-            elif char == ')':
-                inside_parentheses = False
-            item_chars.append(char)
-            input_string = input_string[1:]
-        return ''.join(item_chars).strip(), input_string
+    @classmethod 
+    def calculateSecondaryChord(cls,chordThing) :
+        new_tonic = chordThing.get_mode().nth_from(chordThing.key,chordThing.degree)
+        ct = ChordThing(new_tonic,MAJOR,chordThing.secondary_degree,chordThing.length)
 
-    def _interpret_item(self, item_string):
-        is_modal_interchange = False
-        if item_string.startswith('-'):
-            is_modal_interchange = True
-            item_string = item_string[1:]
+        if Modifier.SEVENTH in chordThing.modifiers : ct.seventh()
+        if Modifier.NINTH in chordThing.modifiers : ct.ninth()
+        ct.set_inversion(chordThing.inversion)
+        return ct
+   
+    @classmethod
+    def generateChordNotes(cls,chordThing) :
+        if Modifier.SECONDARY in chordThing.modifiers:
+            chordThing = cls.calculateSecondaryChord(chordThing)
+        mode = chordThing.get_mode()
 
-        # extract inversion from item_string
-        inversion = 0
-        if 'i' in item_string:
-            inversion = item_string.count('i')
-            item_string = item_string.replace('i', '')
+        chord = mode.make_triad(chordThing.key,chordThing.degree)
+        if Modifier.NINTH in chordThing.modifiers :
+            chord = mode.make_ninth(chordThing.key,chordThing.degree)
+        elif Modifier.SEVENTH in chordThing.modifiers :
+            chord = mode.make_seventh(chordThing.key,chordThing.degree)
 
-        # Check for secondary notation (y/x)
-        if '(' in item_string and ')' in item_string:
-            extension = None
-            parts = item_string.split('(')
-            if len(parts[0]) > 0:
-                extension = int(parts[0])
-            secondary_base, secondary_target = map(int, parts[1][:-1].split('/'))
-            chord = ChordThing(self.key, self.mode, secondary_target)
-            chord.set_as_secondary(secondary_base, secondary_target)
-            chord.set_inversion(inversion)
-            if extension in [7, 9]:  # Add logic for other extensions if needed
-                chord.seventh() if extension == 7 else chord.ninth()
-            return chord
+        # Apply inversions
+        for _ in range(chordThing.inversion):
+            chord = chord[1:] + [chord[0] + 12]
+            
+        return chord     
 
-        item_value = int(item_string)
-        
-        if 1 <= item_value <= 7:
-            chord = ChordThing(self.key, self.mode, item_value)
-        elif 71 <= item_value <= 77:
-            chord = ChordThing(self.key, self.mode, item_value - 70).seventh()
-        elif 91 <= item_value <= 97:
-            chord = ChordThing(self.key, self.mode, item_value - 90).ninth()
-        else:
-            raise ValueError(f"Unexpected item value: {item_string}")
-        
-        if is_modal_interchange:
-            chord.modal_interchange()
-        
-        chord.set_inversion(inversion)
-        
-        return chord
-    
-    def parse(self, input_string):
+    @classmethod        
+    def chordProgression(cls, chordThings):
         chords = []
-        
-        while input_string:
-            separator, input_string = self._parse_separator(input_string)
-            if separator == '&':
-                voice_lead_next = True
-            else:
-                voice_lead_next = False
-                
-            if input_string:
-                if input_string[0] == '!':
-                    self.mode = MINOR if self.mode == MAJOR else MAJOR
-                    input_string = input_string[1:]
-                elif input_string[0] in ['>', '<']:
-                    input_string = self._parse_transpose(input_string)
-                else:
-                    item_string, input_string = self._parse_item(input_string)
-                    chord = self._interpret_item(item_string)
-                    if voice_lead_next:
-                        chord.modifiers.add(VOICE_LEADING)
-                    chords.append(chord)
-        
+        prev_chord = None
+
+        for ct in chordThings:
+            chord = cls.generateChordNotes(ct)
+            if prev_chord is not None and Modifier.VOICE_LEADING in ct.modifiers :
+                chord = voice_lead(prev_chord, chord)
+            chords.append(chord)
+            prev_chord = chord
+
         return chords
- 
-
-from myparser import ChordParser, ChordThing
-from myparser import MAJOR, MINOR, MODAL_INTERCHANGE, SEVENTH, NINTH, SECONDARY, VOICE_LEADING
-
-
-
-def buildChord(root,intervals) :
-    chord = [root]
-    for i in intervals :
-        chord.append(chord[-1]+i)
-    return chord
-
-
-def chordTypes() :
-    ct = {}
-    ct['M'] = lambda root : buildChord(root,[4,3])
-    ct['m'] = lambda root : buildChord(root,[3,4])
-    ct['dim'] = lambda root : buildChord(root,[3,3])
-    ct['M7'] = lambda root : buildChord(root,[4,3,4])
-    ct['m7'] = lambda root : buildChord(root,[3,4,3])
-    ct['dom7'] = lambda root : buildChord(root,[4,3,3])
-    ct['dim7'] = lambda root : buildChord(root,[3,3,3])
-    ct['halfdim'] = lambda root : buildChord(root,[3,3,4])
-    ct['sus2'] = lambda root : buildChord(root,[2,5])
-    ct['sus4'] = lambda root : buildChord(root,[5,2])
-    ct['aug'] = lambda root : buildChord(root,[4,4])    
-    ct['dimM7'] = lambda root : buildChord(root,[3,3,4])
-    return ct
-
-
-#######################
+               
+                        
 
 
 def octave_transform(input_chord, root=60):
@@ -322,91 +352,129 @@ def voice_lead(chord_a, chord_b):
 
 
 
-#######################
-    
-class ChordMaker :
-    def __init__(self) :
-        self.ct = chordTypes()
-
-    def buildChord(self,root,chordType) :
-        return self.ct[chordType](root)
+class ChordParser:
+    def __init__(self, key, mode):
+        self.key = key
+        self.mode = mode
         
-    def findDegreeNoteAndChordType(self,root,mode,degree) :
-        if mode == MAJOR :
-            dnc = [[0,'M','M7'],[2,'m','m7'],[4,'m','m7'],[5,'M','M7'],[7,'M','dom7'],
-            [9,'m','m7'],[11,'dim','halfdim']][degree-1]
-        else :
-            dnc = [[0,'m','m7'],[2,'dim','halfdim'],[3,'M','M7'],[5,'m','m7'],[7,'m','m7'],
-                [8,'M','M7'],[10,'M','dom7']][degree-1]
-        return [dnc[0]+root, dnc[1], dnc[2]]
-
-    def generate_secondary_chord(self, chordThing):
-        # Determine the tonicized key
-        tonicized_key = self.findDegreeNoteAndChordType(chordThing.key, chordThing.mode, chordThing.secondary_target)[0]
-
-        # Create a new ChordThing for the secondary chord based on the tonicized key
-        secondary_chord_thing = ChordThing(tonicized_key, MAJOR, chordThing.secondary_base)  # We'll use MAJOR mode since we're tonicizing
-
-        # Copy modifiers from the original chordThing to the new secondary_chord_thing (excluding the SECONDARY modifier)
-        secondary_chord_thing.modifiers = chordThing.modifiers - {SECONDARY}
-        secondary_chord_thing.inversion = chordThing.inversion
-
-        # Return the chord generated for the secondary_chord_thing
-        return self.oneChord(secondary_chord_thing)
-    
-    def oneChord(self, chordThing, previous_chord=None):
-        # Check if it's a secondary chord
-        if SECONDARY in chordThing.modifiers:
-            chord = self.generate_secondary_chord(chordThing)
+    def _parse_separator(self, input_string):
+        separators = ['|', ',', '&']
+        if input_string and (input_string[0] in separators):
+            return input_string[0], input_string[1:]
         else:
-            if chordThing.has_modal_interchange():
-                nct = chordThing.clone()
-                nct.swap_mode()
-                nct.modifiers.discard(MODAL_INTERCHANGE)
-                return self.oneChord(nct, previous_chord)
-
-            dnc = ChordMaker().findDegreeNoteAndChordType(chordThing.key, chordThing.mode, chordThing.degree)
-
-            if not chordThing.has_extensions():
-                chord = self.buildChord(dnc[0], dnc[1])
-            if SEVENTH in chordThing.modifiers:
-                chord = self.buildChord(dnc[0], dnc[2])
-            if NINTH in chordThing.modifiers:
-                chord = self.buildChord(dnc[0], dnc[2])
-
-            # generate chord in the correct inversion
-            inversion = chordThing.inversion
-            while inversion > 0:
-                chord = chord[1:] + [chord[0] + 12]
-                inversion -= 1
-
-        # Apply voice leading if previous_chord is provided and VOICE_LEADING modifier exists
-        if previous_chord and VOICE_LEADING in chordThing.modifiers:
-            chord = voice_lead(previous_chord, chord)
-
-        return chord
-
-
-
+            return None, input_string
     
-    def chordProgression(self, chordThings):
-        chords = []
-        prev_chord = None
+    def _parse_transpose(self, input_string):
+        transpose_chars = []
+        while input_string and input_string[0] not in [',', '|']:
+            transpose_chars.append(input_string[0])
+            input_string = input_string[1:]
+        transpose_string = ''.join(transpose_chars).strip()
+        if transpose_string[0] not in ['>', '<']:
+            raise ValueError(f"Expected '>' or '<' at the start of '{transpose_string}'")
+        transpose_value = int(transpose_string[1:])
+        if transpose_string[0] == '>':
+            self.key += transpose_value
+        else:
+            self.key -= transpose_value
+        return input_string
+    
+    def _parse_item(self, input_string):
+        item_chars = []
+        inside_parentheses = False
+        while input_string and (inside_parentheses or (input_string[0] not in [',', '|', '&', '>', '<'])):
+            char = input_string[0]
+            if char == '(':
+                inside_parentheses = True
+            elif char == ')':
+                inside_parentheses = False
+            item_chars.append(char)
+            input_string = input_string[1:]
+        return ''.join(item_chars).strip(), input_string
 
-        for ct in chordThings:
-            chord = self.oneChord(ct, prev_chord)
-            chords.append(chord)
-            prev_chord = chord
+    def _interpret_item(self, item_string):
+        is_modal_interchange = False
+        if item_string.startswith('-'):
+            is_modal_interchange = True
+            item_string = item_string[1:]
 
-        return chords
+        # extract inversion from item_string
+        inversion = 0
+        if 'i' in item_string:
+            inversion = item_string.count('i')
+            item_string = item_string.replace('i', '')
 
- 
+        # Check for secondary notation (y/x)
+        if '(' in item_string and ')' in item_string:
+            extension = None
+            parts = item_string.split('(')
+            if len(parts[0]) > 0:
+                extension = int(parts[0])
+            secondary_degree, degree = map(int, parts[1][:-1].split('/'))
+            chord = ChordThing(self.key, self.mode, degree)
+            chord.set_as_secondary(secondary_degree)
+            chord.set_inversion(inversion)
+            if extension in [7, 9]:  # Add logic for other extensions if needed
+                chord.seventh() if extension == 7 else chord.ninth()
+            return chord
+
+        item_value = int(item_string)
         
-    def chordProgressionFromString(self,root,mode,scoreString):
-        cp = ChordParser(root,mode)
-        chordThings = cp.parse(scoreString)
-        return self.chordProgression(chordThings)
-
+        if 1 <= item_value <= 7:
+            chord = ChordThing(self.key, self.mode, item_value)
+        elif 71 <= item_value <= 77:
+            chord = ChordThing(self.key, self.mode, item_value - 70).seventh()
+        elif 91 <= item_value <= 97:
+            chord = ChordThing(self.key, self.mode, item_value - 90).ninth()
+        else:
+            raise ValueError(f"Unexpected item value: {item_string}")
+        
+        if is_modal_interchange:
+            chord.modal_interchange()
+        
+        chord.set_inversion(inversion)
+        
+        return chord
+    
+    def parse(self, input_string):
+        chords = []
+        
+        while input_string:
+            separator, input_string = self._parse_separator(input_string)
+            if separator == '&':
+                voice_lead_next = True
+            else:
+                voice_lead_next = False
+                
+            if input_string:
+                if input_string[0] == '!':
+                    self.mode = MINOR if self.mode == MAJOR else MAJOR
+                    input_string = input_string[1:]
+                elif input_string[0] in ['>', '<']:
+                    input_string = self._parse_transpose(input_string)
+                else:
+                    item_string, input_string = self._parse_item(input_string)
+                    chord = self._interpret_item(item_string)
+                    if voice_lead_next:
+                        chord.set_voice_leading()
+                    chords.append(chord)
+        
+        return chords
+        
+        
+class ChordProgression :
+    def __init__(self,key,mode: Mode,scoreString) :
+        self.key = key
+        self.mode = mode
+        self.scoreString = scoreString
+    
+    def toChordThings(self) :
+    	return ChordParser(self.key,self.mode).parse(self.scoreString)
+    	
+    def toNotes(self) :
+        return ChordFactory.chordProgression(self.toChordThings())
+        
+ 
 
 class Note :
     def __init__(self, note, time, length) :
@@ -414,7 +482,7 @@ class Note :
         self.time = time
         self.length = length
         
-class TimingInfo:
+class TimeManipulator:
     def __init__(self, beat_code, note_proportion, chord_multiplier, ppq):
         # Mapping from beat_code to fractions of a beat
         self.beat_mapping = {
@@ -443,23 +511,24 @@ class TimingInfo:
         step_size = n / k
         current_step = 0
         for _ in range(k):
-            rhythm[int(round(current_step))] = 1
+            i = int(round(current_step))
+            rhythm[i] = 1
             current_step += step_size
         return rhythm
 
     def rhythm_generator(self, k, n):
-        rhythm = TimingInfo.distribute_pulses_evenly(k, n)
+        rhythm = TimeManipulator.distribute_pulses_evenly(k, n)
         index = 0
         while True:
             yield rhythm[index]
             index = (index + 1) % len(rhythm)
     
     @staticmethod
-    def chord_note_generator(chord):
+    def chord_note_generator(chord, step=1):
         index = 0
         while True:
             yield chord[index]
-            index = (index + 1) % len(chord)
+            index = (index + step) % len(chord)
 
     def chords(self, seq, start_time):
         all_notes = []
@@ -477,44 +546,22 @@ class TimingInfo:
         
         return all_notes
 
-    def bassline(self, seq, k, n, start_time):
+
+    def noteline(self, n_gen, r_gen, seq, start_time):
+        """Generic note creator, customize with specific note choosing algorithm passed as argument f"""
         all_notes = []
         current_time = start_time
 
-        rhythm_gen = self.rhythm_generator(k, n)
+        rhythm_gen = r_gen()
 
         for c in seq:
-            root_note = c[0] - 12  # root note one octave down
+
             beats_for_current_chord = 0
-            
+            note_gen = n_gen(c)
+
             while beats_for_current_chord < self.chord_multiplier:
                 beat = next(rhythm_gen)
-                if beat == 1:  # If the beat is a "hit"
-                    all_notes.append({
-                        'note': root_note,
-                        'start_time': current_time,
-                        'length': self.note_length
-                    })
-                current_time += self.beat_length
-                beats_for_current_chord += 1
-                # Reset the rhythm generator after finishing the beats for one chord
-                if beats_for_current_chord == self.chord_multiplier:
-                    rhythm_gen = self.rhythm_generator(k, n)
 
-        return all_notes
-
-    def arpeggiate(self, seq, k, n, start_time):
-        all_notes = []
-        current_time = start_time
-
-        rhythm_gen = self.rhythm_generator(k, n)
-
-        for c in seq:
-            note_gen = TimingInfo.chord_note_generator(c)
-            beats_for_current_chord = 0  # Counter to track beats for the current chord
-            
-            while beats_for_current_chord < self.chord_multiplier:
-                beat = next(rhythm_gen)
                 if beat == 1:  # If the beat is a "hit"
                     all_notes.append({
                         'note': next(note_gen),
@@ -525,21 +572,95 @@ class TimingInfo:
                 beats_for_current_chord += 1
                 # Reset the rhythm generator after finishing the beats for one chord
                 if beats_for_current_chord == self.chord_multiplier:
-                    rhythm_gen = self.rhythm_generator(k, n)
+                    rhythm_gen = r_gen()
 
         return all_notes
 
+
+    def bassline(self, seq, k, n, start_time):
+        def lowest(c) : 
+            while True :
+                yield c[0] - 12  # root note one octave down
+        def rhythm() :
+            return self.rhythm_generator(k, n)
+            
+        return self.noteline(lowest, rhythm, seq, start_time)
+
+    def topline(self, seq, k, n, start_time):
+        def top(c) : 
+            while True :
+                yield c[-1] + 12  # top note one octave up
+        def rhythm() :
+            return self.rhythm_generator(k, n)                
+        return self.noteline(top, rhythm, seq, start_time)
+
+    def randline(self, seq, k, n, start_time):
+        def r(c) : 
+            while True :
+                yield choice(c) + 12  # random note one octave up
+        def rhythm() :
+            return self.rhythm_generator(k, n)
+        return self.noteline(r, rhythm, seq,  start_time)
+        
+    def arpeggiate(self, seq, k, n, start_time):
+        def gen(c) :
+            return TimeManipulator.chord_note_generator(c)
+        def rhythm() :
+            return self.rhythm_generator(k, n)            
+        return self.noteline(gen, rhythm, seq,  start_time)
+                
+    def scaleline(self,seq, k, n, start_time):
+        """NOT IMPLEMENTED
+        Problem is how to get the scale at this point.
+        seq is just a list of chords which are list of notes. We've thrown away the information 
+        necessary to say which key / mode we're in.
+        We could pass these in as an argument, but modifiers like secondary 
+        may have already taken us out of the key""" 
+        
+        
+        return []
+                
+    def silentline(self, seq, k, n, start_time):
+        def r(c) :
+            while True :
+                yield None
+        def rhythm() :
+            while True :
+                yield 0
+        return self.noteline(r,rhythm, seq, start_time)
+        
+
+    def grabCombo(self,seq,k,n,start_time,seqset) :
+        
+        notes = []
+        for val in seqset :
+        
+            if val == SeqTypes.CHORDS :
+                notes = notes + self.chords(seq,start_time)
+            if val == SeqTypes.EUCLIDEAN :
+                notes = notes + self.arpeggiate(seq,k,n,start_time)
+            if val == SeqTypes.BASS :
+                notes = notes + self.bassline(seq,k,n,start_time)
+            if val == SeqTypes.TOP :        
+                notes = notes + self.topline(seq,k,n,start_time)
+            if val == SeqTypes.RANDOM :          
+                notes = notes + self.randline(seq,k,n,start_time)
+            if val == SeqTypes.SCALE :           
+                notes = notes + self.scaleline(seq,k,n,start_time)
+        
+        return notes
+                
 
 class GoldenData :
     def __init__(self) :
         self.changed = True
         self.current_str = ""
         
-    def update(self,root,mode,chordSeq,gtype,division,note_prop,chord_len,k,n) :
+    def update(self,root,mode,chordSeq,seqset,division,note_prop,chord_len,k,n) :
         self.root = root
         self.mode = mode
         self.chordSeq = chordSeq
-        self.gtype = gtype
+        self.generate = seqset
         self.division = division
         self.note_prop = note_prop
         self.chord_len = chord_len
@@ -565,13 +686,13 @@ Chord Length : %s\r\n
 Euclidean: k=%s, n=%s\r\n
 ...........................................
      
-""" % (self.root, self.mode, self.chordSeq, self.gtype, self.division,
+""" % (self.root, self.mode, self.chordSeq, self.generate, self.division,
 self.note_prop,self.chord_len,self.k,self.n)
 
 CURRENT_DATA = GoldenData()         
 
 
-      
+  
 def makeNote(num, time, length, color=0, velocity=0.8):
     """
     make a new Note object
@@ -586,22 +707,36 @@ def makeNote(num, time, length, color=0, velocity=0.8):
     note.time = int(time)
     note.length = int(length)
     note.color = int(color)
-    note.velocity = velocity
+    note.velocity = 65 # int(64 + rand()*64)
     return note
       
 def createDialog():
     form = flp.ScriptDialog("GoldenPond",
-    'GoldenPond is a music description language where, rather than give the specific notes you want, you describe your chord progression in terms of the effects you want such as degrees of scale, extensions, secondary chords, modal interchange, voice leading etc.\r\nThis is GoldenPond for FL Studio which adds a "Euclidean" algorithm for rhythmic arpeggiation.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
+    'GoldenPond is language for defining chord progressions.\r\nThis is the FL Studio version which also lets you create rhythmic patterns for arpeggios and melodies.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
+    
     form.AddInputKnobInt('Root',65,32,96)
     form.AddInputCombo('Mode',["major","minor"],0)
     form.AddInputText('ChordSeq', "1,4,5,1")
-    form.AddInputCombo('Generate',['Chords','Euclidean','Bass','C+E','E+B','C+B','All','All E+12'],0)
+    
+    form.AddInputCheckbox('Chords',False)
+    form.AddInputCheckbox('Euclidean',False)
+    form.AddInputCheckbox('Bass',False)
+    form.AddInputCheckbox('Top',False)
+    form.AddInputCheckbox('Random',False)
+    form.AddInputCheckbox('Scale',False)    
+    
     form.AddInputKnobInt('Rhythm k',4,1,24)
     form.AddInputKnobInt('Rhythm n',8,1,24)
     
     form.AddInputCombo('Division',["1/16","1/12","1/8","1/6","1/4","1/3","1/2","1"],4)
     form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
     form.AddInputKnobInt('Chord Length',4,1,16)
+    
+    form.AddInputKnobInt("Stutter",0,0,16)
+    form.AddInputCheckbox("Silent",False)
+    
+
+    #form.AddInputCombo('Generate',['Chords','Euclidean','Bass','C+E','E+B','C+B','All','All E+12','Top'],0)
 
     return form
 
@@ -630,7 +765,16 @@ def apply(form):
     root = form.GetInputValue('Root')
     mode = form.GetInputValue('Mode')
     chordSeq = form.GetInputValue('ChordSeq')
-    gtype = form.GetInputValue('Generate')
+    #gtype = form.GetInputValue('Generate')
+    
+    seqtypes = set([])
+    if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
+    if form.GetInputValue("Euclidean")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
+    if form.GetInputValue("Bass")==1: seqtypes.add(SeqTypes.BASS)
+    if form.GetInputValue("Top")==1: seqtypes.add(SeqTypes.TOP)
+    if form.GetInputValue("Random")==1: seqtypes.add(SeqTypes.RANDOM)
+    if form.GetInputValue("Scale")==1: seqtypes.add(SeqTypes.SCALE)
+
     division = form.GetInputValue('Division')
     note_prop = form.GetInputValue('Note Proportion')
     chord_len = form.GetInputValue('Chord Length')
@@ -639,57 +783,31 @@ def apply(form):
     k = form.GetInputValue('Rhythm k')
     n = form.GetInputValue('Rhythm n')
 
-    timingInfo = TimingInfo(division, note_prop, chord_len, flp.score.PPQ)
+    stutter = form.GetInputValue("Stutter")
 
-    cm = ChordMaker()
+    timingInfo = TimeManipulator(division, note_prop, chord_len, flp.score.PPQ)
+
     flp.score.clearNotes(False)
 
+    if form.GetInputValue("Silent")==1 : return
     try : 
-        seq = cm.chordProgressionFromString(root,mode,chordSeq)
-        time = 0
-        #['Chords','Euclidean','Bass','C+E','E+B','C+B','All','All E+12']
-        if gtype == 0 :            
-            all_notes = timingInfo.chords(seq, 0)
-            post_notes_to_score(all_notes)
-        elif gtype == 1 :
-            all_notes = timingInfo.arpeggiate(seq, k, n, 0)           
-            post_notes_to_score(all_notes)
-        elif gtype == 2 :
-            all_notes = timingInfo.bassline(seq, k, n, 0)
-            post_notes_to_score(all_notes)
-        elif gtype == 3 :
-            all_notes = timingInfo.chords(seq,0)
-            post_notes_to_score(all_notes)
-            all_notes = transpose_all(timingInfo.arpeggiate(seq, k, n, 0),12)           
-            post_notes_to_score(all_notes)
-        elif gtype == 4 :
-            all_notes = timingInfo.arpeggiate(seq, k, n, 0)           
-            post_notes_to_score(all_notes)        
-            all_notes = timingInfo.bassline(seq, k, n, 0)
-            post_notes_to_score(all_notes)
-        elif gtype == 5 :
-            all_notes = timingInfo.chords(seq,0)
-            post_notes_to_score(all_notes)
-            all_notes = timingInfo.bassline(seq, k, n, 0)
-            post_notes_to_score(all_notes)
-            
-        elif gtype == 6 :
-            all_notes = timingInfo.chords(seq,0)
-            post_notes_to_score(all_notes)
-            all_notes = timingInfo.arpeggiate(seq, k, n, 0)
-            post_notes_to_score(all_notes)
-            all_notes = timingInfo.bassline(seq, k, n, 0)
-            post_notes_to_score(all_notes)
+        if mode == "major" : 
+            theMode = MAJOR
+        else :
+            theMode = MINOR
+        seq = ChordProgression(root,theMode,chordSeq).toNotes()
 
-        else:
-            all_notes = timingInfo.chords(seq,0)
-            post_notes_to_score(all_notes)
-            all_notes = transpose_all(timingInfo.arpeggiate(seq, k, n, 0),12)
-            post_notes_to_score(all_notes)
-            all_notes = timingInfo.bassline(seq, k, n, 0)
-            post_notes_to_score(all_notes)
-    
-        CURRENT_DATA.update(root,mode,chordSeq,gtype,division,note_prop,chord_len,k,n)
+        # handle stuttering (ie. repeat the first stutter val of the seq until the lenseq)
+        if stutter > 0 :
+            lenseq = len(seq)
+            frag = seq[:stutter]
+            seq=(frag*100)[:lenseq]
+
+        time = 0
+        all_notes = timingInfo.grabCombo(seq,k,n,0,seqtypes)
+        post_notes_to_score(all_notes)
+        
+        CURRENT_DATA.update(root,mode,chordSeq,seqtypes,division,note_prop,chord_len,k,n)
         if CURRENT_DATA.changed :
             Utils.log("Changed\n%s" % CURRENT_DATA)
             
