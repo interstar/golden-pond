@@ -43,7 +43,7 @@ print("Testing ChordThing. Now MODE is the actual Scale itself.")
 # Additional tests to verify ChordThing behavior and extensions handling
 testit("ChordThing ninths override sevenths",
        "%s" % ChordThing(60, MAJOR, 3).seventh().ninth(),
-       "ChordThing(60,MAJOR,3,0,1) + {<Modifier.NINTH: 3>}",
+       "ChordThing(60,MAJOR,3,0,1) + {2}",
        "ChordThings ninths override sevenths failed.")
 
 testit("ChordThing has extensions with ninth",
@@ -53,7 +53,7 @@ testit("ChordThing has extensions with ninth",
 
 testit("ChordThing modal interchange",
        "%s" % ChordThing(60, MAJOR, 3).modal_interchange(),
-       "ChordThing(60,MAJOR,3,0,1) + {<Modifier.MODAL_INTERCHANGE: 1>}",
+       "ChordThing(60,MAJOR,3,0,1) + {0}",
        "ChordThing modal interchange failed.")
 
 testit("ChordThing has modal interchange",
@@ -72,16 +72,16 @@ testit("ChordThing swap mode back to MAJOR",
        "ChordThing swap mode back to MAJOR failed.")
 
 
-testit("ChordThing","%s"%ChordThing(60,MAJOR,3,2).seventh(), "ChordThing(60,MAJOR,3,0,2) + {<Modifier.SEVENTH: 2>}","ChordThings")
+testit("ChordThing","%s"%ChordThing(60,MAJOR,3,2).seventh(), "ChordThing(60,MAJOR,3,0,2) + {1}","ChordThings")
 ct1 = ChordThing(60,MAJOR,3,2)
 testit("ChordThing no extensions",ct1.has_extensions(),False,"ChordThings")
 ct1 = ChordThing(60,MAJOR,3,2).ninth()
 testit("ChordThing has extensions",ct1.has_extensions(),True,"ChordThings")
 
 
-testit("ChordThing ninths override sevenths","%s"%ChordThing(60,MAJOR,3,2).seventh().ninth(), "ChordThing(60,MAJOR,3,0,2) + {<Modifier.NINTH: 3>}","ChordThings")
-testit("ChordThing sevenths override ninths","%s"%ChordThing(60,MAJOR,3,2).ninth().seventh(), "ChordThing(60,MAJOR,3,0,2) + {<Modifier.SEVENTH: 2>}","ChordThings")
-testit("ChordThing modal interchange","%s"%ChordThing(60,MAJOR,3,2).modal_interchange(), "ChordThing(60,MAJOR,3,0,2) + {<Modifier.MODAL_INTERCHANGE: 1>}","ChordThings")
+testit("ChordThing ninths override sevenths","%s"%ChordThing(60,MAJOR,3,2).seventh().ninth(), "ChordThing(60,MAJOR,3,0,2) + {2}","ChordThings")
+testit("ChordThing sevenths override ninths","%s"%ChordThing(60,MAJOR,3,2).ninth().seventh(), "ChordThing(60,MAJOR,3,0,2) + {1}","ChordThings")
+testit("ChordThing modal interchange","%s"%ChordThing(60,MAJOR,3,2).modal_interchange(), "ChordThing(60,MAJOR,3,0,2) + {0}","ChordThings")
 testit("ChordThing has modal interchange",ChordThing(60,MAJOR,3,2).modal_interchange().has_modal_interchange(),True,"ChordThings")
 testit("ChordThing swap mode",ChordThing(60,MAJOR,3,2).swap_mode().mode,MINOR,"ChordThings")
 testit("ChordThing swap mode",ChordThing(60,MINOR,3,2).swap_mode().mode,MAJOR,"ChordThings")
