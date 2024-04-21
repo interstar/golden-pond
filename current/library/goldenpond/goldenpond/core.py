@@ -181,7 +181,7 @@ class ChordThing:
         return self.__str__() == other.__str__()            
 
 
-from voiceleading import voice_lead
+from goldenpond.voiceleading import voice_lead
     
 class ChordFactory :
     """

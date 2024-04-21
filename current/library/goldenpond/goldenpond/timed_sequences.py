@@ -1,7 +1,7 @@
 from typing import List
 from random import choice
 
-from core import SeqTypes
+from goldenpond.core import SeqTypes
 
 class Note :
     def __init__(self, note, time, length) :

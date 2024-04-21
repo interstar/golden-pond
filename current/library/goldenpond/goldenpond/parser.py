@@ -1,5 +1,5 @@
  
-from core import ChordThing, Mode, ChordFactory, MAJOR, MINOR
+from goldenpond.core import ChordThing, Mode, ChordFactory, MAJOR, MINOR
 
 
 
