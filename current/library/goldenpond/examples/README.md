@@ -5,10 +5,10 @@ As well as the goldenpond library itself, these examples need external libraries
 
 ### example.py
 
-Requires numpy and sounddevice
+Requires numpy, fluidsynth and sounddevice
 
 ```
-pip install numpy, sounddevice
+pip install numpy, sounddevice, fluidsynth
 
 python3 example.py"
 ```

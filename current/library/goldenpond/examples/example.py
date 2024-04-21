@@ -11,7 +11,6 @@ import sounddevice as sd
 
 
 
-
 __SYNTH__ = '__fluid__'
                
 if __SYNTH__ == '__native__' :     
