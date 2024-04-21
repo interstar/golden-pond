@@ -720,3 +720,78 @@ testit("TimingInfo arp",
     '[{"note":62,"startTime":0,"length":192},{"note":65,"startTime":720,"length":192},{"note":69,"startTime":1200,"length":192},{"note":72,"startTime":1920,"length":192},{"note":62,"startTime":2640,"length":192},{"note":65,"startTime":3120,"length":192},{"note":67,"startTime":3840,"length":192},{"note":71,"startTime":4560,"length":192},{"note":74,"startTime":5040,"length":192},{"note":77,"startTime":5760,"length":192},{"note":67,"startTime":6480,"length":192},{"note":71,"startTime":6960,"length":192},{"note":60,"startTime":7680,"length":192},{"note":64,"startTime":8400,"length":192},{"note":67,"startTime":8880,"length":192},{"note":71,"startTime":9600,"length":192},{"note":60,"startTime":10320,"length":192},{"note":64,"startTime":10800,"length":192}]',
     "Making Arpeggio from a 2,5,1")
   
+function testTiming() {
+    let ti = new TimingInfo(4, 0.8, 16, 960);
+    let seq = cm.chordProgressionFromString(60, MAJOR, '72,75,71');
+
+    testit("TimingInfo Chords 2",
+        ti.chords(seq, 0),
+        [
+            {note: 62, startTime: 0, length: 1536.0},
+            {note: 65, startTime: 0, length: 1536.0},
+            {note: 69, startTime: 0, length: 1536.0},
+            {note: 72, startTime: 0, length: 1536.0},
+            {note: 67, startTime: 3840.0, length: 1536.0},
+            {note: 71, startTime: 3840.0, length: 1536.0},
+            {note: 74, startTime: 3840.0, length: 1536.0},
+            {note: 77, startTime: 3840.0, length: 1536.0},
+            {note: 60, startTime: 7680.0, length: 1536.0},
+            {note: 64, startTime: 7680.0, length: 1536.0},
+            {note: 67, startTime: 7680.0, length: 1536.0},
+            {note: 71, startTime: 7680.0, length: 1536.0}
+        ],
+        "Chord Times");
+
+    testit("TimingInfo Bass 2",
+        ti.bassline(seq, 3, 8, 0),
+        [
+            {note: 50, startTime: 0, length: 192.0},
+            {note: 50, startTime: 720, length: 192.0},
+            {note: 50, startTime: 1200, length: 192.0},
+            {note: 50, startTime: 1920, length: 192.0},
+            {note: 50, startTime: 2640, length: 192.0},
+            {note: 50, startTime: 3120, length: 192.0},
+            {note: 55, startTime: 3840, length: 192.0},
+            {note: 55, startTime: 4560, length: 192.0},
+            {note: 55, startTime: 5040, length: 192.0},
+            {note: 55, startTime: 5760, length: 192.0},
+            {note: 55, startTime: 6480, length: 192.0},
+            {note: 55, startTime: 6960, length: 192.0},
+            {note: 48, startTime: 7680, length: 192.0},
+            {note: 48, startTime: 8400, length: 192.0},
+            {note: 48, startTime: 8880, length: 192.0},
+            {note: 48, startTime: 9600, length: 192.0},
+            {note: 48, startTime: 10320, length: 192.0},
+            {note: 48, startTime: 10800, length: 192.0}
+        ],
+        "Bassline Times");
+
+    testit("TimingInfo Arpeggiate 2",
+        ti.arpeggiate(seq, 3, 8, 0),
+        [
+            {note: 62, startTime: 0, length: 192.0},
+            {note: 65, startTime: 720, length: 192.0},
+            {note: 69, startTime: 1200, length: 192.0},
+            {note: 72, startTime: 1920, length: 192.0},
+            {note: 62, startTime: 2640, length: 192.0},
+            {note: 65, startTime: 3120, length: 192.0},
+            {note: 67, startTime: 3840, length: 192.0},
+            {note: 71, startTime: 4560, length: 192.0},
+            {note: 74, startTime: 5040, length: 192.0},
+            {note: 77, startTime: 5760, length: 192.0},
+            {note: 67, startTime: 6480, length: 192.0},
+            {note: 71, startTime: 6960, length: 192.0},
+            {note: 60, startTime: 7680, length: 192.0},
+            {note: 64, startTime: 8400, length: 192.0},
+            {note: 67, startTime: 8880, length: 192.0},
+            {note: 71, startTime: 9600, length: 192.0},
+            {note: 60, startTime: 10320, length: 192.0},
+            {note: 64, startTime: 10800, length: 192.0}
+        ],
+        "Arp Times");
+}
+
+testTiming();
+
+
+
