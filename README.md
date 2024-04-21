@@ -30,6 +30,74 @@ This version includes a generic Python library for parsing what we will now call
 
 The library is in `current/library/goldenpond/`. The FL Studio script in `current/fl studio`. You'll notice that we currently just copy and paste the whole library into the pyscript file. This is for the convenience of FL Studio users, to give them a single file download.
 
+Here's a brief example of making a multi-track MIDI file from a chord progression
+
+```
+from goldenpond.core import MAJOR,MINOR
+from goldenpond.parser import ChordProgression
+from goldenpond.timed_sequences import TimeManipulator
+
+
+# Define a chord progression.
+# The first two parameters are the key signature (we're in the key of C Major (midi note 48, MAJOR mode)
+# The last is a string containing a number for each note.
+# Numbers 1-7 mean the chord on that degree of our current scale. Ie 1 is the tonic, 5 the dominant etc.
+# By default the chords are simple triads. Adding a 7 on the front makes them sevenths. A 9 makes them ninths. Eg. 93 is the 9th on the 3rd degree of the scale.
+# toNotes() turns the progression into a list of chords, each of which is, itself, just a list of notes (ie. MIDI numbers)
+
+seq = ChordProgression(48,MAJOR,'71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3).toNotes()
+
+# The TimeManipulator can take the list of chords as notes and spreads these notes in time
+
+ti = TimeManipulator(4,1.2,16,0.7)
+
+# If we ask it for chords, we get all the notes of each chord at the same time. 
+chords = ti.chords(seq, 0)
+
+# We can also ask it to arpeggiate the notes according to a 'Euclidean' rule for spreading n hits across k potential positions within the measure.
+# In this example, we are spreading 7 hits across 12 positions
+
+arps = ti.arpeggiate(seq, 7, 12, 0)
+
+# We now have two lines of Note objects. One representing chords, one the arpeggios, we now use pretty_midi to put these into MIDI format and write them to a file.
+
+import pretty_midi
+
+# Create a PrettyMIDI object
+midi_data = pretty_midi.PrettyMIDI()
+
+# Create an instrument instance
+piano_program = pretty_midi.instrument_name_to_program('Acoustic Grand Piano')
+piano = pretty_midi.Instrument(program=10)
+piano2 = pretty_midi.Instrument(program=5)
+
+pad = pretty_midi.Instrument(program=89)
+pad2 = pretty_midi.Instrument(program=54)
+
+for n in chords :
+	end = n["start_time"]+n["length"]
+	note = pretty_midi.Note(velocity=64, pitch=n["note"], start=n["start_time"], end=end)
+	pad.notes.append(note)
+	pad2.notes.append(note)
+	
+for n in arps :
+	end = n["start_time"]+n["length"]
+	note = pretty_midi.Note(velocity=64, pitch=n["note"]+24, start=n["start_time"], end=end)
+	piano.notes.append(note)
+	note = pretty_midi.Note(velocity=64, pitch=n["note"]+12, start=n["start_time"], end=end)	
+	piano2.notes.append(note)
+	
+	
+# Add the instrument to the PrettyMIDI object
+midi_data.instruments.append(piano)
+midi_data.instruments.append(pad)
+midi_data.instruments.append(piano2)
+midi_data.instruments.append(pad2)
+# Save the MIDI file
+midi_data.write('./gp_example.mid')
+
+
+```
 
 Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into translation of this Python code to other languages. I've experimented with using ChatGPT (natch) to translate it into Javascript, Clojurescript and others. I'm now coming around to looking at Haxe. Maybe eventually I'll migrate it to Haxe and make Python and FL Studio scripting, one target of several. When there is progress in any of these experiments, I'll add them to this repository.
 
