@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '../goldenpond')  # Adjust path if necessary
+sys.path.insert(0, '../goldenpond')   
 
 from goldenpond import core, voiceleading  # Import the module or specific functions/classes
 
