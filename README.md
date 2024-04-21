@@ -28,11 +28,9 @@ Now, though, we can have the language and syntax for describing music that we ac
 
 This version includes a generic Python library for parsing what we will now call the GoldenPond language, and creating data-structures representing chords and arpeggios from it. This library can then be used from a number of contexts. The main one right now is FL Studio's piano-roll. But there is also a simple FluidSynth player for testing. And my aim is to have it working with FoxDot soon.
 
-The library is in `current/python/library`. The FL Studio script in `current/python/fl studio`. You'll notice that we currently just copy and paste the whole library into the pyscript file. This is for the convenience of FL Studio users, to give them a single file download.
+The library is in `current/library/goldenpond/`. The FL Studio script in `current/fl studio`. You'll notice that we currently just copy and paste the whole library into the pyscript file. This is for the convenience of FL Studio users, to give them a single file download.
 
 
-Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into (with the help of ChatGPT, natch) automatic translation of this Python code to other languages. My first goal is to have a version in ClojureScript that I can run in browser based applications. And longer term thinking how to have a version in VST form. 
-
-These experiments are under way and will end up in this git repo when there's something worth showing.
+Then there's a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into translation of this Python code to other languages. I've experimented with using ChatGPT (natch) to translate it into Javascript, Clojurescript and others. I'm now coming around to looking at Haxe. Maybe eventually I'll migrate it to Haxe and make Python and FL Studio scripting, one target of several. When there is progress in any of these experiments, I'll add them to this repository.
 
 Meanwhile, GoldenPond as an idea, and actually usable code, is now a thing. And I'm very excited about it. I'm starting to consolidate it, together with some of my other music/code projects under a new "micro-research lab" : [Gilbert Lister Research](http://gilbertlisterresearch.com) That's where you'll find more documentation / tutorials too.
