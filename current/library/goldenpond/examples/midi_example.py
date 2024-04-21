@@ -1,7 +1,12 @@
 
-from core import MAJOR,MINOR
-from parser import ChordProgression
-from timed_sequences import TimeManipulator
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
+from goldenpond.core import MAJOR,MINOR
+from goldenpond.parser import ChordProgression
+from goldenpond.timed_sequences import TimeManipulator
 
 seq = ChordProgression(48,MAJOR,'71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3).toNotes()
 
