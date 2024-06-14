@@ -59,6 +59,33 @@ class Mode:
             cls._minor_mode = Mode(cls.minor_intervals)
         return cls._minor_mode
 
+    @classmethod        
+    def constructNthMajorMode(cls,offset) :
+        """Make other modes of major ie Dorian, Phrygian, Lydian, Myxolydian, Aeolian and Locrian"""
+        new_intervals = cls.major_intervals[offset-1:] + cls.major_intervals[:offset-1]
+        return Mode(new_intervals)
+
+    @classmethod
+    def ionian(cls) : return cls.constructNthMajorMode(1)
+    
+    @classmethod
+    def dorian(cls) : return cls.constructNthMajorMode(2)
+    
+    @classmethod
+    def phrygian(cls) : return cls.constructNthMajorMode(3)
+    
+    @classmethod
+    def lydian(cls) : return cls.constructNthMajorMode(4)
+    
+    @classmethod
+    def mixolydian(cls) : return cls.constructNthMajorMode(5)
+    
+    @classmethod
+    def aeolian(cls) : return cls.constructNthMajorMode(6)
+    
+    @classmethod
+    def locrian(cls) : return cls.constructNthMajorMode(7)    
+
 
     def nth_from(self, root, n):
         """Return the MIDI note number for the nth degree of the scale from the root.
@@ -87,6 +114,7 @@ class Mode:
     def make_ninth(self,root,n):
         "Return seventh on degree n of this scale starting at root"
         return self.make_chord_from_pattern(root,n,[1,3,5,7,9])
+        
         
         
 MAJOR = Mode.getMajorMode()
