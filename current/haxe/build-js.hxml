@@ -1,0 +1,8 @@
+# Set the class path to the src directory
+-cp src
+
+# Build for JavaScript
+-js out/js/main.js
+-main TestGoldenPond
+-cmd node out/js/main.js
+

@@ -36,6 +36,7 @@ class TestGoldenPond {
 
 
     static function compareChordThings(a:ChordThing, b:ChordThing):Bool {
+    	trace("In compareChordThings SHOULDN'T BE HERE");
         return a.key == b.key &&
             a.mode == b.mode &&
             a.degree == b.degree &&
@@ -46,6 +47,7 @@ class TestGoldenPond {
     }
 
     static function compareModifiers(a:Array<Modifier>, b:Array<Modifier>):Bool {
+		trace("In compareModifiers SHOULDN'T BE HERE");
         if (a.length != b.length) return false;
         for (i in 0...a.length) {
             if (a[i] != b[i]) return false;
@@ -54,6 +56,7 @@ class TestGoldenPond {
     }
 
     static function compareDetails(a:Dynamic, b:Dynamic):Void {
+		trace("In compareDetails SHOULDN'T BE HERE");
         if (Std.isOfType(a, Array) && Std.isOfType(b, Array)) {
             if (a.length != b.length) {
                 trace("Length mismatch: " + a.length + " vs " + b.length);

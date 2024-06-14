@@ -23,22 +23,33 @@ class ChordThing {
     }
 
 
+
     public function equals(other:ChordThing):Bool {
-        if (this.key != other.key || 
-            this.mode != other.mode || 
-            this.degree != other.degree || 
-            this.inversion != other.inversion || 
-            this.length != other.length || 
-            this.modifiers.length != other.modifiers.length) {
+    	trace("In ChordThing::equals");
+    	trace(this);
+    	trace(other);
+        if (this.key != other.key || this.mode != other.mode || this.degree != other.degree || this.length != other.length || this.inversion != other.inversion) {
+            trace("Mismatch found:");
+            trace("this.key: " + this.key + ", other.key: " + other.key);
+            trace("this.mode: " + this.mode + ", other.mode: " + other.mode);
+            trace("this.degree: " + this.degree + ", other.degree: " + other.degree);
+            return false;
+        }
+
+        if (this.modifiers.length != other.modifiers.length) {
+            trace("Modifier length mismatch:");
+            trace("this.modifiers.length: " + this.modifiers.length + ", other.modifiers.length: " + other.modifiers.length);
             return false;
         }
 
         for (i in 0...this.modifiers.length) {
             if (this.modifiers[i] != other.modifiers[i]) {
+                trace("Modifier mismatch at index " + i + ":");
+                trace("this.modifiers[i]: " + this.modifiers[i] + ", other.modifiers[i]: " + other.modifiers[i]);
                 return false;
             }
         }
-        
+
         return true;
     }
 
