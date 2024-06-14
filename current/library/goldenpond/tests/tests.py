@@ -43,6 +43,15 @@ testit("modes11",MAJOR.make_ninth(70,1),[70,74,77,81,84],"Modes 11")
 testit("modes12",MAJOR.make_ninth(70,4),[75,79,82,86,89],"Modes 12")
 testit("modes13",MAJOR.make_chord_from_pattern(50,2,[1,3,5]),MAJOR.make_triad(50,2),"Modes 13")
 
+testit("modes14",Mode.constructNthMajorMode(1).intervals,[2, 2, 1, 2, 2, 2, 1],"Modes 14 : Other modes ionian")
+testit("modes15",Mode.constructNthMajorMode(2).intervals,[2,1,2,2,2,1,2],"Modes 15 : Dorian")
+testit("modes16",Mode.constructNthMajorMode(3).intervals,[1,2,2,2,1,2,2],"Modes 16 : Phrygian")
+testit("modes17",Mode.constructNthMajorMode(3).intervals,Mode.phrygian().intervals,"Modes 17 : Phrygian as name")
+testit("modes18",Mode.lydian().intervals,[2,2,2,1,2,2,1],"Modes 18 : Lydian")
+testit("modes19",Mode.mixolydian().intervals,[2,2,1,2,2,1,2],"Modes 19 : Mixolydian")
+testit("modes20",Mode.aeolian().intervals,[2,1,2,2,1,2,2],"Modes 20 : Aeolian")
+testit("modes21",Mode.locrian().intervals,[1,2,2,1,2,2,2],"Modes 21 : Locrian")
+
 
 print("Testing ChordThing. Now MODE is the actual Scale itself.")
 # Additional tests to verify ChordThing behavior and extensions handling
