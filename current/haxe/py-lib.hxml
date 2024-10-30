@@ -1,0 +1,6 @@
+
+-cp src/goldenpond
+
+GoldenPond
+ 
+-python out/python/goldenpond.py

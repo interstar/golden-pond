@@ -1,0 +1,5 @@
+-cp src/goldenpond
+
+GoldenPond
+
+-js out/js/goldenpond.js
