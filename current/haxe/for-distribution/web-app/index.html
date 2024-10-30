@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldenPond</title>
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player/dist/soundfont-player.min.js"></script>
+    <script src="./goldenpond.js"></script>
+</head>
+<body>
+    <h2>GoldenPond</h2>
+    <div>
+        <label for="root">Root:</label>
+        <input type="range" id="root" name="root" min="32" max="96" value="65">
+        <span id="rootValue">65</span>
+
+        <label for="mode">Mode:</label>
+        <select id="mode">
+            <option value="0">Major</option>
+            <option value="1">Minor</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="chordSequence">Chord Sequence:</label><br>
+        <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75</textarea>
+    </div>
+
+    <div>
+        <label for="rhythmK">Rhythm k:</label>
+        <input type="range" id="rhythmK" name="rhythmK" min="1" max="24" value="9">
+        <span id="rhythmKValue">9</span>
+
+        <label for="rhythmN">Rhythm n:</label>
+        <input type="range" id="rhythmN" name="rhythmN" min="1" max="24" value="13">
+        <span id="rhythmNValue">13</span>
+    </div>
+
+    <div>
+        <label for="division">Division:</label>
+        <select id="division">
+            <option value="4">1/4</option>
+            <option value="6">1/6</option>
+            <!-- ... other options ... -->
+        </select>
+
+        <label for="noteProportion">Note Length:</label>
+        <input type="range" id="noteProportion" name="noteProportion" min="0.1" max="1.5" step="0.1" value="0.8">
+        <span id="noteProportionValue">0.8</span>
+
+        <label for="chordLength">Chord Length:</label>
+        <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
+        <span id="chordLengthValue">4</span>
+    </div>
+
+    <div>
+        <label for="seqTypes">Generate Types:</label><br>
+        <input type="checkbox" id="chords" name="seqTypes" value="CHORDS"> Chords<br>
+        <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN"> Euclidean<br>
+        <input type="checkbox" id="bass" name="seqTypes" value="BASS"> Bass<br>
+        <input type="checkbox" id="top" name="seqTypes" value="TOP"> Top<br>
+        <input type="checkbox" id="random" name="seqTypes" value="RANDOM"> Random<br>
+        <input type="checkbox" id="scale" name="seqTypes" value="SCALE"> Scale<br>
+    </div>
+
+    <br>
+    <button onclick="playChords()">Play Chords</button>
+
+    <div id="preview"></div>
+    <script>
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let piano, guitar, violin;
+
+        // Load the instruments asynchronously
+        Promise.all([
+            Soundfont.instrument(audioContext, 'acoustic_grand_piano').then(inst => { piano = inst; }),
+            Soundfont.instrument(audioContext, 'electric_guitar_jazz').then(inst => { guitar = inst; }),
+            Soundfont.instrument(audioContext, 'violin').then(inst => { violin = inst; })
+        ]).then(() => {
+            console.log("All instruments loaded!");
+        });
+
+        function playComposition() {
+            if (!piano || !guitar || !violin) {
+                console.log("Instruments are still loading...");
+                return;
+            }
+
+            let root = parseInt(document.getElementById('root').value);
+            let mode = parseInt(document.getElementById('mode').value);
+            let chordSeq = document.getElementById('chordSequence').value;
+            let rhythmK = parseInt(document.getElementById('rhythmK').value);
+            let rhythmN = parseInt(document.getElementById('rhythmN').value);
+            let division = parseInt(document.getElementById('division').value);
+            let noteProportion = parseFloat(document.getElementById('noteProportion').value);
+            let chordLength = parseInt(document.getElementById('chordLength').value);
+
+	
+            ti = new TimeManipulator().setNoteLen(noteProportion).setChordLen(chordLength).setPPQ(0.8);
+
+            console.log(seq)
+	    console.log(ti.toString());
+
+            let seqTypes = Array.from(document.querySelectorAll('input[name="seqTypes"]:checked')).map(el => {
+                return ti.getSeqTypes()[el.value];
+            });
+	
+            var MINOR = Mode.getMinorMode();
+            var prog = new ChordProgression(48,MINOR,chordSeq);
+
+            console.log("arpeggiate");
+            var arp = ti.arpeggiate(prog,7,12,1);
+
+            var chords = ti.chords(prog,1);
+            console.log("chords");
+
+            var bass = ti.bassline(prog,4,8,1);
+            console.log("Bassline");
+
+            
+            // Schedule each part to play
+            arp.forEach(note => {
+                guitar.play(note.note, audioContext.currentTime + note.start_time, { duration: note.duration });
+            });
+
+            chords.forEach(note => {
+                piano.play(note.note, audioContext.currentTime + note.start_time, { duration: note.duration });
+            });
+
+            bass.forEach(note => {
+                violin.play(note.note, audioContext.currentTime + note.start_time, { duration: note.duration });
+            });
+            
+        }
+
+            let previewDiv = document.getElementById('preview');
+            previewDiv.innerHTML = '';
+
+            // Create and insert SVG
+            let svgContent = ScoreUtilities.makePianoRollSVG(allNotes, 800, 400);
+            console.log("SVG ");
+            console.log(svgContent);
+            let svgElement = document.createElement('div');
+            svgElement.innerHTML = svgContent;
+            previewDiv.appendChild(svgElement);
+
+            // Display JSON
+            let jsonElement = document.createElement('pre');
+            jsonElement.innerText = JSON.stringify(allNotes, null, 2);
+            previewDiv.appendChild(jsonElement);
+
+            return allNotes;
+	
+
+            document.addEventListener("DOMContentLoaded", function() {
+            // Initialize the <span> values on page load
+            updateDisplayValue('root', 'rootValue');
+            updateDisplayValue('rhythmK', 'rhythmKValue');
+            updateDisplayValue('rhythmN', 'rhythmNValue');
+            updateDisplayValue('noteProportion', 'noteProportionValue');
+            updateDisplayValue('chordLength', 'chordLengthValue');
+
+            // Add event listeners to update the <span> values in real-time
+            document.getElementById('root').addEventListener('input', function() {
+                updateDisplayValue('root', 'rootValue');
+            });
+            document.getElementById('rhythmK').addEventListener('input', function() {
+                updateDisplayValue('rhythmK', 'rhythmKValue');
+            });
+            document.getElementById('rhythmN').addEventListener('input', function() {
+                updateDisplayValue('rhythmN', 'rhythmNValue');
+            });
+            document.getElementById('noteProportion').addEventListener('input', function() {
+                updateDisplayValue('noteProportion', 'noteProportionValue');
+            });
+            document.getElementById('chordLength').addEventListener('input', function() {
+                updateDisplayValue('chordLength', 'chordLengthValue');
+            });
+        });
+
+        function updateDisplayValue(inputId, displayId) {
+            let inputValue = document.getElementById(inputId).value;
+            document.getElementById(displayId).innerText = inputValue;
+        }
+    </script>
+
+</body>
+</html>
+
