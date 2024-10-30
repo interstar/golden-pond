@@ -1,3 +1,6 @@
+package;
+
+@:expose
 enum Modifier {
     MODAL_INTERCHANGE;
     SEVENTH;
@@ -6,16 +9,7 @@ enum Modifier {
     VOICE_LEADING;
 }
 
-enum SeqTypes {
-    CHORDS;
-    EUCLIDEAN;
-    BASS;
-    TOP;
-    RANDOM;
-    SCALE;
-}
-
-
+@:expose
 class Mode {
     public static var major_intervals = [2, 2, 1, 2, 2, 2, 1];
     public static var minor_intervals = [2, 1, 2, 2, 1, 2, 2];
@@ -23,6 +17,7 @@ class Mode {
     // Singleton instances
     private static var _major_mode:Mode;
     private static var _minor_mode:Mode;
+
 
     public var intervals:Array<Int>;
 
@@ -106,6 +101,8 @@ class Mode {
 }
 
 // Singleton instances
+@:expose
 var MAJOR = Mode.getMajorMode();
+@:expose
 var MINOR = Mode.getMinorMode();
 

@@ -1,5 +1,7 @@
+package;
 import haxe.ds.StringMap;
 import Mode;
+
 
 class ChordFactory {
     /**
@@ -36,6 +38,7 @@ class ChordFactory {
 
         return chord;
     }
+
 
     public static function chordProgression(chordThings:Array<ChordThing>):Array<Array<Int>> {
         var chords = [];

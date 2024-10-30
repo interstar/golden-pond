@@ -1,3 +1,5 @@
+package;
+
 import Mode;
 import ChordThing;
 
@@ -171,21 +173,25 @@ class ChordParser {
     }
 }
 
+@:expose
 class ChordProgression {
     public var key:Int;
     public var mode:Mode;
     public var scoreString:String;
 
+	@:expose
     public function new(key:Int, mode:Mode, scoreString:String) {
         this.key = key;
         this.mode = mode;
         this.scoreString = scoreString;
     }
-
+        
+	@:expose
     public function toChordThings():Array<ChordThing> {
         return new ChordParser(this.key, this.mode).parse(this.scoreString);
     }
 
+	@:expose
     public function toNotes():Array<Array<Int>> {
         return ChordFactory.chordProgression(this.toChordThings());
     }

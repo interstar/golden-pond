@@ -1,28 +1,32 @@
+package;
+
 import Math;
 import Mode;
+import ChordParser;
 
-class Note {
-    public var note:Int;
-    public var start_time:Float;
-    public var length:Float;
+import ScoreUtilities;
 
-    public function new(note:Int, start_time:Float, length:Float) {
-        this.note = note;
-        this.start_time = start_time;
-        this.length = length;
-    }
+ 
+@:expose
+enum SeqTypes {
+    CHORDS;
+    EUCLIDEAN;
+    BASS;
+    TOP;
+    RANDOM;
+    SCALE;
+}
 
-    public function toString():String {
-        return 'Note[note: ' + note + ', start_time: ' + start_time + ', length: ' + length + ']';
-    }
-
-    public function toStruct() {
-        return {note: this.note, start_time: this.start_time, length: this.length};
-    }
-    
-    public function equals(other:Note):Bool {
-        return this.note == other.note && this.start_time == other.start_time && this.length == other.length;
-    }
+@:expose
+enum DivisionValue {
+  SIXTEENTH;
+  TWELFTH;
+  EIGHTH;
+  SIXTH;
+  QUARTER;
+  THIRD;
+  HALF;
+  WHOLE;
 }
 
 interface IRhythmGenerator {
@@ -90,8 +94,8 @@ class NoteSelectorIterator  {
     private var chordIndex:Int;
     private var noteSelector: Array<Int> -> Int;
 
-    public function new(chords:Array<Array<Int>>, noteSelector: Array<Int> -> Int) {
-        this.chords = chords;
+    public function new(chords:ChordProgression, noteSelector: Array<Int> -> Int) {
+        this.chords = chords.toNotes();
         this.chordIndex = 0;
         this.noteSelector = noteSelector;
     }
@@ -107,8 +111,26 @@ class NoteSelectorIterator  {
     }
 }
 
+@:expose
+class MenuHelper {
+  public static function getDivisionNames():Array<String> {
+    return ["1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"];
+  }
+  public static function getDivisionValues():Array<DivisionValue> {
+    return [SIXTEENTH,TWELFTH,EIGHTH,SIXTH,QUARTER,THIRD,HALF,WHOLE];
+  }
+  public static function getDivisionFor(i:Int):DivisionValue {
+    return getDivisionValues()[i];
+  }
+  public static function divisionValue2Numeric(dv:DivisionValue):Float {
+    return [SIXTEENTH=>1/16, TWELFTH=>1/12, EIGHTH=>1/8, SIXTH=>1/6, QUARTER=>1/4, THIRD=>1/3, HALF=>1/2, WHOLE=>1][dv];
+  }
+  
+}
+
+@:expose
 class TimeManipulator {
-    public var ppq:Int;
+    public var ppq:Float;
     public var beatFraction:Float;
     public var noteProportion:Float;
     public var chordMultiplier:Float;
@@ -116,17 +138,51 @@ class TimeManipulator {
     public var noteLength:Float;
     public var chordLength:Float;
 
-    public function new(beatCode:Int, noteProportion:Float, chordMultiplier:Float, ppq:Int) {
-        var beatMapping = [1/16, 1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 1];
-        this.ppq = ppq;
-        this.beatFraction = beatMapping[beatCode];
-        this.noteProportion = noteProportion;
-        this.chordMultiplier = chordMultiplier;
-        this.beatLength = ppq * this.beatFraction;
+
+  //public function new(beatCode:Int, noteProportion:Float, chordMultiplier:Float, ppq:Int) {
+    public function new() {
+        this.ppq = 1000;
+        this.beatFraction = 1/4;
+        this.noteProportion = 0.8;
+        this.chordMultiplier = 16;
+	recalc();
+    }
+
+    private function recalc() {
+        this.beatLength = this.ppq * this.beatFraction;
         this.noteLength = this.beatLength * this.noteProportion;
         this.chordLength = this.beatLength * this.chordMultiplier;
     }
+  
+    public function setDivision(dv:DivisionValue):TimeManipulator {
+      this.beatFraction = MenuHelper.divisionValue2Numeric(dv);
+      recalc();
+      return this;
+    }
 
+    public function setNoteLen(np:Float):TimeManipulator {
+      this.noteProportion=np;
+      recalc();
+      return this;
+    }
+
+    public function setChordLen(cl:Float):TimeManipulator {
+      this.chordMultiplier = cl;
+      recalc();
+      return this;
+    }
+
+    public function setPPQ(p:Float):TimeManipulator {
+      this.ppq = p;
+      recalc();
+      return this;
+    }
+  
+    // Ensure SeqTypes accessible
+    public function getSeqTypes() {
+        return SeqTypes;	
+    }
+ 
     public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
         var rhythm = new Array<Int>();
         for (i in 0...n) rhythm.push(0);
@@ -139,10 +195,10 @@ class TimeManipulator {
         return rhythm;
     }
 
-    public function chords(seq:Array<Array<Int>>, startTime:Float):Array<Note> {
+    public function chords(seq:ChordProgression, startTime:Float):Array<Note> {
         var allNotes = new Array<Note>();
         var currentTime = startTime;
-        for (c in seq) {
+        for (c in seq.toNotes()) {
             for (note in c) {
                 allNotes.push(new Note(note, currentTime, this.noteLength * this.chordMultiplier * 0.5));
             }
@@ -151,10 +207,10 @@ class TimeManipulator {
         return allNotes;
     }
 
-    public function noteline(seq:Array<Array<Int>>, noteSelector: Array<Int> -> Int, rhythmGen: IRhythmGenerator, startTime:Float):Array<Note> {
+    public function noteline(seq:ChordProgression, noteSelector: Array<Int> -> Int, rhythmGen: IRhythmGenerator, startTime:Float):Array<Note> {
         var allNotes = new Array<Note>();
         var currentTime = startTime;
-        for (c in seq) {
+        for (c in seq.toNotes()) {
             var beatsForCurrentChord = 0;
             while (beatsForCurrentChord < this.chordMultiplier) {
                 var beat = rhythmGen.next();
@@ -168,30 +224,30 @@ class TimeManipulator {
         return allNotes;
     }
 
-    public function bassline(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function bassline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[0] - 12; });
         var rGen = new RhythmGenerator(k, n);
         return this.noteline(seq, function(chord:Array<Int>):Int { return chord[0] - 12; }, rGen, startTime);
     }
 
-    public function topline(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function topline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; });
         var rGen = new RhythmGenerator(k, n);
         return this.noteline(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; }, rGen, startTime);
     }
 
-    public function randline(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function randline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; });
         var rGen = new RhythmGenerator(k, n);
         return this.noteline(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; }, rGen, startTime);
     }
 
-	public function arpeggiate(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function arpeggiate(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
 		var rGen = new RhythmGenerator(k, n);
 		var allNotes = new Array<Note>();
 		var currentTime = startTime;
 
-		for (c in seq) {
+		for (c in seq.toNotes()) {
 		    var beatsForCurrentChord = 0;
 		    var arpIter = new ArpIterator(c);
 		    while (beatsForCurrentChord < this.chordMultiplier) {
@@ -207,16 +263,16 @@ class TimeManipulator {
 		return allNotes;
 	}
 
-    public function scaleline(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function scaleline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
         return [];
     }
 
-    public function silentline(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function silentline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
         var rGen = new SilentIterator();
         return this.noteline(seq, function(chord:Array<Int>):Int { return 0; }, rGen, startTime);
     }
 
-    public function grabCombo(seq:Array<Array<Int>>, k:Int, n:Int, startTime:Float, seqset:Array<SeqTypes>):Array<Note> {
+    public function grabCombo(seq:ChordProgression, k:Int, n:Int, startTime:Float, seqset:Array<SeqTypes>):Array<Note> {
         var notes = new Array<Note>();
         for (val in seqset) {
             switch (val) {

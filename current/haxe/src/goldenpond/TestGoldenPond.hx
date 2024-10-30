@@ -2,6 +2,7 @@ import Mode;
 import ChordThing;
 import ChordParser;
 import TimedSequence;
+import ScoreUtilities;
 
 class TestGoldenPond {
     static var ERRORS = 0;
@@ -284,140 +285,173 @@ static function testChordFactory() {
 	
 	}
 	
-	
-static function testTimeManipulator() {
-    trace("Testing Timed Sequences");
+        static function testMenuHelper() {
+	  trace("Testing Menu Helper");
+	  testit("Division names",
+		 MenuHelper.getDivisionNames(),
+		 ["1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"],
+		 "Division names");
+	  testit("Division Values",
+		 MenuHelper.getDivisionValues(),
+		 [SIXTEENTH,TWELFTH,EIGHTH,SIXTH,QUARTER,THIRD,HALF,WHOLE],
+		 "Division Values");
+	  
+	  testit("Division Opt 1", MenuHelper.getDivisionFor(0), SIXTEENTH,"division 1");
+	  testit("Division Opt 5", MenuHelper.getDivisionFor(4), QUARTER, "division 5");
+	  testit("DivisionValue to numeric",
+		 MenuHelper.divisionValue2Numeric(EIGHTH),
+		 1/8,
+		 "division value EIGHTH to numeric 1/8");
+	}
+  
+	static function testTimeManipulator() {
+		trace("Testing Timed Sequences");
 
-    var ti = new TimeManipulator(4, 0.8, 16, 960);
-    var seq = new ChordProgression(60, MAJOR, "72,75,71").toNotes();
-    testit("TimeManipulator Chords",
-        ti.chords(seq, 0),
-        [
-            new Note(62, 0, 1536.0), new Note(65, 0, 1536.0),
-            new Note(69, 0, 1536.0), new Note(72, 0, 1536.0),
-            new Note(67, 3840.0, 1536.0), new Note(71, 3840.0, 1536.0),
-            new Note(74, 3840.0, 1536.0), new Note(77, 3840.0, 1536.0),
-            new Note(60, 7680.0, 1536.0), new Note(64, 7680.0, 1536.0),
-            new Note(67, 7680.0, 1536.0), new Note(71, 7680.0, 1536.0)
-        ],
-        "Chord Times");
+		var ti = new TimeManipulator();
+		ti.setDivision(QUARTER).setNoteLen(0.8).setChordLen(16).setPPQ(960);
+		var seq = new ChordProgression(60, MAJOR, "72,75,71");
+		testit("TimeManipulator Chords",
+		    ti.chords(seq, 0),
+		    [
+		        new Note(62, 0, 1536.0), new Note(65, 0, 1536.0),
+		        new Note(69, 0, 1536.0), new Note(72, 0, 1536.0),
+		        new Note(67, 3840.0, 1536.0), new Note(71, 3840.0, 1536.0),
+		        new Note(74, 3840.0, 1536.0), new Note(77, 3840.0, 1536.0),
+		        new Note(60, 7680.0, 1536.0), new Note(64, 7680.0, 1536.0),
+		        new Note(67, 7680.0, 1536.0), new Note(71, 7680.0, 1536.0)
+		    ],
+		    "Chord Times");
 
-    trace("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		trace("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 
-    testit("TimeManipulator Bass",
-        ti.bassline(seq, 3, 8, 0),
-        [
-            new Note(50, 0, 192.0), new Note(50, 720.0, 192.0),
-            new Note(50, 1200.0, 192.0), new Note(50, 1920.0, 192.0),
-            new Note(50, 2640.0, 192.0), new Note(50, 3120.0, 192.0),
-            new Note(55, 3840.0, 192.0), new Note(55, 4560.0, 192.0),
-            new Note(55, 5040.0, 192.0), new Note(55, 5760.0, 192.0),
-            new Note(55, 6480.0, 192.0), new Note(55, 6960.0, 192.0),
-            new Note(48, 7680.0, 192.0), new Note(48, 8400.0, 192.0),
-            new Note(48, 8880.0, 192.0), new Note(48, 9600.0, 192.0),
-            new Note(48, 10320.0, 192.0), new Note(48, 10800.0, 192.0)
-        ],
-        "Bassline Times");
-    trace("===================================================================================");
+		testit("TimeManipulator Bass",
+		    ti.bassline(seq, 3, 8, 0),
+		    [
+		        new Note(50, 0, 192.0), new Note(50, 720.0, 192.0),
+		        new Note(50, 1200.0, 192.0), new Note(50, 1920.0, 192.0),
+		        new Note(50, 2640.0, 192.0), new Note(50, 3120.0, 192.0),
+		        new Note(55, 3840.0, 192.0), new Note(55, 4560.0, 192.0),
+		        new Note(55, 5040.0, 192.0), new Note(55, 5760.0, 192.0),
+		        new Note(55, 6480.0, 192.0), new Note(55, 6960.0, 192.0),
+		        new Note(48, 7680.0, 192.0), new Note(48, 8400.0, 192.0),
+		        new Note(48, 8880.0, 192.0), new Note(48, 9600.0, 192.0),
+		        new Note(48, 10320.0, 192.0), new Note(48, 10800.0, 192.0)
+		    ],
+		    "Bassline Times");
+		trace("===================================================================================");
 
-    testit("TimeManipulator Top",
-        ti.topline(seq, 3, 8, 0),
-        [
-            new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
-            new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
-            new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
-            new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
-            new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
-            new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
-            new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
-            new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
-            new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0)
-        ],
-        "Bassline Times");
+		testit("TimeManipulator Top",
+		    ti.topline(seq, 3, 8, 0),
+		    [
+		        new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
+		        new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
+		        new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
+		        new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
+		        new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
+		        new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
+		        new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
+		        new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
+		        new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0)
+		    ],
+		    "Bassline Times");
 
-    testit("TimeManipulator Silent",
-        ti.silentline(seq, 3, 8, 0),
-        [],
-        "Silence");
+		testit("TimeManipulator Silent",
+		    ti.silentline(seq, 3, 8, 0),
+		    [],
+		    "Silence");
 
-    testit("TimeManipulator Arpeggiate",
-        ti.arpeggiate(seq, 3, 8, 0),
-        [
-            new Note(62, 0, 192.0), new Note(65, 720.0, 192.0),
-            new Note(69, 1200.0, 192.0), new Note(72, 1920.0, 192.0),
-            new Note(62, 2640.0, 192.0), new Note(65, 3120.0, 192.0),	
-            new Note(67, 3840.0, 192.0), new Note(71, 4560.0, 192.0),
-            new Note(74, 5040.0, 192.0), new Note(77, 5760.0, 192.0),
-            new Note(67, 6480.0, 192.0), new Note(71, 6960.0, 192.0),
-            new Note(60, 7680.0, 192.0), new Note(64, 8400.0, 192.0),
-            new Note(67, 8880.0, 192.0), new Note(71, 9600.0, 192.0),
-            new Note(60, 10320.0, 192.0), new Note(64, 10800.0, 192.0)
-        ],
-        "Arp Times");
+		testit("TimeManipulator Arpeggiate",
+		    ti.arpeggiate(seq, 3, 8, 0),
+		    [
+		        new Note(62, 0, 192.0), new Note(65, 720.0, 192.0),
+		        new Note(69, 1200.0, 192.0), new Note(72, 1920.0, 192.0),
+		        new Note(62, 2640.0, 192.0), new Note(65, 3120.0, 192.0),	
+		        new Note(67, 3840.0, 192.0), new Note(71, 4560.0, 192.0),
+		        new Note(74, 5040.0, 192.0), new Note(77, 5760.0, 192.0),
+		        new Note(67, 6480.0, 192.0), new Note(71, 6960.0, 192.0),
+		        new Note(60, 7680.0, 192.0), new Note(64, 8400.0, 192.0),
+		        new Note(67, 8880.0, 192.0), new Note(71, 9600.0, 192.0),
+		        new Note(60, 10320.0, 192.0), new Note(64, 10800.0, 192.0)
+		    ],
+		    "Arp Times");
 
-    testit("Grab combo",
-        ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP, SeqTypes.EUCLIDEAN]),
-        [
-            new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
-            new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
-            new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
-            new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
-            new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
-            new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
-            new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
-            new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
-            new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0),
-            new Note(62, 0, 192.0), new Note(65, 720.0, 192.0),
-            new Note(69, 1200.0, 192.0), new Note(72, 1920.0, 192.0),
-            new Note(62, 2640.0, 192.0), new Note(65, 3120.0, 192.0),
-            new Note(67, 3840.0, 192.0), new Note(71, 4560.0, 192.0),
-            new Note(74, 5040.0, 192.0), new Note(77, 5760.0, 192.0),
-            new Note(67, 6480.0, 192.0), new Note(71, 6960.0, 192.0),
-            new Note(60, 7680.0, 192.0), new Note(64, 8400.0, 192.0),
-            new Note(67, 8880.0, 192.0), new Note(71, 9600.0, 192.0),
-            new Note(60, 10320.0, 192.0), new Note(64, 10800.0, 192.0)
-        ],
-        "Grab both TOP and EUCLIDEAN");
+		testit("Grab combo",
+		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP, SeqTypes.EUCLIDEAN]),
+		    [
+		        new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
+		        new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
+		        new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
+		        new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
+		        new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
+		        new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
+		        new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
+		        new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
+		        new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0),
+		        new Note(62, 0, 192.0), new Note(65, 720.0, 192.0),
+		        new Note(69, 1200.0, 192.0), new Note(72, 1920.0, 192.0),
+		        new Note(62, 2640.0, 192.0), new Note(65, 3120.0, 192.0),
+		        new Note(67, 3840.0, 192.0), new Note(71, 4560.0, 192.0),
+		        new Note(74, 5040.0, 192.0), new Note(77, 5760.0, 192.0),
+		        new Note(67, 6480.0, 192.0), new Note(71, 6960.0, 192.0),
+		        new Note(60, 7680.0, 192.0), new Note(64, 8400.0, 192.0),
+		        new Note(67, 8880.0, 192.0), new Note(71, 9600.0, 192.0),
+		        new Note(60, 10320.0, 192.0), new Note(64, 10800.0, 192.0)
+		    ],
+		    "Grab both TOP and EUCLIDEAN");
 
-    testit("Grab combo of one",
-        ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP]),
-        [
-            new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
-            new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
-            new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
-            new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
-            new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
-            new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
-            new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
-            new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
-            new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0)
-        ],
-        "Grab TOP only");
+		testit("Grab combo of one",
+		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP]),
+		    [
+		        new Note(84, 0, 192.0), new Note(84, 720.0, 192.0),
+		        new Note(84, 1200.0, 192.0), new Note(84, 1920.0, 192.0),
+		        new Note(84, 2640.0, 192.0), new Note(84, 3120.0, 192.0),
+		        new Note(89, 3840.0, 192.0), new Note(89, 4560.0, 192.0),
+		        new Note(89, 5040.0, 192.0), new Note(89, 5760.0, 192.0),
+		        new Note(89, 6480.0, 192.0), new Note(89, 6960.0, 192.0),
+		        new Note(83, 7680.0, 192.0), new Note(83, 8400.0, 192.0),
+		        new Note(83, 8880.0, 192.0), new Note(83, 9600.0, 192.0),
+		        new Note(83, 10320.0, 192.0), new Note(83, 10800.0, 192.0)
+		    ],
+		    "Grab TOP only");
 
-    testit("Grab Bass and Scale",
-        ti.grabCombo(seq, 3, 8, 0, [SeqTypes.BASS, SeqTypes.SCALE]),
-        [
-            new Note(50, 0, 192.0), new Note(50, 720.0, 192.0),
-            new Note(50, 1200.0, 192.0), new Note(50, 1920.0, 192.0),
-            new Note(50, 2640.0, 192.0), new Note(50, 3120.0, 192.0),
-            new Note(55, 3840.0, 192.0), new Note(55, 4560.0, 192.0),
-            new Note(55, 5040.0, 192.0), new Note(55, 5760.0, 192.0),
-            new Note(55, 6480.0, 192.0), new Note(55, 6960.0, 192.0),
-            new Note(48, 7680.0, 192.0), new Note(48, 8400.0, 192.0),
-            new Note(48, 8880.0, 192.0), new Note(48, 9600.0, 192.0),
-            new Note(48, 10320.0, 192.0), new Note(48, 10800.0, 192.0)
-        ],
-        "Grab both BASS and SCALE");    
-}
+		testit("Grab Bass and Scale",
+		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.BASS, SeqTypes.SCALE]),
+		    [
+		        new Note(50, 0, 192.0), new Note(50, 720.0, 192.0),
+		        new Note(50, 1200.0, 192.0), new Note(50, 1920.0, 192.0),
+		        new Note(50, 2640.0, 192.0), new Note(50, 3120.0, 192.0),
+		        new Note(55, 3840.0, 192.0), new Note(55, 4560.0, 192.0),
+		        new Note(55, 5040.0, 192.0), new Note(55, 5760.0, 192.0),
+		        new Note(55, 6480.0, 192.0), new Note(55, 6960.0, 192.0),
+		        new Note(48, 7680.0, 192.0), new Note(48, 8400.0, 192.0),
+		        new Note(48, 8880.0, 192.0), new Note(48, 9600.0, 192.0),
+		        new Note(48, 10320.0, 192.0), new Note(48, 10800.0, 192.0)
+		    ],
+		    "Grab both BASS and SCALE");
+		    
+	}
 
+    static function runScoreUtils() {
+        var ti = new TimeManipulator().setPPQ(960);
+	var seq = new ChordProgression(60, MAJOR, "72,75,71");
+	trace(seq);
+	var svg = ScoreUtilities.makePianoRollSVG(ti.chords(seq, 0),800,600);
+		 
+	trace(svg);
+    }
 	
 	
     static function main() {
+        runScoreUtils();
         testMode();
         testChordThing();
         testChordFactory();
         testParser();
+	testMenuHelper();
         testTimeManipulator();
+        
+
+        
 /*
 
 
