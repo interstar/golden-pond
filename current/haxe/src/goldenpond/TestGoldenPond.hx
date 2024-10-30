@@ -305,10 +305,12 @@ static function testChordFactory() {
 	}
   
 	static function testTimeManipulator() {
-		trace("Testing Timed Sequences");
+		trace("Testing Timed Sequences\n");
+	        
 
 		var ti = new TimeManipulator();
 		ti.setDivision(QUARTER).setNoteLen(0.8).setChordLen(16).setPPQ(960);
+		trace(ti.toString());
 		var seq = new ChordProgression(60, MAJOR, "72,75,71");
 		testit("TimeManipulator Chords",
 		    ti.chords(seq, 0),

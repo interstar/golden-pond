@@ -177,6 +177,10 @@ class TimeManipulator {
       recalc();
       return this;
     }
+
+    public function toString():String {
+      return "\nTimeManipulator\n  PPQ:: " + this.ppq + "\n  Division:: " + this.beatFraction + "\n  Chord Length:: " + this.chordMultiplier + "\n  Note Length:: " + this.noteLength;
+    }
   
     // Ensure SeqTypes accessible
     public function getSeqTypes() {
