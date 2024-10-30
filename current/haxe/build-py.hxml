@@ -1,8 +1,0 @@
-# Set the class path to the src directory
--cp src
-
-# Build for Python
--python out/python/main.py
--main TestGoldenPond
--cmd python3 out/python/main.py
-

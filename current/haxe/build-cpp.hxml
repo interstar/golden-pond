@@ -1,5 +1,5 @@
 # Set the class path to the src directory
--cp src
+-cp src/goldenpond
 
 # Build for C++
 -cpp out/cpp

@@ -64,9 +64,8 @@
     </div>
 
     <br>
-    <button onclick="playChords()">Play Chords</button>
+    <button onclick="play()">Play Chords</button>
 
-    <div id="preview"></div>
     <script>
         let audioContext = new (window.AudioContext || window.webkitAudioContext)();
         let piano, guitar, violin;
@@ -80,7 +79,7 @@
             console.log("All instruments loaded!");
         });
 
-        function playComposition() {
+        function play() {
             if (!piano || !guitar || !violin) {
                 console.log("Instruments are still loading...");
                 return;
@@ -98,7 +97,9 @@
 	
             ti = new TimeManipulator().setNoteLen(noteProportion).setChordLen(chordLength).setPPQ(0.8);
 
-            console.log(seq)
+            console.log("Chords: " + chordSeq);
+	    console.log("Mode: " + mode);
+	    console.log("Root: " + root);
 	    console.log(ti.toString());
 
             let seqTypes = Array.from(document.querySelectorAll('input[name="seqTypes"]:checked')).map(el => {
@@ -133,57 +134,12 @@
             
         }
 
-            let previewDiv = document.getElementById('preview');
-            previewDiv.innerHTML = '';
-
-            // Create and insert SVG
-            let svgContent = ScoreUtilities.makePianoRollSVG(allNotes, 800, 400);
-            console.log("SVG ");
-            console.log(svgContent);
-            let svgElement = document.createElement('div');
-            svgElement.innerHTML = svgContent;
-            previewDiv.appendChild(svgElement);
-
-            // Display JSON
-            let jsonElement = document.createElement('pre');
-            jsonElement.innerText = JSON.stringify(allNotes, null, 2);
-            previewDiv.appendChild(jsonElement);
-
-            return allNotes;
-	
-
-            document.addEventListener("DOMContentLoaded", function() {
-            // Initialize the <span> values on page load
-            updateDisplayValue('root', 'rootValue');
-            updateDisplayValue('rhythmK', 'rhythmKValue');
-            updateDisplayValue('rhythmN', 'rhythmNValue');
-            updateDisplayValue('noteProportion', 'noteProportionValue');
-            updateDisplayValue('chordLength', 'chordLengthValue');
-
-            // Add event listeners to update the <span> values in real-time
-            document.getElementById('root').addEventListener('input', function() {
-                updateDisplayValue('root', 'rootValue');
-            });
-            document.getElementById('rhythmK').addEventListener('input', function() {
-                updateDisplayValue('rhythmK', 'rhythmKValue');
-            });
-            document.getElementById('rhythmN').addEventListener('input', function() {
-                updateDisplayValue('rhythmN', 'rhythmNValue');
-            });
-            document.getElementById('noteProportion').addEventListener('input', function() {
-                updateDisplayValue('noteProportion', 'noteProportionValue');
-            });
-            document.getElementById('chordLength').addEventListener('input', function() {
-                updateDisplayValue('chordLength', 'chordLengthValue');
-            });
-        });
-
         function updateDisplayValue(inputId, displayId) {
             let inputValue = document.getElementById(inputId).value;
             document.getElementById(displayId).innerText = inputValue;
         }
     </script>
-
+    
 </body>
 </html>
 
