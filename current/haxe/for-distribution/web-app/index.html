@@ -26,7 +26,6 @@
         <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,&lt;12,77ii,&gt;12,71,96,74ii,75</textarea>
     </div>
 
-    <!-- Moved this div up -->
     <div>
         <label for="division">Division:</label>
         <select id="division">
@@ -44,25 +43,86 @@
         <span id="chordLengthValue">4</span>
     </div>
 
-    <!-- Rhythm K and Rhythm N controls come after -->
+    <!-- Redesigned Generate Types Section -->
     <div>
-        <label for="rhythmK">Rhythm k:</label>
-        <input type="range" id="rhythmK" name="rhythmK" min="1" max="24" value="9">
-        <span id="rhythmKValue">9</span>
+        <h3>Generate Types:</h3>
 
-        <label for="rhythmN">Rhythm n:</label>
-        <input type="range" id="rhythmN" name="rhythmN" min="1" max="24" value="13">
-        <span id="rhythmNValue">13</span>
-    </div>
+        <!-- Chords Part -->
+        <div>
+            <input type="checkbox" id="chords" name="seqTypes" value="CHORDS" checked>
+            <label for="chords"><strong>Chords</strong></label><br>
+            <!-- Chords might not need k and n sliders if they use default rhythm -->
+        </div>
 
-    <div>
-        <label for="seqTypes">Generate Types:</label><br>
-        <input type="checkbox" id="chords" name="seqTypes" value="CHORDS"> Chords<br>
-        <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN"> Euclidean<br>
-        <input type="checkbox" id="bass" name="seqTypes" value="BASS"> Bass<br>
-        <input type="checkbox" id="top" name="seqTypes" value="TOP"> Top<br>
-        <input type="checkbox" id="random" name="seqTypes" value="RANDOM"> Random<br>
-        <input type="checkbox" id="scale" name="seqTypes" value="SCALE"> Scale<br>
+        <!-- Euclidean Part -->
+        <div>
+            <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN" checked>
+            <label for="euclidean"><strong>Euclidean</strong></label><br>
+
+            <label for="euclideanK">Rhythm k:</label>
+            <input type="range" id="euclideanK" name="euclideanK" min="1" max="24" value="9">
+            <span id="euclideanKValue">9</span>
+
+            <label for="euclideanN">Rhythm n:</label>
+            <input type="range" id="euclideanN" name="euclideanN" min="1" max="24" value="13">
+            <span id="euclideanNValue">13</span>
+        </div>
+
+        <!-- Bass Part -->
+        <div>
+            <input type="checkbox" id="bass" name="seqTypes" value="BASS" checked>
+            <label for="bass"><strong>Bass</strong></label><br>
+
+            <label for="bassK">Rhythm k:</label>
+            <input type="range" id="bassK" name="bassK" min="1" max="24" value="5">
+            <span id="bassKValue">5</span>
+
+            <label for="bassN">Rhythm n:</label>
+            <input type="range" id="bassN" name="bassN" min="1" max="24" value="8">
+            <span id="bassNValue">8</span>
+        </div>
+
+        <!-- Top Part -->
+        <div>
+            <input type="checkbox" id="top" name="seqTypes" value="TOP">
+            <label for="top"><strong>Top</strong></label><br>
+
+            <label for="topK">Rhythm k:</label>
+            <input type="range" id="topK" name="topK" min="1" max="24" value="7">
+            <span id="topKValue">7</span>
+
+            <label for="topN">Rhythm n:</label>
+            <input type="range" id="topN" name="topN" min="1" max="24" value="12">
+            <span id="topNValue">12</span>
+        </div>
+
+        <!-- Random Part -->
+        <div>
+            <input type="checkbox" id="random" name="seqTypes" value="RANDOM">
+            <label for="random"><strong>Random</strong></label><br>
+
+            <label for="randomK">Rhythm k:</label>
+            <input type="range" id="randomK" name="randomK" min="1" max="24" value="6">
+            <span id="randomKValue">6</span>
+
+            <label for="randomN">Rhythm n:</label>
+            <input type="range" id="randomN" name="randomN" min="1" max="24" value="10">
+            <span id="randomNValue">10</span>
+        </div>
+
+        <!-- Scale Part -->
+        <div>
+            <input type="checkbox" id="scale" name="seqTypes" value="SCALE">
+            <label for="scale"><strong>Scale</strong></label><br>
+
+            <label for="scaleK">Rhythm k:</label>
+            <input type="range" id="scaleK" name="scaleK" min="1" max="24" value="8">
+            <span id="scaleKValue">8</span>
+
+            <label for="scaleN">Rhythm n:</label>
+            <input type="range" id="scaleN" name="scaleN" min="1" max="24" value="16">
+            <span id="scaleNValue">16</span>
+        </div>
     </div>
 
     <br>
@@ -71,13 +131,16 @@
 
 <script>
     let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let piano, guitar, violin;
+    let chord_instrument, arp_instrument, bass_instrument, top_instrument, random_instrument, scale_instrument;
 
     // Load the instruments asynchronously
     Promise.all([
-        Soundfont.instrument(audioContext, 'acoustic_grand_piano').then(inst => { piano = inst; }),
-        Soundfont.instrument(audioContext, 'electric_guitar_jazz').then(inst => { guitar = inst; }),
-        Soundfont.instrument(audioContext, 'violin').then(inst => { violin = inst; })
+        Soundfont.instrument(audioContext, 'acoustic_grand_piano').then(inst => { chord_instrument = inst; }),
+        Soundfont.instrument(audioContext, 'electric_guitar_jazz').then(inst => { arp_instrument = inst; }),
+        Soundfont.instrument(audioContext, 'koto').then(inst => { bass_instrument = inst; }),
+        Soundfont.instrument(audioContext, 'clavinet').then(inst => { top_instrument = inst; }),
+        Soundfont.instrument(audioContext, 'marimba').then(inst => { random_instrument = inst;}),
+        Soundfont.instrument(audioContext, 'soprano_sax').then(inst => { scale_instrument = inst; })
     ]).then(() => {
         console.log("All instruments loaded!");
     });
@@ -85,99 +148,197 @@
     function play() {
         console.log("In Play()");
 
-        if (!piano || !guitar || !violin) {
+        if (!chord_instrument || !arp_instrument || !bass_instrument || !top_instrument || !random_instrument || !scale_instrument) {
             console.log("Instruments are still loading...");
             return;
         }
-
         let root = parseInt(document.getElementById('root').value);
         let mode = parseInt(document.getElementById('mode').value);
 
         let chordSeq = document.getElementById('chordSequence').value;
-        let rhythmK = parseInt(document.getElementById('rhythmK').value);
-        let rhythmN = parseInt(document.getElementById('rhythmN').value);
         let division = parseInt(document.getElementById('division').value);
         let noteProportion = parseFloat(document.getElementById('noteProportion').value);
         let chordLength = parseInt(document.getElementById('chordLength').value);
+        
+
+        var theMode = (mode == 0) ? Mode.getMajorMode() : Mode.getMinorMode();
+        var prog = new ChordProgression(root, theMode, chordSeq);
 
         ti = new TimeManipulator().setNoteLen(noteProportion).setChordLen(chordLength).setPPQ(0.8);
 
         console.log("Chords: " + chordSeq);
         console.log("Mode: " + mode);
         console.log("Root: " + root);
-        console.log(ti.toString());
+        console.log(ti.toString());        
 
-        let seqTypes = Array.from(document.querySelectorAll('input[name="seqTypes"]:checked')).map(el => {
-            return ti.getSeqTypes()[el.value];
-        });
-        console.log("seqTypes: " + seqTypes);
+         // Chords
+        let chordsActive = document.getElementById('chords').checked;
+        // Chords may not have rhythmK and rhythmN sliders, so we don't read them
 
-        var theMode = (mode == 0) ? Mode.getMajorMode() : Mode.getMinorMode();
-        var prog = new ChordProgression(root, theMode, chordSeq);
 
-        console.log("arpeggiate");
-        var arp = ti.arpeggiate(prog, rhythmK, rhythmN, 0);
 
-        var chords = ti.chords(prog, 0);
-        console.log("chords");
+        // Euclidean
+        let euclideanActive = document.getElementById('euclidean').checked;
+        let euclideanK = parseInt(document.getElementById('euclideanK').value);
+        let euclideanN = parseInt(document.getElementById('euclideanN').value);
 
-        var bass = ti.bassline(prog, rhythmK, rhythmN, 0);
-        console.log("Bassline");
+        // Bass
+        let bassActive = document.getElementById('bass').checked;
+        let bassK = parseInt(document.getElementById('bassK').value);
+        let bassN = parseInt(document.getElementById('bassN').value);
 
-        // Capture the base time
+        // Top
+        let topActive = document.getElementById('top').checked;
+        let topK = parseInt(document.getElementById('topK').value);
+        let topN = parseInt(document.getElementById('topN').value);
+
+        // Random
+        let randomActive = document.getElementById('random').checked;
+        let randomK = parseInt(document.getElementById('randomK').value);
+        let randomN = parseInt(document.getElementById('randomN').value);
+
+        // Scale
+        let scaleActive = document.getElementById('scale').checked;
+        let scaleK = parseInt(document.getElementById('scaleK').value);
+        let scaleN = parseInt(document.getElementById('scaleN').value);
+
         let baseTime = audioContext.currentTime;
 
-        // Schedule each part to play and set up cleanup after each note
-        arp.forEach(note => {
-            let sound = guitar.play(note.note, baseTime + note.start_time, { duration: note.duration });
-            // Set up the onended event handler
-            sound.onended = function() {
-                sound.disconnect();
-            };
-        });
+        console.log("chords");
+        var chords = ti.chords(prog, 0);
+        if (chordsActive) {
+            chords.forEach(note => {
+                let sound = chord_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
+                sound.onended = function() {
+                    sound.disconnect();
+                };
+            });
+        }
 
-        chords.forEach(note => {
-            let sound = piano.play(note.note, baseTime + note.start_time, { duration: note.duration });
-            sound.onended = function() {
-                sound.disconnect();
-            };
-        });
+        console.log("arpeggiate");
+        var arp = ti.arpeggiate(prog, euclideanK, euclideanN, 0);
+        if (euclideanActive) {
+            arp.forEach(note => {
+                let sound = arp_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
+                sound.onended = function() {
+                    sound.disconnect();
+                };
+            });
+        }
 
-        bass.forEach(note => {
-            let sound = violin.play(note.note, baseTime + note.start_time, { duration: note.duration });
-            sound.onended = function() {
-                sound.disconnect();
-            };
-        });
+        console.log("Bassline");
+        var bass = ti.bassline(prog, bassK, bassN, 0);
+        if (bassActive) {
+            bass.forEach(note => {
+                let sound = bass_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
+                sound.onended = function() {
+                    sound.disconnect();
+                };
+            });
+        }
+        
+        console.log("Topline");
+        var top = ti.topline(prog, topK, topN, 0);
+        if (topActive) {
+            top.forEach(note => {
+                let sound = top_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
+                sound.onended = function() {
+                    sound.disconnect();
+                };
+            });
+        }        
+
+        console.log("Random Line");
+        var random_line = ti.randline(prog, randomK, randomN, 0);
+        if (randomActive) {
+            random_line.forEach(note => {
+                let sound = random_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
+                sound.onended = function() {
+                    sound.disconnect();
+                };
+            });
+        }        
+        
     }
 
-    document.addEventListener("DOMContentLoaded", function() {
-        // Initialize the <span> values on page load
-        updateDisplayValue('root', 'rootValue');
-        updateDisplayValue('rhythmK', 'rhythmKValue');
-        updateDisplayValue('rhythmN', 'rhythmNValue');
-        updateDisplayValue('noteProportion', 'noteProportionValue');
-        updateDisplayValue('chordLength', 'chordLengthValue');
+document.addEventListener("DOMContentLoaded", function() {
+    // Initialize the <span> values on page load
+    updateDisplayValue('root', 'rootValue');
+    updateDisplayValue('noteProportion', 'noteProportionValue');
+    updateDisplayValue('chordLength', 'chordLengthValue');
 
-        // Add event listeners to update the <span> values in real-time
-        document.getElementById('root').addEventListener('input', function() {
-            updateDisplayValue('root', 'rootValue');
-        });
-        document.getElementById('rhythmK').addEventListener('input', function() {
-            updateDisplayValue('rhythmK', 'rhythmKValue');
-        });
-        document.getElementById('rhythmN').addEventListener('input', function() {
-            updateDisplayValue('rhythmN', 'rhythmNValue');
-        });
-        document.getElementById('noteProportion').addEventListener('input', function() {
-            updateDisplayValue('noteProportion', 'noteProportionValue');
-        });
-        document.getElementById('chordLength').addEventListener('input', function() {
-            updateDisplayValue('chordLength', 'chordLengthValue');
-        });
+    // Event listener for Root slider
+    document.getElementById('root').addEventListener('input', function() {
+        updateDisplayValue('root', 'rootValue');
     });
 
+    // Event listeners for Note Length and Chord Length sliders
+    document.getElementById('noteProportion').addEventListener('input', function() {
+        updateDisplayValue('noteProportion', 'noteProportionValue');
+    });
+    document.getElementById('chordLength').addEventListener('input', function() {
+        updateDisplayValue('chordLength', 'chordLengthValue');
+    });
+
+    // Euclidean Part
+    updateDisplayValue('euclideanK', 'euclideanKValue');
+    updateDisplayValue('euclideanN', 'euclideanNValue');
+
+    document.getElementById('euclideanK').addEventListener('input', function() {
+        updateDisplayValue('euclideanK', 'euclideanKValue');
+    });
+    document.getElementById('euclideanN').addEventListener('input', function() {
+        updateDisplayValue('euclideanN', 'euclideanNValue');
+    });
+
+    // Bass Part
+    updateDisplayValue('bassK', 'bassKValue');
+    updateDisplayValue('bassN', 'bassNValue');
+
+    document.getElementById('bassK').addEventListener('input', function() {
+        updateDisplayValue('bassK', 'bassKValue');
+    });
+    document.getElementById('bassN').addEventListener('input', function() {
+        updateDisplayValue('bassN', 'bassNValue');
+    });
+
+    // Top Part
+    updateDisplayValue('topK', 'topKValue');
+    updateDisplayValue('topN', 'topNValue');
+
+    document.getElementById('topK').addEventListener('input', function() {
+        updateDisplayValue('topK', 'topKValue');
+    });
+    document.getElementById('topN').addEventListener('input', function() {
+        updateDisplayValue('topN', 'topNValue');
+    });
+
+    // Random Part
+    updateDisplayValue('randomK', 'randomKValue');
+    updateDisplayValue('randomN', 'randomNValue');
+
+    document.getElementById('randomK').addEventListener('input', function() {
+        updateDisplayValue('randomK', 'randomKValue');
+    });
+    document.getElementById('randomN').addEventListener('input', function() {
+        updateDisplayValue('randomN', 'randomNValue');
+    });
+
+    // Scale Part
+    updateDisplayValue('scaleK', 'scaleKValue');
+    updateDisplayValue('scaleN', 'scaleNValue');
+
+    document.getElementById('scaleK').addEventListener('input', function() {
+        updateDisplayValue('scaleK', 'scaleKValue');
+    });
+    document.getElementById('scaleN').addEventListener('input', function() {
+        updateDisplayValue('scaleN', 'scaleNValue');
+    });
+});
+
+    
     function updateDisplayValue(inputId, displayId) {
+        console.log(inputId + " - " + displayId);
         let inputValue = document.getElementById(inputId).value;
         document.getElementById(displayId).innerText = inputValue;
     }
