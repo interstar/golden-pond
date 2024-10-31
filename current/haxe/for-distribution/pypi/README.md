@@ -6,11 +6,11 @@ https://github.com/interstar/golden-pond
 
 
 ### Quick Start
-
+<!--
     pip install goldenpond
 
 Then make a local test file. For example
-
+-->
 
 ```
 from goldenpond import Mode, ChordProgression, TimeManipulator
