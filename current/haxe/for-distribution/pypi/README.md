@@ -40,7 +40,7 @@ See https://gilbertlisterresearch.com/GoldenPond.html for more more details.
 
 In this example, we define a chord-progression using the GoldenPond language, and assign it to variable `seq`.
 
-The ChordProgression class knows how to parse a string containing sequences expressed in the GoldenPond language. It must also be given a root note (in this example, MIDI note 48) and a mode (Major or Minor. We get these from the Mode class).
+The ChordProgression class knows how to parse the string which expresses the chord progression in the GoldenPond language. It must also be given a root note (in this example, MIDI note 48) and a mode (Major or Minor. We get these from the Mode class).
 
 However, while a ChordProgression has successfully turned our sequence into a collection of pitch values, we don't (yet) have these notes organized into a score of events across time. This is the job of the TimeManipulator.
 
@@ -56,18 +56,9 @@ The bassline function returns just the root note of the chord. Again organized r
 
 
 
-
-
-
-
-
-### What is GoldenPond?
-
-
-GoldenPonde
-
+ 
 ### The Obscure Genesis of this Code
 
-The GoldenPond library is NOT written in Python. It's written in Haxe (https://haxe.org/), a programming language designed to be transpiled to a number of other languages. GoldenPond has gone through a number of iterations, being written in Haskell, Sonic Pi and Python. Before I settled on Haxe.
+The GoldenPond library is NOT written in Python. It's written in Haxe (https://haxe.org/), a programming language designed to be transpiled to a number of other languages including Python.
 
-As Haxe code it can then be automatically translated into Python. Or JavaScript or Java or C++ etc.
+The [git-repository](https://github.com/interstar/golden-pond) contains this Haxe code and various scripts used in transpiling and building it into a number of forms. This Python library is just one of them. 
