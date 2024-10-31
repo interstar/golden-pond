@@ -2,133 +2,166 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GoldenPond</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to your CSS file -->
     <script src="https://cdn.jsdelivr.net/npm/soundfont-player/dist/soundfont-player.min.js"></script>
     <script src="./goldenpond.js"></script>
 </head>
 <body>
+  <div class="container">
     <h2>GoldenPond</h2>
-    <div>
-        <label for="root">Root:</label>
-        <input type="range" id="root" name="root" min="32" max="96" value="65">
-        <span id="rootValue">65</span>
 
-        <label for="mode">Mode:</label>
-        <select id="mode">
-            <option value="0">Major</option>
-            <option value="1">Minor</option>
-        </select>
+    <!-- Root and Mode Section -->
+    <div class="control-section">
+        <div class="control-group">
+            <label for="root">Root:</label>
+            <input type="range" id="root" name="root" min="32" max="96" value="65">
+            <span id="rootValue">65</span>
+        </div>
+        <div class="control-group">
+            <label for="mode">Mode:</label>
+            <select id="mode">
+                <option value="0">Major</option>
+                <option value="1">Minor</option>
+            </select>
+        </div>
     </div>
 
-    <div>
+    <!-- Chord Sequence -->
+    <div class="control-section">
         <label for="chordSequence">Chord Sequence:</label><br>
         <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,&lt;12,77ii,&gt;12,71,96,74ii,75</textarea>
     </div>
 
-    <div>
-        <label for="division">Division:</label>
-        <select id="division">
-            <option value="4">1/4</option>
-            <option value="6">1/6</option>
-            <!-- ... other options ... -->
-        </select>
-
-        <label for="noteProportion">Note Length:</label>
-        <input type="range" id="noteProportion" name="noteProportion" min="0.1" max="1.5" step="0.1" value="0.8">
-        <span id="noteProportionValue">0.8</span>
-
-        <label for="chordLength">Chord Length:</label>
-        <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
-        <span id="chordLengthValue">4</span>
+    <!-- Division, Note Length, Chord Length -->
+    <div class="control-section">
+        <div class="control-group">
+            <label for="division">Division:</label>
+            <select id="division">
+                <option value="4">1/4</option>
+                <option value="6">1/6</option>
+                <!-- ... other options ... -->
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="noteProportion">Note Length:</label>
+            <input type="range" id="noteProportion" name="noteProportion" min="0.1" max="1.5" step="0.1" value="0.8">
+            <span id="noteProportionValue">0.8</span>
+        </div>
+        <div class="control-group">
+            <label for="chordLength">Chord Length:</label>
+            <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
+            <span id="chordLengthValue">4</span>
+        </div>
     </div>
 
-    <!-- Redesigned Generate Types Section -->
-    <div>
+    <!-- Generate Types Section -->
+    <div class="control-section">
         <h3>Generate Types:</h3>
 
         <!-- Chords Part -->
-        <div>
-            <input type="checkbox" id="chords" name="seqTypes" value="CHORDS" checked>
-            <label for="chords"><strong>Chords</strong></label><br>
-            <!-- Chords might not need k and n sliders if they use default rhythm -->
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="chords" name="seqTypes" value="CHORDS" checked>
+                <label for="chords"><strong>Chords</strong></label>
+            </div>
+            <!-- Chords might not need k and n sliders -->
         </div>
 
         <!-- Euclidean Part -->
-        <div>
-            <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN" checked>
-            <label for="euclidean"><strong>Euclidean</strong></label><br>
-
-            <label for="euclideanK">Rhythm k:</label>
-            <input type="range" id="euclideanK" name="euclideanK" min="1" max="24" value="9">
-            <span id="euclideanKValue">9</span>
-
-            <label for="euclideanN">Rhythm n:</label>
-            <input type="range" id="euclideanN" name="euclideanN" min="1" max="24" value="13">
-            <span id="euclideanNValue">13</span>
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN" checked>
+                <label for="euclidean"><strong>Euclidean</strong></label>
+            </div>
+            <div class="control-group">
+                <label for="euclideanK">Rhythm k:</label>
+                <input type="range" id="euclideanK" name="euclideanK" min="1" max="24" value="9">
+                <span id="euclideanKValue">9</span>
+            </div>
+            <div class="control-group">
+                <label for="euclideanN">Rhythm n:</label>
+                <input type="range" id="euclideanN" name="euclideanN" min="1" max="24" value="13">
+                <span id="euclideanNValue">13</span>
+            </div>
         </div>
 
         <!-- Bass Part -->
-        <div>
-            <input type="checkbox" id="bass" name="seqTypes" value="BASS" checked>
-            <label for="bass"><strong>Bass</strong></label><br>
-
-            <label for="bassK">Rhythm k:</label>
-            <input type="range" id="bassK" name="bassK" min="1" max="24" value="5">
-            <span id="bassKValue">5</span>
-
-            <label for="bassN">Rhythm n:</label>
-            <input type="range" id="bassN" name="bassN" min="1" max="24" value="8">
-            <span id="bassNValue">8</span>
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="bass" name="seqTypes" value="BASS" checked>
+                <label for="bass"><strong>Bass</strong></label>
+            </div>
+            <div class="control-group">
+                <label for="bassK">Rhythm k:</label>
+                <input type="range" id="bassK" name="bassK" min="1" max="24" value="5">
+                <span id="bassKValue">5</span>
+            </div>
+            <div class="control-group">
+                <label for="bassN">Rhythm n:</label>
+                <input type="range" id="bassN" name="bassN" min="1" max="24" value="8">
+                <span id="bassNValue">8</span>
+            </div>
         </div>
 
         <!-- Top Part -->
-        <div>
-            <input type="checkbox" id="top" name="seqTypes" value="TOP">
-            <label for="top"><strong>Top</strong></label><br>
-
-            <label for="topK">Rhythm k:</label>
-            <input type="range" id="topK" name="topK" min="1" max="24" value="7">
-            <span id="topKValue">7</span>
-
-            <label for="topN">Rhythm n:</label>
-            <input type="range" id="topN" name="topN" min="1" max="24" value="12">
-            <span id="topNValue">12</span>
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="top" name="seqTypes" value="TOP">
+                <label for="top"><strong>Top</strong></label>
+            </div>
+            <div class="control-group">
+                <label for="topK">Rhythm k:</label>
+                <input type="range" id="topK" name="topK" min="1" max="24" value="7">
+                <span id="topKValue">7</span>
+            </div>
+            <div class="control-group">
+                <label for="topN">Rhythm n:</label>
+                <input type="range" id="topN" name="topN" min="1" max="24" value="12">
+                <span id="topNValue">12</span>
+            </div>
         </div>
 
         <!-- Random Part -->
-        <div>
-            <input type="checkbox" id="random" name="seqTypes" value="RANDOM">
-            <label for="random"><strong>Random</strong></label><br>
-
-            <label for="randomK">Rhythm k:</label>
-            <input type="range" id="randomK" name="randomK" min="1" max="24" value="6">
-            <span id="randomKValue">6</span>
-
-            <label for="randomN">Rhythm n:</label>
-            <input type="range" id="randomN" name="randomN" min="1" max="24" value="10">
-            <span id="randomNValue">10</span>
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="random" name="seqTypes" value="RANDOM">
+                <label for="random"><strong>Random</strong></label>
+            </div>
+            <div class="control-group">
+                <label for="randomK">Rhythm k:</label>
+                <input type="range" id="randomK" name="randomK" min="1" max="24" value="6">
+                <span id="randomKValue">6</span>
+            </div>
+            <div class="control-group">
+                <label for="randomN">Rhythm n:</label>
+                <input type="range" id="randomN" name="randomN" min="1" max="24" value="10">
+                <span id="randomNValue">10</span>
+            </div>
         </div>
 
         <!-- Scale Part -->
-        <div>
-            <input type="checkbox" id="scale" name="seqTypes" value="SCALE">
-            <label for="scale"><strong>Scale</strong></label><br>
-
-            <label for="scaleK">Rhythm k:</label>
-            <input type="range" id="scaleK" name="scaleK" min="1" max="24" value="8">
-            <span id="scaleKValue">8</span>
-
-            <label for="scaleN">Rhythm n:</label>
-            <input type="range" id="scaleN" name="scaleN" min="1" max="24" value="16">
-            <span id="scaleNValue">16</span>
+        <div class="part-section">
+            <div class="part-header">
+                <input type="checkbox" id="scale" name="seqTypes" value="SCALE">
+                <label for="scale"><strong>Scale</strong></label>
+            </div>
+            <div class="control-group">
+                <label for="scaleK">Rhythm k:</label>
+                <input type="range" id="scaleK" name="scaleK" min="1" max="24" value="8">
+                <span id="scaleKValue">8</span>
+            </div>
+            <div class="control-group">
+                <label for="scaleN">Rhythm n:</label>
+                <input type="range" id="scaleN" name="scaleN" min="1" max="24" value="16">
+                <span id="scaleNValue">16</span>
+            </div>
         </div>
     </div>
 
     <br>
     <button onclick="play()">Play Chords</button>
-
-
+  </div>
 <script>
     let audioContext = new (window.AudioContext || window.webkitAudioContext)();
     let chord_instrument, arp_instrument, bass_instrument, top_instrument, random_instrument, scale_instrument;
@@ -344,7 +377,5 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 </script>
 
-    
 </body>
 </html>
-

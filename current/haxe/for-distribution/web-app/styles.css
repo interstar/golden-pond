@@ -1,0 +1,94 @@
+/* Container to center content and limit maximum width */
+.container {
+    max-width: 960px; /* Adjust this value as needed */
+    margin: 0 auto;   /* Centers the container */
+    padding: 0 20px;  /* Adds horizontal padding */
+}
+
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0; /* Remove default margin */
+    color: #333;
+}
+
+h2 {
+    text-align: center;
+    margin: 20px 0;
+}
+
+/* Control Section Styles */
+.control-section {
+    margin-bottom: 20px;
+}
+
+/* Control Group Styles */
+.control-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.control-group label {
+    width: 120px;
+    margin-right: 10px;
+    text-align: right;
+}
+
+.control-group input[type="range"],
+.control-group select {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.control-group span {
+    width: 30px;
+    text-align: center;
+}
+
+.part-section {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.part-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.part-header input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+button {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: monospace;
+}
+
+@media (max-width: 600px) {
+    .control-group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .control-group label {
+        text-align: left;
+        width: auto;
+        margin-bottom: 5px;
+    }
+
+    .control-group span {
+        width: auto;
+        margin-top: 5px;
+    }
+}
