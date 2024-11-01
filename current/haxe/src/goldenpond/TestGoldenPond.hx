@@ -292,7 +292,15 @@ static function testChordFactory() {
             cp.parse("1&6"),
             [new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 6).set_voice_leading()],
             "Parsing & separator for voice leading");
-	
+
+	trace("Testing Stutter");
+	var prog1 = new ChordProgression(60,MAJOR,"1,4,6,5");
+	prog1.setStutter(2);
+	var prog2 = new ChordProgression(60,MAJOR,"1,4,1,4");
+	testit("Stutter",
+	       prog1.toNotes(),
+	       prog2.toNotes(),
+	       "stuttering");
 	}
 	
         static function testMenuHelper() {

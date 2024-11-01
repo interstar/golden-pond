@@ -175,25 +175,53 @@ class ChordParser {
 
 @:expose
 class ChordProgression {
-    public var key:Int;
-    public var mode:Mode;
-    public var scoreString:String;
+  public var key:Int;
+  public var mode:Mode;
+  public var scoreString:String;
+  private var stutter:Int;
+  private var chordThings:Array<ChordThing>;
 
-	@:expose
-    public function new(key:Int, mode:Mode, scoreString:String) {
-        this.key = key;
-        this.mode = mode;
-        this.scoreString = scoreString;
-    }
-        
-	@:expose
-    public function toChordThings():Array<ChordThing> {
-        return new ChordParser(this.key, this.mode).parse(this.scoreString);
-    }
+  @:expose
+  public function new(key:Int, mode:Mode, scoreString:String) {
+    this.key = key;
+    this.mode = mode;
+    this.scoreString = scoreString;
+    this.stutter = 0;
+    this.recalc();
+  }
 
-	@:expose
-    public function toNotes():Array<Array<Int>> {
-        return ChordFactory.chordProgression(this.toChordThings());
-    }
+  private function recalc() {
+    this.chordThings = this.toChordThings();
+  } 
+  
+  @:expose
+  public function setStutter(x:Int) {
+    this.stutter=x;
+    this.recalc();
+
+    if (stutter > 0) {
+      var lenseq = chordThings.length;
+      var frag = chordThings.slice(0, stutter);
+      var repeatedFrag:Array<ChordThing> = [];
+      
+      // Repeat frag to reach at least the length of lenseq
+      while (repeatedFrag.length < lenseq) {
+	repeatedFrag = repeatedFrag.concat(frag);
+      }
+      
+      this.chordThings = repeatedFrag.slice(0, lenseq);
+    }  
+  }
+  
+  
+  @:expose
+  public function toChordThings():Array<ChordThing> {
+    return new ChordParser(this.key, this.mode).parse(this.scoreString);
+  }
+  
+  @:expose
+  public function toNotes():Array<Array<Int>> {
+    return ChordFactory.chordProgression(this.chordThings);
+  }
 }
 
