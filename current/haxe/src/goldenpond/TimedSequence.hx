@@ -199,19 +199,19 @@ class TimeManipulator {
         return rhythm;
     }
 
-    public function chords(seq:ChordProgression, startTime:Float):Array<Note> {
+     public function chords(seq:ChordProgression, chan:Int, startTime:Float):Array<Note> {
         var allNotes = new Array<Note>();
         var currentTime = startTime;
         for (c in seq.toNotes()) {
             for (note in c) {
-                allNotes.push(new Note(note, currentTime, this.noteLength * this.chordMultiplier * 0.5));
+	      allNotes.push(new Note(chan, note, currentTime, this.noteLength * this.chordMultiplier * 0.5));
             }
             currentTime += this.beatLength * this.chordMultiplier;
         }
         return allNotes;
     }
 
-    public function noteline(seq:ChordProgression, noteSelector: Array<Int> -> Int, rhythmGen: IRhythmGenerator, startTime:Float):Array<Note> {
+    public function noteline(seq:ChordProgression, noteSelector: Array<Int> -> Int, rhythmGen: IRhythmGenerator, chan:Int, startTime:Float):Array<Note> {
         var allNotes = new Array<Note>();
         var currentTime = startTime;
         for (c in seq.toNotes()) {
@@ -219,7 +219,7 @@ class TimeManipulator {
             while (beatsForCurrentChord < this.chordMultiplier) {
                 var beat = rhythmGen.next();
                 if (beat == 1) {
-                    allNotes.push(new Note(noteSelector(c), currentTime, this.noteLength));
+		  allNotes.push(new Note(chan, noteSelector(c), currentTime, this.noteLength));
                 }
                 currentTime += this.beatLength;
                 beatsForCurrentChord++;
@@ -228,25 +228,25 @@ class TimeManipulator {
         return allNotes;
     }
 
-    public function bassline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function bassline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[0] - 12; });
         var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[0] - 12; }, rGen, startTime);
+        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[0] - 12; }, rGen, chan, startTime);
     }
 
-    public function topline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function topline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; });
         var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; }, rGen, startTime);
+        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; }, rGen, chan, startTime);
     }
 
-    public function randline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function randline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
         var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; });
         var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; }, rGen, startTime);
+        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; }, rGen, chan, startTime);
     }
 
-    public function arpeggiate(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function arpeggiate(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
 		var rGen = new RhythmGenerator(k, n);
 		var allNotes = new Array<Note>();
 		var currentTime = startTime;
@@ -257,7 +257,7 @@ class TimeManipulator {
 		    while (beatsForCurrentChord < this.chordMultiplier) {
 		        var beat = rGen.next();
 		        if (beat == 1) {
-		            allNotes.push(new Note(arpIter.next(), currentTime, this.noteLength));
+			  allNotes.push(new Note(chan, arpIter.next(), currentTime, this.noteLength));
 		        }
 		        currentTime += this.beatLength;
 		        beatsForCurrentChord++;
@@ -267,13 +267,13 @@ class TimeManipulator {
 		return allNotes;
 	}
 
-    public function scaleline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function scaleline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
         return [];
     }
 
-    public function silentline(seq:ChordProgression, k:Int, n:Int, startTime:Float):Array<Note> {
+    public function silentline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
         var rGen = new SilentIterator();
-        return this.noteline(seq, function(chord:Array<Int>):Int { return 0; }, rGen, startTime);
+        return this.noteline(seq, function(chord:Array<Int>):Int { return 0; }, rGen, chan, startTime);
     }
 
     public function grabCombo(seq:ChordProgression, k:Int, n:Int, startTime:Float, seqset:Array<SeqTypes>):Array<Note> {
@@ -281,17 +281,17 @@ class TimeManipulator {
         for (val in seqset) {
             switch (val) {
                 case SeqTypes.CHORDS:
-                    notes = notes.concat(this.chords(seq, startTime));
+		  notes = notes.concat(this.chords(seq, 0, startTime));
                 case SeqTypes.EUCLIDEAN:
-                    notes = notes.concat(this.arpeggiate(seq, k, n, startTime));
+		  notes = notes.concat(this.arpeggiate(seq, k, n, 1, startTime));
                 case SeqTypes.BASS:
-                    notes = notes.concat(this.bassline(seq, k, n, startTime));
+		  notes = notes.concat(this.bassline(seq, k, n, 2, startTime));
                 case SeqTypes.TOP:
-                    notes = notes.concat(this.topline(seq, k, n, startTime));
+		  notes = notes.concat(this.topline(seq, k, n, 3, startTime));
                 case SeqTypes.RANDOM:
-                    notes = notes.concat(this.randline(seq, k, n, startTime));
+		  notes = notes.concat(this.randline(seq, k, n, 4, startTime));
                 case SeqTypes.SCALE:
-                    notes = notes.concat(this.scaleline(seq, k, n, startTime));
+		  notes = notes.concat(this.scaleline(seq, k, n, 5, startTime));
             }
         }
         return notes;
