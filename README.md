@@ -119,7 +119,7 @@ The status of the Haxe->JS code is that :
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
-- the longer term goal is to build it into a VST or other plugin so it can run in any DAW
+- the longer term goal is to build it into a VST or other plugin so it can run in any DAW (But this is for next year)
 
-The status of the Haxe->Java code is that there are issues. Obviously it would be great to have in Java so I can write an Android app featuring the library. That's a "next year" goal.
+The status of the Haxe->Java code is that there are issues. Obviously it would be great to have in Java so I can write an Android app featuring the library. That's also a 2025 or 2026 goal.
 
