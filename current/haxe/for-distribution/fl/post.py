@@ -41,7 +41,7 @@ CURRENT_DATA = GoldenData()
 
 
   
-def makeNote(num, time, length, color=0, velocity=0.8):
+def makeNote(num, time, length, color=0, velocity=65):
     """
     make a new Note object
 
@@ -55,7 +55,7 @@ def makeNote(num, time, length, color=0, velocity=0.8):
     note.time = int(time)
     note.length = int(length)
     note.color = int(color)
-    note.velocity = 65 # int(64 + rand()*64)
+    note.velocity = velocity
     return note
       
 def createDialog():
@@ -76,7 +76,9 @@ def createDialog():
     form.AddInputKnobInt('Rhythm k',4,1,24)
     form.AddInputKnobInt('Rhythm n',8,1,24)
     
-    form.AddInputCombo('Division',["1/16","1/12","1/8","1/6","1/4","1/3","1/2","1"],4)
+    divisionItems = MenuHelper.getDivisionNames()
+
+    form.AddInputCombo('Division',divisionItems,4)
     form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
     form.AddInputKnobInt('Chord Length',4,1,16)
     
@@ -94,8 +96,8 @@ def post_notes_to_score(notes_list):
         note_value = note_data.note
         start_time = note_data.start_time
         note_duration = note_data.length
-            
-        note = makeNote(note_value, start_time, note_duration)
+        color = note_data.chan
+        note = makeNote(note_value, start_time, note_duration,color=color)
         flp.score.addNote(note)
 
 
@@ -109,12 +111,11 @@ def transpose_all(all_notes, n):
 
         
 def apply(form):
-    # get list of current notes
     root = form.GetInputValue('Root')
     mode = form.GetInputValue('Mode')
     chordSeq = form.GetInputValue('ChordSeq')
     #gtype = form.GetInputValue('Generate')
-    
+        
     seqtypes = set([])
     if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
     if form.GetInputValue("Euclidean")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
@@ -123,7 +124,7 @@ def apply(form):
     if form.GetInputValue("Random")==1: seqtypes.add(SeqTypes.RANDOM)
     if form.GetInputValue("Scale")==1: seqtypes.add(SeqTypes.SCALE)
 
-    division = form.GetInputValue('Division')
+    division = MenuHelper.getDivisionFor(form.GetInputValue('Division'))
     note_prop = form.GetInputValue('Note Proportion')
     chord_len = form.GetInputValue('Chord Length')
  
@@ -134,6 +135,7 @@ def apply(form):
     stutter = form.GetInputValue("Stutter")
 
     timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
+    timingInfo.setChordLen(chord_len).setNoteLen(note_prop).setDivision(division)
 
     division, note_prop, chord_len
     
@@ -142,27 +144,21 @@ def apply(form):
 
     if form.GetInputValue("Silent")==1 : return
     try : 
-        if mode == "major" : 
+        if mode == 0 : 
             theMode = Mode.getMajorMode()
         else :
             theMode = Mode.getMinorMode()
      
         seq = ChordProgression(root,theMode,chordSeq)
- 
-        # handle stuttering (ie. repeat the first stutter val of the seq until the lenseq)
-        if stutter > 0 :
-            lenseq = len(seq)
-            frag = seq[:stutter]
-            seq=(frag*100)[:lenseq]
+        seq.setStutter(stutter)
  
         time = 0
-        Utils.log("%s"%seq)
-        Utils.log("%s"%seqtypes)
+ 
         all_notes = timingInfo.grabCombo(seq,k,n,0,list(seqtypes))
-        Utils.log("DDDD")
+ 
         post_notes_to_score(all_notes)
         
-        CURRENT_DATA.update(root,mode,chordSeq,seqtypes,division,note_prop,chord_len,k,n)
+        CURRENT_DATA.update(root,mode,chordSeq,["%s"%x for x in seqtypes],division,note_prop,chord_len,k,n)
         if CURRENT_DATA.changed :
             Utils.log("Changed\n%s" % CURRENT_DATA)
             
