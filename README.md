@@ -100,7 +100,7 @@ midi_data.write('./gp_example.mid')
 ```
 ### Future
 
-There is a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. The latest work in progress is to a rewrite in Haxe ([https://haxe.org/](https://haxe.org/)), a language designed to be transpiled to other languages. You can see work in progress in the haxe subdirectory.
+There is a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. The latest work in progress is to a rewrite GoldenPond in Haxe ([https://haxe.org/](https://haxe.org/)), a language designed to be transpiled to other languages. You can see work in progress in the haxe subdirectory.
 
 As of October 2024, the Haxe code-base is now the official main development, going forward. I am successfully compiling it into both Python and Javascript. And experimentally to Java and C++. **All future development on GoldenPond is going to be to the code currently in the haxe subdir of this repository. Everything else is deprecated and will eventually disappear**
 
