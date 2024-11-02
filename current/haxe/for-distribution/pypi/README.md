@@ -52,8 +52,7 @@ The arpeggiate function uses a "[Euclidean Rhythm](https://en.wikipedia.org/wiki
 
 The bassline function returns just the root note of the chord. Again organized rhythmically according to the Euclidean algorithm. A topline function similarly returns the top notes of each chord. And a randline function return randomly chosen notes from the chord.
 
-In this example, you can see we don't do anything with this data except print it out. GoldenPond doesn't play or render the audio. It's purely about parsing this programmer-oriented representation of chord-progressions into a simple data structure.
-
+In this example, you can see we don't do anything with this data except print it out. GoldenPond doesn't play or render the audio. It's purely about parsing this programmer-oriented representation of chord-progressions into a simple data structure. See https://github.com/interstar/golden-pond/blob/main/current/haxe/for-distribution/examples/midi_example.py for an example of using it to made a MIDI file.
 
 
 
