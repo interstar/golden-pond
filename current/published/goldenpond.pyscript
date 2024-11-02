@@ -1,0 +1,1995 @@
+import flpianoroll as flp
+from flpianoroll import *
+
+import time
+import sys
+
+import math as python_lib_Math
+import math as Math
+import inspect as python_lib_Inspect
+import sys as python_lib_Sys
+import random as python_lib_Random
+import traceback as python_lib_Traceback
+from io import StringIO as python_lib_io_StringIO
+
+
+class _hx_AnonObject:
+    _hx_disable_getattr = False
+    def __init__(self, fields):
+        self.__dict__ = fields
+    def __repr__(self):
+        return repr(self.__dict__)
+    def __contains__(self, item):
+        return item in self.__dict__
+    def __getitem__(self, item):
+        return self.__dict__[item]
+    def __getattr__(self, name):
+        if (self._hx_disable_getattr):
+            raise AttributeError('field does not exist')
+        else:
+            return None
+    def _hx_hasattr(self,field):
+        self._hx_disable_getattr = True
+        try:
+            getattr(self, field)
+            self._hx_disable_getattr = False
+            return True
+        except AttributeError:
+            self._hx_disable_getattr = False
+            return False
+
+
+
+class Enum:
+    _hx_class_name = "Enum"
+    __slots__ = ("tag", "index", "params")
+    _hx_fields = ["tag", "index", "params"]
+    _hx_methods = ["__str__"]
+
+    def __init__(self,tag,index,params):
+        self.tag = tag
+        self.index = index
+        self.params = params
+
+    def __str__(self):
+        if (self.params is None):
+            return self.tag
+        else:
+            return self.tag + '(' + (', '.join(str(v) for v in self.params)) + ')'
+
+
+
+class ChordFactory:
+    _hx_class_name = "ChordFactory"
+    __slots__ = ()
+    _hx_statics = ["calculateSecondaryChord", "generateChordNotes", "chordProgression", "voice_lead"]
+
+    @staticmethod
+    def calculateSecondaryChord(chordThing):
+        new_tonic = chordThing.get_mode().nth_from(chordThing.key,chordThing.degree)
+        ct = ChordThing(new_tonic,Mode.getMajorMode(),chordThing.secondary_degree,chordThing.length)
+        if (python_internal_ArrayImpl.indexOf(chordThing.modifiers,Modifier.SEVENTH,None) != -1):
+            ct.seventh()
+        if (python_internal_ArrayImpl.indexOf(chordThing.modifiers,Modifier.NINTH,None) != -1):
+            ct.ninth()
+        ct.set_inversion(chordThing.inversion)
+        return ct
+
+    @staticmethod
+    def generateChordNotes(chordThing):
+        if (python_internal_ArrayImpl.indexOf(chordThing.modifiers,Modifier.SECONDARY,None) != -1):
+            chordThing = ChordFactory.calculateSecondaryChord(chordThing)
+        mode = chordThing.get_mode()
+        chord = mode.make_triad(chordThing.key,chordThing.degree)
+        if (python_internal_ArrayImpl.indexOf(chordThing.modifiers,Modifier.NINTH,None) != -1):
+            chord = mode.make_ninth(chordThing.key,chordThing.degree)
+        elif (python_internal_ArrayImpl.indexOf(chordThing.modifiers,Modifier.SEVENTH,None) != -1):
+            chord = mode.make_seventh(chordThing.key,chordThing.degree)
+        _g = 0
+        _g1 = chordThing.inversion
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            x = (None if ((len(chord) == 0)) else chord.pop(0))
+            chord.append((x + 12))
+        return chord
+
+    @staticmethod
+    def chordProgression(chordThings):
+        chords = []
+        prev_chord = None
+        _g = 0
+        while (_g < len(chordThings)):
+            ct = (chordThings[_g] if _g >= 0 and _g < len(chordThings) else None)
+            _g = (_g + 1)
+            chord = ChordFactory.generateChordNotes(ct)
+            if ((prev_chord is not None) and ((python_internal_ArrayImpl.indexOf(ct.modifiers,Modifier.VOICE_LEADING,None) != -1))):
+                chord = ChordFactory.voice_lead(prev_chord,chord)
+            chords.append(chord)
+            prev_chord = chord
+        return chords
+
+    @staticmethod
+    def voice_lead(prevChord,nextChord):
+        return nextChord
+
+
+class Tuple2:
+    _hx_class_name = "Tuple2"
+    __slots__ = ("_0", "_1")
+    _hx_fields = ["_0", "_1"]
+
+    def __init__(self,_0,_1):
+        self._0 = _0
+        self._1 = _1
+
+
+
+class ChordParser:
+    _hx_class_name = "ChordParser"
+    __slots__ = ("key", "mode")
+    _hx_fields = ["key", "mode"]
+    _hx_methods = ["parseSeparator", "parseTranspose", "parseItem", "countOccurrences", "interpretItem", "parse"]
+
+    def __init__(self,key,mode):
+        self.key = key
+        self.mode = mode
+
+    def parseSeparator(self,inputString):
+        separators = ["|", ",", "&"]
+        if ((len(inputString) > 0) and ((python_internal_ArrayImpl.indexOf(separators,("" if ((0 >= len(inputString))) else inputString[0]),None) != -1))):
+            return Tuple2(("" if ((0 >= len(inputString))) else inputString[0]),HxString.substr(inputString,1,None))
+        else:
+            return Tuple2(None,inputString)
+
+    def parseTranspose(self,inputString):
+        transposeChars_b = python_lib_io_StringIO()
+        while ((len(inputString) > 0) and ((python_internal_ArrayImpl.indexOf([",", "|"],("" if ((0 >= len(inputString))) else inputString[0]),None) == -1))):
+            transposeChars_b.write(Std.string(("" if ((0 >= len(inputString))) else inputString[0])))
+            inputString = HxString.substr(inputString,1,None)
+        transposeString = StringTools.trim(transposeChars_b.getvalue())
+        if (((("" if ((0 >= len(transposeString))) else transposeString[0])) != ">") and (((("" if ((0 >= len(transposeString))) else transposeString[0])) != "<"))):
+            raise haxe_Exception.thrown((("Expected '>' or '<' at the start of '" + ("null" if transposeString is None else transposeString)) + "'"))
+        transposeValue = Std.parseInt(HxString.substr(transposeString,1,None))
+        if ((("" if ((0 >= len(transposeString))) else transposeString[0])) == ">"):
+            _hx_local_0 = self
+            _hx_local_1 = _hx_local_0.key
+            _hx_local_0.key = (_hx_local_1 + transposeValue)
+            _hx_local_0.key
+        else:
+            _hx_local_2 = self
+            _hx_local_3 = _hx_local_2.key
+            _hx_local_2.key = (_hx_local_3 - transposeValue)
+            _hx_local_2.key
+        return inputString
+
+    def parseItem(self,inputString):
+        itemChars_b = python_lib_io_StringIO()
+        insideParentheses = False
+        while ((len(inputString) > 0) and ((insideParentheses or ((python_internal_ArrayImpl.indexOf([",", "|", "&", ">", "<"],("" if ((0 >= len(inputString))) else inputString[0]),None) == -1))))):
+            char = ("" if ((0 >= len(inputString))) else inputString[0])
+            if (char == "("):
+                insideParentheses = True
+            elif (char == ")"):
+                insideParentheses = False
+            itemChars_b.write(Std.string(char))
+            inputString = HxString.substr(inputString,1,None)
+        return Tuple2(StringTools.trim(itemChars_b.getvalue()),inputString)
+
+    def countOccurrences(self,_hx_str,char):
+        count = 0
+        _g = 0
+        _g1 = len(_hx_str)
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            if ((("" if (((i < 0) or ((i >= len(_hx_str))))) else _hx_str[i])) == char):
+                count = (count + 1)
+        return count
+
+    def interpretItem(self,itemString):
+        isModalInterchange = False
+        if ((("" if ((0 >= len(itemString))) else itemString[0])) == "-"):
+            isModalInterchange = True
+            itemString = HxString.substr(itemString,1,None)
+        inversion = 0
+        startIndex = None
+        if (((itemString.find("i") if ((startIndex is None)) else HxString.indexOfImpl(itemString,"i",startIndex))) != -1):
+            inversion = self.countOccurrences(itemString,"i")
+            _this = itemString.split("i")
+            itemString = "".join([python_Boot.toString1(x1,'') for x1 in _this])
+        tmp = None
+        startIndex = None
+        if (((itemString.find("(") if ((startIndex is None)) else HxString.indexOfImpl(itemString,"(",startIndex))) != -1):
+            startIndex = None
+            tmp = (((itemString.find(")") if ((startIndex is None)) else HxString.indexOfImpl(itemString,")",startIndex))) != -1)
+        else:
+            tmp = False
+        if tmp:
+            extension = None
+            parts = itemString.split("(")
+            if (len((parts[0] if 0 < len(parts) else None)) > 0):
+                extension = Std.parseInt((parts[0] if 0 < len(parts) else None))
+            _this = HxString.substr((parts[1] if 1 < len(parts) else None),0,(len((parts[1] if 1 < len(parts) else None)) - 1))
+            secondaryParts = _this.split("/")
+            secondaryDegree = Std.parseInt((secondaryParts[0] if 0 < len(secondaryParts) else None))
+            degree = Std.parseInt((secondaryParts[1] if 1 < len(secondaryParts) else None))
+            chord = ChordThing(self.key,self.mode,degree)
+            chord.set_as_secondary(secondaryDegree)
+            chord.set_inversion(inversion)
+            if (extension is not None):
+                if (extension == 7):
+                    chord.seventh()
+                elif (extension == 9):
+                    chord.ninth()
+            return chord
+        itemValue = Std.parseInt(itemString)
+        chord = None
+        if ((1 <= itemValue) and ((itemValue <= 7))):
+            chord = ChordThing(self.key,self.mode,itemValue)
+        elif ((71 <= itemValue) and ((itemValue <= 77))):
+            chord = ChordThing(self.key,self.mode,(itemValue - 70)).seventh()
+        elif ((91 <= itemValue) and ((itemValue <= 97))):
+            chord = ChordThing(self.key,self.mode,(itemValue - 90)).ninth()
+        else:
+            raise haxe_Exception.thrown(("Unexpected item value: " + ("null" if itemString is None else itemString)))
+        if isModalInterchange:
+            chord.modal_interchange()
+        chord.set_inversion(inversion)
+        return chord
+
+    def parse(self,inputString):
+        chords = []
+        voiceLeadNext = False
+        while (len(inputString) > 0):
+            sepResult = self.parseSeparator(inputString)
+            separator = sepResult._0
+            inputString = sepResult._1
+            if (separator == "&"):
+                voiceLeadNext = True
+            if (len(inputString) > 0):
+                if ((("" if ((0 >= len(inputString))) else inputString[0])) == "!"):
+                    self.mode = (Mode.getMinorMode() if ((self.mode == Mode.getMajorMode())) else Mode.getMajorMode())
+                    inputString = HxString.substr(inputString,1,None)
+                elif (((("" if ((0 >= len(inputString))) else inputString[0])) == ">") or (((("" if ((0 >= len(inputString))) else inputString[0])) == "<"))):
+                    inputString = self.parseTranspose(inputString)
+                else:
+                    itemResult = self.parseItem(inputString)
+                    itemString = itemResult._0
+                    inputString = itemResult._1
+                    chord = self.interpretItem(itemString)
+                    if voiceLeadNext:
+                        chord.set_voice_leading()
+                    chords.append(chord)
+        return chords
+
+
+
+class ChordProgression:
+    _hx_class_name = "ChordProgression"
+    __slots__ = ("key", "mode", "scoreString", "stutter", "chordThings")
+    _hx_fields = ["key", "mode", "scoreString", "stutter", "chordThings"]
+    _hx_methods = ["recalc", "setStutter", "toChordThings", "toNotes"]
+
+    def __init__(self,key,mode,scoreString):
+        self.chordThings = None
+        self.key = key
+        self.mode = mode
+        self.scoreString = scoreString
+        self.stutter = 0
+        self.recalc()
+
+    def recalc(self):
+        self.chordThings = self.toChordThings()
+
+    def setStutter(self,x):
+        self.stutter = x
+        self.recalc()
+        if (self.stutter > 0):
+            lenseq = len(self.chordThings)
+            frag = self.chordThings[0:self.stutter]
+            repeatedFrag = []
+            while (len(repeatedFrag) < lenseq):
+                repeatedFrag = (repeatedFrag + frag)
+            self.chordThings = repeatedFrag[0:lenseq]
+
+    def toChordThings(self):
+        return ChordParser(self.key,self.mode).parse(self.scoreString)
+
+    def toNotes(self):
+        return ChordFactory.chordProgression(self.chordThings)
+
+
+
+class ChordThing:
+    _hx_class_name = "ChordThing"
+    __slots__ = ("key", "mode", "degree", "length", "modifiers", "inversion", "secondary_degree")
+    _hx_fields = ["key", "mode", "degree", "length", "modifiers", "inversion", "secondary_degree"]
+    _hx_methods = ["equals", "set_as_secondary", "swap_mode", "modal_interchange", "has_modal_interchange", "seventh", "ninth", "set_inversion", "set_voice_leading", "toString", "clone", "has_extensions", "get_mode"]
+
+    def __init__(self,key,mode,degree,length = None):
+        if (length is None):
+            length = 1
+        self.key = key
+        self.mode = mode
+        self.degree = degree
+        self.length = length
+        self.modifiers = []
+        self.inversion = 0
+        self.secondary_degree = None
+
+    def equals(self,other):
+        if (((((self.key != other.key) or ((self.mode != other.mode))) or ((self.degree != other.degree))) or ((self.length != other.length))) or ((self.inversion != other.inversion))):
+            return False
+        if (len(self.modifiers) != len(other.modifiers)):
+            return False
+        _g = 0
+        _g1 = len(self.modifiers)
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            if ((self.modifiers[i] if i >= 0 and i < len(self.modifiers) else None) != (other.modifiers[i] if i >= 0 and i < len(other.modifiers) else None)):
+                return False
+        return True
+
+    def set_as_secondary(self,secondary_degree):
+        _this = self.modifiers
+        _this.append(Modifier.SECONDARY)
+        self.secondary_degree = secondary_degree
+        return self
+
+    def swap_mode(self):
+        if (self.mode == _Mode_Mode_Fields_.MAJOR):
+            self.mode = _Mode_Mode_Fields_.MINOR
+        else:
+            self.mode = _Mode_Mode_Fields_.MAJOR
+        return self
+
+    def modal_interchange(self):
+        _this = self.modifiers
+        _this.append(Modifier.MODAL_INTERCHANGE)
+        return self
+
+    def has_modal_interchange(self):
+        return (python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.MODAL_INTERCHANGE,None) != -1)
+
+    def seventh(self):
+        if (python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.NINTH,None) != -1):
+            _this = self.modifiers
+            pos = python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.NINTH,None)
+            if (pos < 0):
+                pos = (len(_this) + pos)
+            if (pos < 0):
+                pos = 0
+            res = _this[pos:(pos + 1)]
+            del _this[pos:(pos + 1)]
+        _this = self.modifiers
+        _this.append(Modifier.SEVENTH)
+        return self
+
+    def ninth(self):
+        if (python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.SEVENTH,None) != -1):
+            _this = self.modifiers
+            pos = python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.SEVENTH,None)
+            if (pos < 0):
+                pos = (len(_this) + pos)
+            if (pos < 0):
+                pos = 0
+            res = _this[pos:(pos + 1)]
+            del _this[pos:(pos + 1)]
+        _this = self.modifiers
+        _this.append(Modifier.NINTH)
+        return self
+
+    def set_inversion(self,inversion):
+        self.inversion = inversion
+        return self
+
+    def set_voice_leading(self):
+        _this = self.modifiers
+        _this.append(Modifier.VOICE_LEADING)
+        return self
+
+    def toString(self):
+        modeStr = ("MAJOR" if ((self.mode == _Mode_Mode_Fields_.MAJOR)) else "MINOR")
+        degree_repr = ((((("(" + Std.string(self.secondary_degree)) + "/") + Std.string(self.degree)) + ")") if ((python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.SECONDARY,None) != -1)) else ("" + Std.string(self.degree)))
+        _this = self.modifiers
+        return ((((((((((("ChordThing(" + Std.string(self.key)) + ",") + ("null" if modeStr is None else modeStr)) + ",") + ("null" if degree_repr is None else degree_repr)) + ",") + Std.string(self.inversion)) + ",") + Std.string(self.length)) + ") + ") + HxOverrides.stringOrNull(((("[" + HxOverrides.stringOrNull(",".join([python_Boot.toString1(x1,'') for x1 in _this]))) + "]"))))
+
+    def clone(self):
+        ct = ChordThing(self.key,self.mode,self.degree,self.length)
+        ct.modifiers = list(self.modifiers)
+        ct.inversion = self.inversion
+        ct.secondary_degree = self.secondary_degree
+        return ct
+
+    def has_extensions(self):
+        if (python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.SEVENTH,None) == -1):
+            return (python_internal_ArrayImpl.indexOf(self.modifiers,Modifier.NINTH,None) != -1)
+        else:
+            return True
+
+    def get_mode(self):
+        if self.has_modal_interchange():
+            if (self.mode == _Mode_Mode_Fields_.MINOR):
+                return _Mode_Mode_Fields_.MAJOR
+            else:
+                return _Mode_Mode_Fields_.MINOR
+        else:
+            return self.mode
+
+
+
+class Class: pass
+
+
+class Mode:
+    _hx_class_name = "Mode"
+    __slots__ = ("intervals",)
+    _hx_fields = ["intervals"]
+    _hx_methods = ["nth_from", "make_chord_from_pattern", "make_triad", "make_seventh", "make_ninth"]
+    _hx_statics = ["major_intervals", "minor_intervals", "_major_mode", "_minor_mode", "getMajorMode", "getMinorMode", "constructNthMajorMode", "ionian", "dorian", "phrygian", "lydian", "mixolydian", "aeolian", "locrian"]
+
+    def __init__(self,intervals):
+        self.intervals = intervals
+
+    def nth_from(self,root,n):
+        if (n == 1):
+            return root
+        note = root
+        _g = 0
+        _g1 = (n - 1)
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            note = (note + python_internal_ArrayImpl._get(self.intervals, HxOverrides.mod(i, len(self.intervals))))
+        return note
+
+    def make_chord_from_pattern(self,root,n,pat):
+        _gthis = self
+        def _hx_local_1():
+            def _hx_local_0(x):
+                return _gthis.nth_from(root,((n + x) - 1))
+            return list(map(_hx_local_0,pat))
+        return _hx_local_1()
+
+    def make_triad(self,root,n):
+        return self.make_chord_from_pattern(root,n,[1, 3, 5])
+
+    def make_seventh(self,root,n):
+        return self.make_chord_from_pattern(root,n,[1, 3, 5, 7])
+
+    def make_ninth(self,root,n):
+        return self.make_chord_from_pattern(root,n,[1, 3, 5, 7, 9])
+    _major_mode = None
+    _minor_mode = None
+
+    @staticmethod
+    def getMajorMode():
+        if (Mode._major_mode is None):
+            Mode._major_mode = Mode(Mode.major_intervals)
+        return Mode._major_mode
+
+    @staticmethod
+    def getMinorMode():
+        if (Mode._minor_mode is None):
+            Mode._minor_mode = Mode(Mode.minor_intervals)
+        return Mode._minor_mode
+
+    @staticmethod
+    def constructNthMajorMode(offset):
+        new_intervals = (Mode.major_intervals[(offset - 1):None] + Mode.major_intervals[0:(offset - 1)])
+        return Mode(new_intervals)
+
+    @staticmethod
+    def ionian():
+        return Mode.constructNthMajorMode(1)
+
+    @staticmethod
+    def dorian():
+        return Mode.constructNthMajorMode(2)
+
+    @staticmethod
+    def phrygian():
+        return Mode.constructNthMajorMode(3)
+
+    @staticmethod
+    def lydian():
+        return Mode.constructNthMajorMode(4)
+
+    @staticmethod
+    def mixolydian():
+        return Mode.constructNthMajorMode(5)
+
+    @staticmethod
+    def aeolian():
+        return Mode.constructNthMajorMode(6)
+
+    @staticmethod
+    def locrian():
+        return Mode.constructNthMajorMode(7)
+
+
+
+class ScoreUtilities:
+    _hx_class_name = "ScoreUtilities"
+    __slots__ = ()
+    _hx_statics = ["transposeNotes", "makePianoRollSVG"]
+
+    @staticmethod
+    def transposeNotes(notes,offset):
+        _g = []
+        _g1 = 0
+        while (_g1 < len(notes)):
+            n = (notes[_g1] if _g1 >= 0 and _g1 < len(notes) else None)
+            _g1 = (_g1 + 1)
+            x = n.transpose(offset)
+            _g.append(x)
+        return _g
+
+    @staticmethod
+    def makePianoRollSVG(notes,svgWidth,svgHeight):
+        noteHeight = (svgHeight / 100)
+        timeScale = 0.1
+        pitchOffset = 20
+        svg_b = python_lib_io_StringIO()
+        svg_b.write(Std.string((((("<svg width=\"" + Std.string(svgWidth)) + "\" height=\"") + Std.string(svgHeight)) + "\" xmlns=\"http://www.w3.org/2000/svg\">\n")))
+        _g = 0
+        _g1 = None
+        try:
+            _g1 = int((svgHeight / noteHeight))
+        except BaseException as _g2:
+            None
+            _g1 = None
+        _g2 = _g1
+        while (_g < _g2):
+            i = _g
+            _g = (_g + 1)
+            y = (i * noteHeight)
+            svg_b.write(Std.string((((((("<line x1=\"0\" y1=\"" + Std.string(y)) + "\" x2=\"") + Std.string(svgWidth)) + "\" y2=\"") + Std.string(y)) + "\" stroke=\"#ddd\" />\n")))
+        _g = 0
+        while (_g < len(notes)):
+            note = (notes[_g] if _g >= 0 and _g < len(notes) else None)
+            _g = (_g + 1)
+            x = (note.start_time * timeScale)
+            y = ((svgHeight - ((((note.note - pitchOffset)) * noteHeight))) - noteHeight)
+            width = (note.length * timeScale)
+            height = noteHeight
+            svg_b.write(Std.string((((((((("<rect x=\"" + Std.string(x)) + "\" y=\"") + Std.string(y)) + "\" width=\"") + Std.string(width)) + "\" height=\"") + Std.string(height)) + "\" fill=\"black\" />\n")))
+        svg_b.write("</svg>")
+        return svg_b.getvalue()
+
+
+class TimeManipulator:
+    _hx_class_name = "TimeManipulator"
+    __slots__ = ("ppq", "beatFraction", "noteProportion", "chordMultiplier", "beatLength", "noteLength", "chordLength")
+    _hx_fields = ["ppq", "beatFraction", "noteProportion", "chordMultiplier", "beatLength", "noteLength", "chordLength"]
+    _hx_methods = ["recalc", "setDivision", "setNoteLen", "setChordLen", "setPPQ", "toString", "getSeqTypes", "chords", "noteline", "bassline", "topline", "randline", "arpeggiate", "scaleline", "silentline", "grabCombo"]
+    _hx_statics = ["distributePulsesEvenly"]
+
+    def __init__(self):
+        self.chordLength = None
+        self.noteLength = None
+        self.beatLength = None
+        self.ppq = 1000
+        self.beatFraction = 0.25
+        self.noteProportion = 0.8
+        self.chordMultiplier = 16
+        self.recalc()
+
+    def recalc(self):
+        self.beatLength = (self.ppq * self.beatFraction)
+        self.noteLength = (self.beatLength * self.noteProportion)
+        self.chordLength = (self.beatLength * self.chordMultiplier)
+
+    def setDivision(self,dv):
+        self.beatFraction = MenuHelper.divisionValue2Numeric(dv)
+        self.recalc()
+        return self
+
+    def setNoteLen(self,np):
+        self.noteProportion = np
+        self.recalc()
+        return self
+
+    def setChordLen(self,cl):
+        self.chordMultiplier = cl
+        self.recalc()
+        return self
+
+    def setPPQ(self,p):
+        self.ppq = p
+        self.recalc()
+        return self
+
+    def toString(self):
+        return ((((((("\nTimeManipulator\n  PPQ:: " + Std.string(self.ppq)) + "\n  Division:: ") + Std.string(self.beatFraction)) + "\n  Chord Length:: ") + Std.string(self.chordMultiplier)) + "\n  Note Length:: ") + Std.string(self.noteLength))
+
+    def getSeqTypes(self):
+        return SeqTypes
+
+    def chords(self,seq,chan,startTime):
+        allNotes = list()
+        currentTime = startTime
+        _g = 0
+        _g1 = seq.toNotes()
+        while (_g < len(_g1)):
+            c = (_g1[_g] if _g >= 0 and _g < len(_g1) else None)
+            _g = (_g + 1)
+            _g2 = 0
+            while (_g2 < len(c)):
+                note = (c[_g2] if _g2 >= 0 and _g2 < len(c) else None)
+                _g2 = (_g2 + 1)
+                x = Note(chan,note,currentTime,((self.noteLength * self.chordMultiplier) * 0.5))
+                allNotes.append(x)
+            currentTime = (currentTime + ((self.beatLength * self.chordMultiplier)))
+        return allNotes
+
+    def noteline(self,seq,noteSelector,rhythmGen,chan,startTime):
+        allNotes = list()
+        currentTime = startTime
+        _g = 0
+        _g1 = seq.toNotes()
+        while (_g < len(_g1)):
+            c = (_g1[_g] if _g >= 0 and _g < len(_g1) else None)
+            _g = (_g + 1)
+            beatsForCurrentChord = 0
+            while (beatsForCurrentChord < self.chordMultiplier):
+                beat = rhythmGen.next()
+                if (beat == 1):
+                    x = Note(chan,noteSelector(c),currentTime,self.noteLength)
+                    allNotes.append(x)
+                currentTime = (currentTime + self.beatLength)
+                beatsForCurrentChord = (beatsForCurrentChord + 1)
+        return allNotes
+
+    def bassline(self,seq,k,n,chan,startTime):
+        def _hx_local_0(chord):
+            return ((chord[0] if 0 < len(chord) else None) - 12)
+        nGen = NoteSelectorIterator(seq,_hx_local_0)
+        rGen = RhythmGenerator(k,n)
+        def _hx_local_2():
+            def _hx_local_1(chord):
+                return ((chord[0] if 0 < len(chord) else None) - 12)
+            return self.noteline(seq,_hx_local_1,rGen,chan,startTime)
+        return _hx_local_2()
+
+    def topline(self,seq,k,n,chan,startTime):
+        def _hx_local_0(chord):
+            return (python_internal_ArrayImpl._get(chord, (len(chord) - 1)) + 12)
+        nGen = NoteSelectorIterator(seq,_hx_local_0)
+        rGen = RhythmGenerator(k,n)
+        def _hx_local_2():
+            def _hx_local_1(chord):
+                return (python_internal_ArrayImpl._get(chord, (len(chord) - 1)) + 12)
+            return self.noteline(seq,_hx_local_1,rGen,chan,startTime)
+        return _hx_local_2()
+
+    def randline(self,seq,k,n,chan,startTime):
+        def _hx_local_0(chord):
+            return (python_internal_ArrayImpl._get(chord, Math.floor((python_lib_Random.random() * len(chord)))) + 12)
+        nGen = NoteSelectorIterator(seq,_hx_local_0)
+        rGen = RhythmGenerator(k,n)
+        def _hx_local_2():
+            def _hx_local_1(chord):
+                return (python_internal_ArrayImpl._get(chord, Math.floor((python_lib_Random.random() * len(chord)))) + 12)
+            return self.noteline(seq,_hx_local_1,rGen,chan,startTime)
+        return _hx_local_2()
+
+    def arpeggiate(self,seq,k,n,chan,startTime):
+        rGen = RhythmGenerator(k,n)
+        allNotes = list()
+        currentTime = startTime
+        _g = 0
+        _g1 = seq.toNotes()
+        while (_g < len(_g1)):
+            c = (_g1[_g] if _g >= 0 and _g < len(_g1) else None)
+            _g = (_g + 1)
+            beatsForCurrentChord = 0
+            arpIter = ArpIterator(c)
+            while (beatsForCurrentChord < self.chordMultiplier):
+                beat = rGen.next()
+                if (beat == 1):
+                    x = Note(chan,arpIter.next(),currentTime,self.noteLength)
+                    allNotes.append(x)
+                currentTime = (currentTime + self.beatLength)
+                beatsForCurrentChord = (beatsForCurrentChord + 1)
+            rGen = RhythmGenerator(k,n)
+        return allNotes
+
+    def scaleline(self,seq,k,n,chan,startTime):
+        return []
+
+    def silentline(self,seq,k,n,chan,startTime):
+        rGen = SilentIterator()
+        def _hx_local_1():
+            def _hx_local_0(chord):
+                return 0
+            return self.noteline(seq,_hx_local_0,rGen,chan,startTime)
+        return _hx_local_1()
+
+    def grabCombo(self,seq,k,n,startTime,seqset):
+        notes = list()
+        _g = 0
+        while (_g < len(seqset)):
+            val = (seqset[_g] if _g >= 0 and _g < len(seqset) else None)
+            _g = (_g + 1)
+            tmp = val.index
+            if (tmp == 0):
+                notes = (notes + self.chords(seq,0,startTime))
+            elif (tmp == 1):
+                notes = (notes + self.arpeggiate(seq,k,n,1,startTime))
+            elif (tmp == 2):
+                notes = (notes + self.bassline(seq,k,n,2,startTime))
+            elif (tmp == 3):
+                notes = (notes + self.topline(seq,k,n,3,startTime))
+            elif (tmp == 4):
+                notes = (notes + self.randline(seq,k,n,4,startTime))
+            elif (tmp == 5):
+                notes = (notes + self.scaleline(seq,k,n,5,startTime))
+            else:
+                pass
+        return notes
+
+    @staticmethod
+    def distributePulsesEvenly(k,n):
+        rhythm = list()
+        _g = 0
+        _g1 = n
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            rhythm.append(0)
+        stepSize = (n / k)
+        currentStep = 0.0
+        _g = 0
+        _g1 = k
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            python_internal_ArrayImpl._set(rhythm, Math.floor((currentStep + 0.5)), 1)
+            currentStep = (currentStep + stepSize)
+        return rhythm
+
+
+
+class GoldenPond:
+    _hx_class_name = "GoldenPond"
+    __slots__ = ()
+    _hx_statics = ["Mode", "ChordProgression", "TimeManipulator", "ScoreUtilities"]
+
+class Modifier(Enum):
+    __slots__ = ()
+    _hx_class_name = "Modifier"
+    _hx_constructs = ["MODAL_INTERCHANGE", "SEVENTH", "NINTH", "SECONDARY", "VOICE_LEADING"]
+Modifier.MODAL_INTERCHANGE = Modifier("MODAL_INTERCHANGE", 0, ())
+Modifier.SEVENTH = Modifier("SEVENTH", 1, ())
+Modifier.NINTH = Modifier("NINTH", 2, ())
+Modifier.SECONDARY = Modifier("SECONDARY", 3, ())
+Modifier.VOICE_LEADING = Modifier("VOICE_LEADING", 4, ())
+
+
+class _Mode_Mode_Fields_:
+    _hx_class_name = "_Mode.Mode_Fields_"
+    __slots__ = ()
+    _hx_statics = ["MAJOR", "MINOR"]
+
+
+class Reflect:
+    _hx_class_name = "Reflect"
+    __slots__ = ()
+    _hx_statics = ["compare", "isEnumValue"]
+
+    @staticmethod
+    def compare(a,b):
+        if ((a is None) and ((b is None))):
+            return 0
+        if (a is None):
+            return 1
+        elif (b is None):
+            return -1
+        elif HxOverrides.eq(a,b):
+            return 0
+        elif (a > b):
+            return 1
+        else:
+            return -1
+
+    @staticmethod
+    def isEnumValue(v):
+        if not HxOverrides.eq(v,Enum):
+            return isinstance(v,Enum)
+        else:
+            return False
+
+
+class Note:
+    _hx_class_name = "Note"
+    __slots__ = ("chan", "note", "start_time", "length")
+    _hx_fields = ["chan", "note", "start_time", "length"]
+    _hx_methods = ["toString", "toStruct", "equals", "transpose"]
+
+    def __init__(self,chan,note,start_time,length):
+        self.chan = chan
+        self.note = note
+        self.start_time = start_time
+        self.length = length
+
+    def toString(self):
+        return (((((((("Note[chan: " + Std.string(self.chan)) + ", note: ") + Std.string(self.note)) + ", start_time: ") + Std.string(self.start_time)) + ", length: ") + Std.string(self.length)) + "]")
+
+    def toStruct(self):
+        return _hx_AnonObject({'chan': self.chan, 'note': self.note, 'start_time': self.start_time, 'length': self.length})
+
+    def equals(self,other):
+        if ((self.note == other.note) and ((self.start_time == other.start_time))):
+            return (self.length == other.length)
+        else:
+            return False
+
+    def transpose(self,offset):
+        return Note(self.chan,(self.note + offset),self.start_time,self.length)
+
+
+
+class Std:
+    _hx_class_name = "Std"
+    __slots__ = ()
+    _hx_statics = ["isOfType", "string", "parseInt"]
+
+    @staticmethod
+    def isOfType(v,t):
+        if ((v is None) and ((t is None))):
+            return False
+        if (t is None):
+            return False
+        if ((type(t) == type) and (t == Dynamic)):
+            return (v is not None)
+        isBool = isinstance(v,bool)
+        if (((type(t) == type) and (t == Bool)) and isBool):
+            return True
+        if ((((not isBool) and (not ((type(t) == type) and (t == Bool)))) and ((type(t) == type) and (t == Int))) and isinstance(v,int)):
+            return True
+        vIsFloat = isinstance(v,float)
+        tmp = None
+        tmp1 = None
+        if (((not isBool) and vIsFloat) and ((type(t) == type) and (t == Int))):
+            f = v
+            tmp1 = (((f != Math.POSITIVE_INFINITY) and ((f != Math.NEGATIVE_INFINITY))) and (not python_lib_Math.isnan(f)))
+        else:
+            tmp1 = False
+        if tmp1:
+            tmp1 = None
+            try:
+                tmp1 = int(v)
+            except BaseException as _g:
+                None
+                tmp1 = None
+            tmp = (v == tmp1)
+        else:
+            tmp = False
+        if ((tmp and ((v <= 2147483647))) and ((v >= -2147483648))):
+            return True
+        if (((not isBool) and ((type(t) == type) and (t == Float))) and isinstance(v,(float, int))):
+            return True
+        if ((type(t) == type) and (t == str)):
+            return isinstance(v,str)
+        isEnumType = ((type(t) == type) and (t == Enum))
+        if ((isEnumType and python_lib_Inspect.isclass(v)) and hasattr(v,"_hx_constructs")):
+            return True
+        if isEnumType:
+            return False
+        isClassType = ((type(t) == type) and (t == Class))
+        if ((((isClassType and (not isinstance(v,Enum))) and python_lib_Inspect.isclass(v)) and hasattr(v,"_hx_class_name")) and (not hasattr(v,"_hx_constructs"))):
+            return True
+        if isClassType:
+            return False
+        tmp = None
+        try:
+            tmp = isinstance(v,t)
+        except BaseException as _g:
+            None
+            tmp = False
+        if tmp:
+            return True
+        if python_lib_Inspect.isclass(t):
+            cls = t
+            loop = None
+            def _hx_local_1(intf):
+                f = (intf._hx_interfaces if (hasattr(intf,"_hx_interfaces")) else [])
+                if (f is not None):
+                    _g = 0
+                    while (_g < len(f)):
+                        i = (f[_g] if _g >= 0 and _g < len(f) else None)
+                        _g = (_g + 1)
+                        if (i == cls):
+                            return True
+                        else:
+                            l = loop(i)
+                            if l:
+                                return True
+                    return False
+                else:
+                    return False
+            loop = _hx_local_1
+            currentClass = v.__class__
+            result = False
+            while (currentClass is not None):
+                if loop(currentClass):
+                    result = True
+                    break
+                currentClass = python_Boot.getSuperClass(currentClass)
+            return result
+        else:
+            return False
+
+    @staticmethod
+    def string(s):
+        return python_Boot.toString1(s,"")
+
+    @staticmethod
+    def parseInt(x):
+        if (x is None):
+            return None
+        try:
+            return int(x)
+        except BaseException as _g:
+            None
+            base = 10
+            _hx_len = len(x)
+            foundCount = 0
+            sign = 0
+            firstDigitIndex = 0
+            lastDigitIndex = -1
+            previous = 0
+            _g = 0
+            _g1 = _hx_len
+            while (_g < _g1):
+                i = _g
+                _g = (_g + 1)
+                c = (-1 if ((i >= len(x))) else ord(x[i]))
+                if (((c > 8) and ((c < 14))) or ((c == 32))):
+                    if (foundCount > 0):
+                        return None
+                    continue
+                else:
+                    c1 = c
+                    if (c1 == 43):
+                        if (foundCount == 0):
+                            sign = 1
+                        elif (not (((48 <= c) and ((c <= 57))))):
+                            if (not (((base == 16) and ((((97 <= c) and ((c <= 122))) or (((65 <= c) and ((c <= 90))))))))):
+                                break
+                    elif (c1 == 45):
+                        if (foundCount == 0):
+                            sign = -1
+                        elif (not (((48 <= c) and ((c <= 57))))):
+                            if (not (((base == 16) and ((((97 <= c) and ((c <= 122))) or (((65 <= c) and ((c <= 90))))))))):
+                                break
+                    elif (c1 == 48):
+                        if (not (((foundCount == 0) or (((foundCount == 1) and ((sign != 0))))))):
+                            if (not (((48 <= c) and ((c <= 57))))):
+                                if (not (((base == 16) and ((((97 <= c) and ((c <= 122))) or (((65 <= c) and ((c <= 90))))))))):
+                                    break
+                    elif ((c1 == 120) or ((c1 == 88))):
+                        if ((previous == 48) and ((((foundCount == 1) and ((sign == 0))) or (((foundCount == 2) and ((sign != 0))))))):
+                            base = 16
+                        elif (not (((48 <= c) and ((c <= 57))))):
+                            if (not (((base == 16) and ((((97 <= c) and ((c <= 122))) or (((65 <= c) and ((c <= 90))))))))):
+                                break
+                    elif (not (((48 <= c) and ((c <= 57))))):
+                        if (not (((base == 16) and ((((97 <= c) and ((c <= 122))) or (((65 <= c) and ((c <= 90))))))))):
+                            break
+                if (((foundCount == 0) and ((sign == 0))) or (((foundCount == 1) and ((sign != 0))))):
+                    firstDigitIndex = i
+                foundCount = (foundCount + 1)
+                lastDigitIndex = i
+                previous = c
+            if (firstDigitIndex <= lastDigitIndex):
+                digits = HxString.substring(x,firstDigitIndex,(lastDigitIndex + 1))
+                try:
+                    return (((-1 if ((sign == -1)) else 1)) * int(digits,base))
+                except BaseException as _g:
+                    return None
+            return None
+
+
+class Float: pass
+
+
+class Int: pass
+
+
+class Bool: pass
+
+
+class Dynamic: pass
+
+
+class StringTools:
+    _hx_class_name = "StringTools"
+    __slots__ = ()
+    _hx_statics = ["isSpace", "ltrim", "rtrim", "trim"]
+
+    @staticmethod
+    def isSpace(s,pos):
+        if (((len(s) == 0) or ((pos < 0))) or ((pos >= len(s)))):
+            return False
+        c = HxString.charCodeAt(s,pos)
+        if (not (((c > 8) and ((c < 14))))):
+            return (c == 32)
+        else:
+            return True
+
+    @staticmethod
+    def ltrim(s):
+        l = len(s)
+        r = 0
+        while ((r < l) and StringTools.isSpace(s,r)):
+            r = (r + 1)
+        if (r > 0):
+            return HxString.substr(s,r,(l - r))
+        else:
+            return s
+
+    @staticmethod
+    def rtrim(s):
+        l = len(s)
+        r = 0
+        while ((r < l) and StringTools.isSpace(s,((l - r) - 1))):
+            r = (r + 1)
+        if (r > 0):
+            return HxString.substr(s,0,(l - r))
+        else:
+            return s
+
+    @staticmethod
+    def trim(s):
+        return StringTools.ltrim(StringTools.rtrim(s))
+
+class SeqTypes(Enum):
+    __slots__ = ()
+    _hx_class_name = "SeqTypes"
+    _hx_constructs = ["CHORDS", "EUCLIDEAN", "BASS", "TOP", "RANDOM", "SCALE"]
+SeqTypes.CHORDS = SeqTypes("CHORDS", 0, ())
+SeqTypes.EUCLIDEAN = SeqTypes("EUCLIDEAN", 1, ())
+SeqTypes.BASS = SeqTypes("BASS", 2, ())
+SeqTypes.TOP = SeqTypes("TOP", 3, ())
+SeqTypes.RANDOM = SeqTypes("RANDOM", 4, ())
+SeqTypes.SCALE = SeqTypes("SCALE", 5, ())
+
+class DivisionValue(Enum):
+    __slots__ = ()
+    _hx_class_name = "DivisionValue"
+    _hx_constructs = ["SIXTEENTH", "TWELFTH", "EIGHTH", "SIXTH", "QUARTER", "THIRD", "HALF", "WHOLE"]
+DivisionValue.SIXTEENTH = DivisionValue("SIXTEENTH", 0, ())
+DivisionValue.TWELFTH = DivisionValue("TWELFTH", 1, ())
+DivisionValue.EIGHTH = DivisionValue("EIGHTH", 2, ())
+DivisionValue.SIXTH = DivisionValue("SIXTH", 3, ())
+DivisionValue.QUARTER = DivisionValue("QUARTER", 4, ())
+DivisionValue.THIRD = DivisionValue("THIRD", 5, ())
+DivisionValue.HALF = DivisionValue("HALF", 6, ())
+DivisionValue.WHOLE = DivisionValue("WHOLE", 7, ())
+
+
+class IRhythmGenerator:
+    _hx_class_name = "IRhythmGenerator"
+    __slots__ = ()
+    _hx_methods = ["hasNext", "next"]
+
+
+class SilentIterator:
+    _hx_class_name = "SilentIterator"
+    __slots__ = ()
+    _hx_methods = ["hasNext", "next"]
+    _hx_interfaces = [IRhythmGenerator]
+
+    def __init__(self):
+        pass
+
+    def hasNext(self):
+        return True
+
+    def next(self):
+        return 0
+
+
+
+class RhythmGenerator:
+    _hx_class_name = "RhythmGenerator"
+    __slots__ = ("rhythm", "index")
+    _hx_fields = ["rhythm", "index"]
+    _hx_methods = ["hasNext", "next"]
+    _hx_interfaces = [IRhythmGenerator]
+
+    def __init__(self,k,n):
+        self.rhythm = TimeManipulator.distributePulsesEvenly(k,n)
+        self.index = 0
+
+    def hasNext(self):
+        return True
+
+    def next(self):
+        beat = python_internal_ArrayImpl._get(self.rhythm, self.index)
+        self.index = HxOverrides.mod(((self.index + 1)), len(self.rhythm))
+        return beat
+
+
+
+class ArpIterator:
+    _hx_class_name = "ArpIterator"
+    __slots__ = ("chord", "noteIndex", "step")
+    _hx_fields = ["chord", "noteIndex", "step"]
+    _hx_methods = ["hasNext", "next"]
+
+    def __init__(self,chord,step = None):
+        if (step is None):
+            step = 1
+        self.chord = chord
+        self.noteIndex = 0
+        self.step = step
+
+    def hasNext(self):
+        return True
+
+    def next(self):
+        note = python_internal_ArrayImpl._get(self.chord, HxOverrides.mod(self.noteIndex, len(self.chord)))
+        self.noteIndex = HxOverrides.mod(((self.noteIndex + self.step)), len(self.chord))
+        return note
+
+
+
+class NoteSelectorIterator:
+    _hx_class_name = "NoteSelectorIterator"
+    __slots__ = ("chords", "chordIndex", "noteSelector")
+    _hx_fields = ["chords", "chordIndex", "noteSelector"]
+    _hx_methods = ["hasNext", "next"]
+
+    def __init__(self,chords,noteSelector):
+        self.chords = chords.toNotes()
+        self.chordIndex = 0
+        self.noteSelector = noteSelector
+
+    def hasNext(self):
+        return (self.chordIndex < len(self.chords))
+
+    def next(self):
+        note = self.noteSelector(python_internal_ArrayImpl._get(self.chords, self.chordIndex))
+        _hx_local_0 = self
+        _hx_local_1 = _hx_local_0.chordIndex
+        _hx_local_0.chordIndex = (_hx_local_1 + 1)
+        _hx_local_1
+        return note
+
+
+
+class MenuHelper:
+    _hx_class_name = "MenuHelper"
+    __slots__ = ()
+    _hx_statics = ["getDivisionNames", "getDivisionValues", "getDivisionFor", "divisionValue2Numeric"]
+
+    @staticmethod
+    def getDivisionNames():
+        return ["1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"]
+
+    @staticmethod
+    def getDivisionValues():
+        return [DivisionValue.SIXTEENTH, DivisionValue.TWELFTH, DivisionValue.EIGHTH, DivisionValue.SIXTH, DivisionValue.QUARTER, DivisionValue.THIRD, DivisionValue.HALF, DivisionValue.WHOLE]
+
+    @staticmethod
+    def getDivisionFor(i):
+        return python_internal_ArrayImpl._get(MenuHelper.getDivisionValues(), i)
+
+    @staticmethod
+    def divisionValue2Numeric(dv):
+        _g = haxe_ds_EnumValueMap()
+        _g.set(DivisionValue.SIXTEENTH,0.0625)
+        _g.set(DivisionValue.TWELFTH,0.0833333333333333287)
+        _g.set(DivisionValue.EIGHTH,0.125)
+        _g.set(DivisionValue.SIXTH,0.166666666666666657)
+        _g.set(DivisionValue.QUARTER,0.25)
+        _g.set(DivisionValue.THIRD,0.333333333333333315)
+        _g.set(DivisionValue.HALF,0.5)
+        _g.set(DivisionValue.WHOLE,1)
+        return _g.get(dv)
+
+
+class haxe_IMap:
+    _hx_class_name = "haxe.IMap"
+    __slots__ = ()
+
+
+class haxe_Exception(Exception):
+    _hx_class_name = "haxe.Exception"
+    __slots__ = ("_hx___nativeStack", "_hx___skipStack", "_hx___nativeException", "_hx___previousException")
+    _hx_fields = ["__nativeStack", "__skipStack", "__nativeException", "__previousException"]
+    _hx_methods = ["get_native"]
+    _hx_statics = ["thrown"]
+    _hx_interfaces = []
+    _hx_super = Exception
+
+
+    def __init__(self,message,previous = None,native = None):
+        self._hx___previousException = None
+        self._hx___nativeException = None
+        self._hx___nativeStack = None
+        self._hx___skipStack = 0
+        super().__init__(message)
+        self._hx___previousException = previous
+        if ((native is not None) and Std.isOfType(native,BaseException)):
+            self._hx___nativeException = native
+            self._hx___nativeStack = haxe_NativeStackTrace.exceptionStack()
+        else:
+            self._hx___nativeException = self
+            infos = python_lib_Traceback.extract_stack()
+            if (len(infos) != 0):
+                infos.pop()
+            infos.reverse()
+            self._hx___nativeStack = infos
+
+    def get_native(self):
+        return self._hx___nativeException
+
+    @staticmethod
+    def thrown(value):
+        if Std.isOfType(value,haxe_Exception):
+            return value.get_native()
+        elif Std.isOfType(value,BaseException):
+            return value
+        else:
+            e = haxe_ValueException(value)
+            e._hx___skipStack = (e._hx___skipStack + 1)
+            return e
+
+
+
+class haxe_NativeStackTrace:
+    _hx_class_name = "haxe.NativeStackTrace"
+    __slots__ = ()
+    _hx_statics = ["saveStack", "exceptionStack"]
+
+    @staticmethod
+    def saveStack(exception):
+        pass
+
+    @staticmethod
+    def exceptionStack():
+        exc = python_lib_Sys.exc_info()
+        if (exc[2] is not None):
+            infos = python_lib_Traceback.extract_tb(exc[2])
+            infos.reverse()
+            return infos
+        else:
+            return []
+
+
+class haxe_ValueException(haxe_Exception):
+    _hx_class_name = "haxe.ValueException"
+    __slots__ = ("value",)
+    _hx_fields = ["value"]
+    _hx_methods = []
+    _hx_statics = []
+    _hx_interfaces = []
+    _hx_super = haxe_Exception
+
+
+    def __init__(self,value,previous = None,native = None):
+        self.value = None
+        super().__init__(Std.string(value),previous,native)
+        self.value = value
+
+
+
+class haxe_ds_BalancedTree:
+    _hx_class_name = "haxe.ds.BalancedTree"
+    __slots__ = ("root",)
+    _hx_fields = ["root"]
+    _hx_methods = ["set", "get", "setLoop", "balance", "compare"]
+    _hx_interfaces = [haxe_IMap]
+
+    def __init__(self):
+        self.root = None
+
+    def set(self,key,value):
+        self.root = self.setLoop(key,value,self.root)
+
+    def get(self,key):
+        node = self.root
+        while (node is not None):
+            c = self.compare(key,node.key)
+            if (c == 0):
+                return node.value
+            if (c < 0):
+                node = node.left
+            else:
+                node = node.right
+        return None
+
+    def setLoop(self,k,v,node):
+        if (node is None):
+            return haxe_ds_TreeNode(None,k,v,None)
+        c = self.compare(k,node.key)
+        if (c == 0):
+            return haxe_ds_TreeNode(node.left,k,v,node.right,(0 if ((node is None)) else node._height))
+        elif (c < 0):
+            nl = self.setLoop(k,v,node.left)
+            return self.balance(nl,node.key,node.value,node.right)
+        else:
+            nr = self.setLoop(k,v,node.right)
+            return self.balance(node.left,node.key,node.value,nr)
+
+    def balance(self,l,k,v,r):
+        hl = (0 if ((l is None)) else l._height)
+        hr = (0 if ((r is None)) else r._height)
+        if (hl > ((hr + 2))):
+            _this = l.left
+            _this1 = l.right
+            if (((0 if ((_this is None)) else _this._height)) >= ((0 if ((_this1 is None)) else _this1._height))):
+                return haxe_ds_TreeNode(l.left,l.key,l.value,haxe_ds_TreeNode(l.right,k,v,r))
+            else:
+                return haxe_ds_TreeNode(haxe_ds_TreeNode(l.left,l.key,l.value,l.right.left),l.right.key,l.right.value,haxe_ds_TreeNode(l.right.right,k,v,r))
+        elif (hr > ((hl + 2))):
+            _this = r.right
+            _this1 = r.left
+            if (((0 if ((_this is None)) else _this._height)) > ((0 if ((_this1 is None)) else _this1._height))):
+                return haxe_ds_TreeNode(haxe_ds_TreeNode(l,k,v,r.left),r.key,r.value,r.right)
+            else:
+                return haxe_ds_TreeNode(haxe_ds_TreeNode(l,k,v,r.left.left),r.left.key,r.left.value,haxe_ds_TreeNode(r.left.right,r.key,r.value,r.right))
+        else:
+            return haxe_ds_TreeNode(l,k,v,r,(((hl if ((hl > hr)) else hr)) + 1))
+
+    def compare(self,k1,k2):
+        return Reflect.compare(k1,k2)
+
+
+
+class haxe_ds_TreeNode:
+    _hx_class_name = "haxe.ds.TreeNode"
+    __slots__ = ("left", "right", "key", "value", "_height")
+    _hx_fields = ["left", "right", "key", "value", "_height"]
+
+    def __init__(self,l,k,v,r,h = None):
+        if (h is None):
+            h = -1
+        self._height = None
+        self.left = l
+        self.key = k
+        self.value = v
+        self.right = r
+        if (h == -1):
+            tmp = None
+            _this = self.left
+            _this1 = self.right
+            if (((0 if ((_this is None)) else _this._height)) > ((0 if ((_this1 is None)) else _this1._height))):
+                _this = self.left
+                tmp = (0 if ((_this is None)) else _this._height)
+            else:
+                _this = self.right
+                tmp = (0 if ((_this is None)) else _this._height)
+            self._height = (tmp + 1)
+        else:
+            self._height = h
+
+
+
+class haxe_ds_EnumValueMap(haxe_ds_BalancedTree):
+    _hx_class_name = "haxe.ds.EnumValueMap"
+    __slots__ = ()
+    _hx_fields = []
+    _hx_methods = ["compare", "compareArgs", "compareArg"]
+    _hx_statics = []
+    _hx_interfaces = [haxe_IMap]
+    _hx_super = haxe_ds_BalancedTree
+
+
+    def __init__(self):
+        super().__init__()
+
+    def compare(self,k1,k2):
+        d = (k1.index - k2.index)
+        if (d != 0):
+            return d
+        p1 = list(k1.params)
+        p2 = list(k2.params)
+        if ((len(p1) == 0) and ((len(p2) == 0))):
+            return 0
+        return self.compareArgs(p1,p2)
+
+    def compareArgs(self,a1,a2):
+        ld = (len(a1) - len(a2))
+        if (ld != 0):
+            return ld
+        _g = 0
+        _g1 = len(a1)
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            d = self.compareArg((a1[i] if i >= 0 and i < len(a1) else None),(a2[i] if i >= 0 and i < len(a2) else None))
+            if (d != 0):
+                return d
+        return 0
+
+    def compareArg(self,v1,v2):
+        if (Reflect.isEnumValue(v1) and Reflect.isEnumValue(v2)):
+            return self.compare(v1,v2)
+        elif (Std.isOfType(v1,list) and Std.isOfType(v2,list)):
+            return self.compareArgs(v1,v2)
+        else:
+            return Reflect.compare(v1,v2)
+
+
+
+class haxe_iterators_ArrayIterator:
+    _hx_class_name = "haxe.iterators.ArrayIterator"
+    __slots__ = ("array", "current")
+    _hx_fields = ["array", "current"]
+    _hx_methods = ["hasNext", "next"]
+
+    def __init__(self,array):
+        self.current = 0
+        self.array = array
+
+    def hasNext(self):
+        return (self.current < len(self.array))
+
+    def next(self):
+        def _hx_local_3():
+            def _hx_local_2():
+                _hx_local_0 = self
+                _hx_local_1 = _hx_local_0.current
+                _hx_local_0.current = (_hx_local_1 + 1)
+                return _hx_local_1
+            return python_internal_ArrayImpl._get(self.array, _hx_local_2())
+        return _hx_local_3()
+
+
+
+class python_Boot:
+    _hx_class_name = "python.Boot"
+    __slots__ = ()
+    _hx_statics = ["keywords", "toString1", "fields", "simpleField", "getInstanceFields", "getSuperClass", "getClassFields", "prefixLength", "unhandleKeywords"]
+
+    @staticmethod
+    def toString1(o,s):
+        if (o is None):
+            return "null"
+        if isinstance(o,str):
+            return o
+        if (s is None):
+            s = ""
+        if (len(s) >= 5):
+            return "<...>"
+        if isinstance(o,bool):
+            if o:
+                return "true"
+            else:
+                return "false"
+        if (isinstance(o,int) and (not isinstance(o,bool))):
+            return str(o)
+        if isinstance(o,float):
+            try:
+                if (o == int(o)):
+                    return str(Math.floor((o + 0.5)))
+                else:
+                    return str(o)
+            except BaseException as _g:
+                None
+                return str(o)
+        if isinstance(o,list):
+            o1 = o
+            l = len(o1)
+            st = "["
+            s = (("null" if s is None else s) + "\t")
+            _g = 0
+            _g1 = l
+            while (_g < _g1):
+                i = _g
+                _g = (_g + 1)
+                prefix = ""
+                if (i > 0):
+                    prefix = ","
+                st = (("null" if st is None else st) + HxOverrides.stringOrNull(((("null" if prefix is None else prefix) + HxOverrides.stringOrNull(python_Boot.toString1((o1[i] if i >= 0 and i < len(o1) else None),s))))))
+            st = (("null" if st is None else st) + "]")
+            return st
+        try:
+            if hasattr(o,"toString"):
+                return o.toString()
+        except BaseException as _g:
+            None
+        if hasattr(o,"__class__"):
+            if isinstance(o,_hx_AnonObject):
+                toStr = None
+                try:
+                    fields = python_Boot.fields(o)
+                    _g = []
+                    _g1 = 0
+                    while (_g1 < len(fields)):
+                        f = (fields[_g1] if _g1 >= 0 and _g1 < len(fields) else None)
+                        _g1 = (_g1 + 1)
+                        x = ((("" + ("null" if f is None else f)) + " : ") + HxOverrides.stringOrNull(python_Boot.toString1(python_Boot.simpleField(o,f),(("null" if s is None else s) + "\t"))))
+                        _g.append(x)
+                    fieldsStr = _g
+                    toStr = (("{ " + HxOverrides.stringOrNull(", ".join([x1 for x1 in fieldsStr]))) + " }")
+                except BaseException as _g:
+                    None
+                    return "{ ... }"
+                if (toStr is None):
+                    return "{ ... }"
+                else:
+                    return toStr
+            if isinstance(o,Enum):
+                o1 = o
+                l = len(o1.params)
+                hasParams = (l > 0)
+                if hasParams:
+                    paramsStr = ""
+                    _g = 0
+                    _g1 = l
+                    while (_g < _g1):
+                        i = _g
+                        _g = (_g + 1)
+                        prefix = ""
+                        if (i > 0):
+                            prefix = ","
+                        paramsStr = (("null" if paramsStr is None else paramsStr) + HxOverrides.stringOrNull(((("null" if prefix is None else prefix) + HxOverrides.stringOrNull(python_Boot.toString1(o1.params[i],s))))))
+                    return (((HxOverrides.stringOrNull(o1.tag) + "(") + ("null" if paramsStr is None else paramsStr)) + ")")
+                else:
+                    return o1.tag
+            if hasattr(o,"_hx_class_name"):
+                if (o.__class__.__name__ != "type"):
+                    fields = python_Boot.getInstanceFields(o)
+                    _g = []
+                    _g1 = 0
+                    while (_g1 < len(fields)):
+                        f = (fields[_g1] if _g1 >= 0 and _g1 < len(fields) else None)
+                        _g1 = (_g1 + 1)
+                        x = ((("" + ("null" if f is None else f)) + " : ") + HxOverrides.stringOrNull(python_Boot.toString1(python_Boot.simpleField(o,f),(("null" if s is None else s) + "\t"))))
+                        _g.append(x)
+                    fieldsStr = _g
+                    toStr = (((HxOverrides.stringOrNull(o._hx_class_name) + "( ") + HxOverrides.stringOrNull(", ".join([x1 for x1 in fieldsStr]))) + " )")
+                    return toStr
+                else:
+                    fields = python_Boot.getClassFields(o)
+                    _g = []
+                    _g1 = 0
+                    while (_g1 < len(fields)):
+                        f = (fields[_g1] if _g1 >= 0 and _g1 < len(fields) else None)
+                        _g1 = (_g1 + 1)
+                        x = ((("" + ("null" if f is None else f)) + " : ") + HxOverrides.stringOrNull(python_Boot.toString1(python_Boot.simpleField(o,f),(("null" if s is None else s) + "\t"))))
+                        _g.append(x)
+                    fieldsStr = _g
+                    toStr = (((("#" + HxOverrides.stringOrNull(o._hx_class_name)) + "( ") + HxOverrides.stringOrNull(", ".join([x1 for x1 in fieldsStr]))) + " )")
+                    return toStr
+            if ((type(o) == type) and (o == str)):
+                return "#String"
+            if ((type(o) == type) and (o == list)):
+                return "#Array"
+            if callable(o):
+                return "function"
+            try:
+                if hasattr(o,"__repr__"):
+                    return o.__repr__()
+            except BaseException as _g:
+                None
+            if hasattr(o,"__str__"):
+                return o.__str__([])
+            if hasattr(o,"__name__"):
+                return o.__name__
+            return "???"
+        else:
+            return str(o)
+
+    @staticmethod
+    def fields(o):
+        a = []
+        if (o is not None):
+            if hasattr(o,"_hx_fields"):
+                fields = o._hx_fields
+                if (fields is not None):
+                    return list(fields)
+            if isinstance(o,_hx_AnonObject):
+                d = o.__dict__
+                keys = d.keys()
+                handler = python_Boot.unhandleKeywords
+                for k in keys:
+                    if (k != '_hx_disable_getattr'):
+                        a.append(handler(k))
+            elif hasattr(o,"__dict__"):
+                d = o.__dict__
+                keys1 = d.keys()
+                for k in keys1:
+                    a.append(k)
+        return a
+
+    @staticmethod
+    def simpleField(o,field):
+        if (field is None):
+            return None
+        field1 = (("_hx_" + field) if ((field in python_Boot.keywords)) else (("_hx_" + field) if (((((len(field) > 2) and ((ord(field[0]) == 95))) and ((ord(field[1]) == 95))) and ((ord(field[(len(field) - 1)]) != 95)))) else field))
+        if hasattr(o,field1):
+            return getattr(o,field1)
+        else:
+            return None
+
+    @staticmethod
+    def getInstanceFields(c):
+        f = (list(c._hx_fields) if (hasattr(c,"_hx_fields")) else [])
+        if hasattr(c,"_hx_methods"):
+            f = (f + c._hx_methods)
+        sc = python_Boot.getSuperClass(c)
+        if (sc is None):
+            return f
+        else:
+            scArr = python_Boot.getInstanceFields(sc)
+            scMap = set(scArr)
+            _g = 0
+            while (_g < len(f)):
+                f1 = (f[_g] if _g >= 0 and _g < len(f) else None)
+                _g = (_g + 1)
+                if (not (f1 in scMap)):
+                    scArr.append(f1)
+            return scArr
+
+    @staticmethod
+    def getSuperClass(c):
+        if (c is None):
+            return None
+        try:
+            if hasattr(c,"_hx_super"):
+                return c._hx_super
+            return None
+        except BaseException as _g:
+            None
+        return None
+
+    @staticmethod
+    def getClassFields(c):
+        if hasattr(c,"_hx_statics"):
+            x = c._hx_statics
+            return list(x)
+        else:
+            return []
+
+    @staticmethod
+    def unhandleKeywords(name):
+        if (HxString.substr(name,0,python_Boot.prefixLength) == "_hx_"):
+            real = HxString.substr(name,python_Boot.prefixLength,None)
+            if (real in python_Boot.keywords):
+                return real
+        return name
+
+
+class python_internal_ArrayImpl:
+    _hx_class_name = "python.internal.ArrayImpl"
+    __slots__ = ()
+    _hx_statics = ["indexOf", "_get", "_set"]
+
+    @staticmethod
+    def indexOf(a,x,fromIndex = None):
+        _hx_len = len(a)
+        l = (0 if ((fromIndex is None)) else ((_hx_len + fromIndex) if ((fromIndex < 0)) else fromIndex))
+        if (l < 0):
+            l = 0
+        _g = l
+        _g1 = _hx_len
+        while (_g < _g1):
+            i = _g
+            _g = (_g + 1)
+            if HxOverrides.eq(a[i],x):
+                return i
+        return -1
+
+    @staticmethod
+    def _get(x,idx):
+        if ((idx > -1) and ((idx < len(x)))):
+            return x[idx]
+        else:
+            return None
+
+    @staticmethod
+    def _set(x,idx,v):
+        l = len(x)
+        while (l < idx):
+            x.append(None)
+            l = (l + 1)
+        if (l == idx):
+            x.append(v)
+        else:
+            x[idx] = v
+        return v
+
+
+class HxOverrides:
+    _hx_class_name = "HxOverrides"
+    __slots__ = ()
+    _hx_statics = ["eq", "stringOrNull", "modf", "mod"]
+
+    @staticmethod
+    def eq(a,b):
+        if (isinstance(a,list) or isinstance(b,list)):
+            return a is b
+        return (a == b)
+
+    @staticmethod
+    def stringOrNull(s):
+        if (s is None):
+            return "null"
+        else:
+            return s
+
+    @staticmethod
+    def modf(a,b):
+        if (b == 0.0):
+            return float('nan')
+        elif (a < 0):
+            if (b < 0):
+                return -(-a % (-b))
+            else:
+                return -(-a % b)
+        elif (b < 0):
+            return a % (-b)
+        else:
+            return a % b
+
+    @staticmethod
+    def mod(a,b):
+        if (a < 0):
+            if (b < 0):
+                return -(-a % (-b))
+            else:
+                return -(-a % b)
+        elif (b < 0):
+            return a % (-b)
+        else:
+            return a % b
+
+
+class python_internal_MethodClosure:
+    _hx_class_name = "python.internal.MethodClosure"
+    __slots__ = ("obj", "func")
+    _hx_fields = ["obj", "func"]
+    _hx_methods = ["__call__"]
+
+    def __init__(self,obj,func):
+        self.obj = obj
+        self.func = func
+
+    def __call__(self,*args):
+        return self.func(self.obj,*args)
+
+
+
+class HxString:
+    _hx_class_name = "HxString"
+    __slots__ = ()
+    _hx_statics = ["charCodeAt", "indexOfImpl", "substring", "substr"]
+
+    @staticmethod
+    def charCodeAt(s,index):
+        if ((((s is None) or ((len(s) == 0))) or ((index < 0))) or ((index >= len(s)))):
+            return None
+        else:
+            return ord(s[index])
+
+    @staticmethod
+    def indexOfImpl(s,_hx_str,startIndex):
+        if (_hx_str == ""):
+            length = len(s)
+            if (startIndex < 0):
+                startIndex = (length + startIndex)
+                if (startIndex < 0):
+                    startIndex = 0
+            if (startIndex > length):
+                return length
+            else:
+                return startIndex
+        return s.find(_hx_str, startIndex)
+
+    @staticmethod
+    def substring(s,startIndex,endIndex = None):
+        if (startIndex < 0):
+            startIndex = 0
+        if (endIndex is None):
+            return s[startIndex:]
+        else:
+            if (endIndex < 0):
+                endIndex = 0
+            if (endIndex < startIndex):
+                return s[endIndex:startIndex]
+            else:
+                return s[startIndex:endIndex]
+
+    @staticmethod
+    def substr(s,startIndex,_hx_len = None):
+        if (_hx_len is None):
+            return s[startIndex:]
+        else:
+            if (_hx_len == 0):
+                return ""
+            if (startIndex < 0):
+                startIndex = (len(s) + startIndex)
+                if (startIndex < 0):
+                    startIndex = 0
+            return s[startIndex:(startIndex + _hx_len)]
+
+Math.NEGATIVE_INFINITY = float("-inf")
+Math.POSITIVE_INFINITY = float("inf")
+Math.NaN = float("nan")
+Math.PI = python_lib_Math.pi
+
+Mode.major_intervals = [2, 2, 1, 2, 2, 2, 1]
+Mode.minor_intervals = [2, 1, 2, 2, 1, 2, 2]
+GoldenPond.Mode = Mode
+GoldenPond.ChordProgression = ChordProgression
+GoldenPond.TimeManipulator = TimeManipulator
+GoldenPond.ScoreUtilities = ScoreUtilities
+_Mode_Mode_Fields_.MAJOR = Mode.getMajorMode()
+_Mode_Mode_Fields_.MINOR = Mode.getMinorMode()
+python_Boot.keywords = set(["and", "del", "from", "not", "with", "as", "elif", "global", "or", "yield", "assert", "else", "if", "pass", "None", "break", "except", "import", "raise", "True", "class", "exec", "in", "return", "False", "continue", "finally", "is", "try", "def", "for", "lambda", "while"])
+python_Boot.prefixLength = len("_hx_")
+class GoldenData :
+    def __init__(self) :
+        self.changed = True
+        self.current_str = ""
+        
+    def update(self,root,mode,chordSeq,seqset,division,note_prop,chord_len,k,n) :
+        self.root = root
+        self.mode = mode
+        self.chordSeq = chordSeq
+        self.generate = seqset
+        self.division = division
+        self.note_prop = note_prop
+        self.chord_len = chord_len
+        self.k = k
+        self.n = n
+        self.old_str = self.current_str
+        self.current_str = "%s"%self
+        if self.old_str != self.current_str :
+            self.changed = True
+        else :
+            self.changed = False
+        
+    def __str__(self) :
+        return """\r\n
+-------------------------------------------\r\n
+Root : %s\r\n
+Mode : %s\r\n
+ChordSeq : %s\r\n
+Generate Type: %s\r\n
+Division : %s\r\n
+Note Proportion : %s\r\n
+Chord Length : %s\r\n
+Euclidean: k=%s, n=%s\r\n
+...........................................
+     
+""" % (self.root, self.mode, self.chordSeq, self.generate, self.division,
+self.note_prop,self.chord_len,self.k,self.n)
+
+CURRENT_DATA = GoldenData()         
+
+
+  
+def makeNote(num, time, length, color=0, velocity=65):
+    """
+    make a new Note object
+
+    num: pitch
+    time: time in ticks
+    length: duration in ticks
+    color: int in [0: 16)
+    """
+    note = flp.Note()
+    note.number = int(num)
+    note.time = int(time)
+    note.length = int(length)
+    note.color = int(color)
+    note.velocity = velocity
+    return note
+      
+def createDialog():
+    form = flp.ScriptDialog("GoldenPond",
+    'GoldenPond is language for defining chord progressions.\r\nThis is the FL Studio version which also lets you create rhythmic patterns for arpeggios and melodies.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
+    
+    form.AddInputKnobInt('Root',65,32,96)
+    form.AddInputCombo('Mode',["major","minor"],0)
+    form.AddInputText('ChordSeq', "1,4,5,1")
+    
+    form.AddInputCheckbox('Chords',False)
+    form.AddInputCheckbox('Euclidean',False)
+    form.AddInputCheckbox('Bass',False)
+    form.AddInputCheckbox('Top',False)
+    form.AddInputCheckbox('Random',False)
+    form.AddInputCheckbox('Scale',False)    
+    
+    form.AddInputKnobInt('Rhythm k',4,1,24)
+    form.AddInputKnobInt('Rhythm n',8,1,24)
+    
+    divisionItems = MenuHelper.getDivisionNames()
+
+    form.AddInputCombo('Division',divisionItems,4)
+    form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
+    form.AddInputKnobInt('Chord Length',4,1,16)
+    
+    form.AddInputKnobInt("Stutter",0,0,16)
+    form.AddInputCheckbox("Silent",False)
+    
+
+    #form.AddInputCombo('Generate',['Chords','Euclidean','Bass','C+E','E+B','C+B','All','All E+12','Top'],0)
+
+    return form
+
+
+def post_notes_to_score(notes_list):
+    for note_data in notes_list:
+        note_value = note_data.note
+        start_time = note_data.start_time
+        note_duration = note_data.length
+        color = note_data.chan
+        note = makeNote(note_value, start_time, note_duration,color=color)
+        flp.score.addNote(note)
+
+
+def transpose_all(all_notes, n):
+    transposed = [{'note': note_entry['note'] + n, 
+                   'start_time': note_entry['start_time'], 
+                   'length': note_entry['length']} for note_entry in all_notes]
+    return transposed
+ 
+
+
+        
+def apply(form):
+    root = form.GetInputValue('Root')
+    mode = form.GetInputValue('Mode')
+    chordSeq = form.GetInputValue('ChordSeq')
+    #gtype = form.GetInputValue('Generate')
+        
+    seqtypes = set([])
+    if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
+    if form.GetInputValue("Euclidean")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
+    if form.GetInputValue("Bass")==1: seqtypes.add(SeqTypes.BASS)
+    if form.GetInputValue("Top")==1: seqtypes.add(SeqTypes.TOP)
+    if form.GetInputValue("Random")==1: seqtypes.add(SeqTypes.RANDOM)
+    if form.GetInputValue("Scale")==1: seqtypes.add(SeqTypes.SCALE)
+
+    division = MenuHelper.getDivisionFor(form.GetInputValue('Division'))
+    note_prop = form.GetInputValue('Note Proportion')
+    chord_len = form.GetInputValue('Chord Length')
+ 
+    
+    k = form.GetInputValue('Rhythm k')
+    n = form.GetInputValue('Rhythm n')
+
+    stutter = form.GetInputValue("Stutter")
+
+    timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
+    timingInfo.setChordLen(chord_len).setNoteLen(note_prop).setDivision(division)
+
+    division, note_prop, chord_len
+    
+
+    flp.score.clearNotes(False)
+
+    if form.GetInputValue("Silent")==1 : return
+    try : 
+        if mode == 0 : 
+            theMode = Mode.getMajorMode()
+        else :
+            theMode = Mode.getMinorMode()
+     
+        seq = ChordProgression(root,theMode,chordSeq)
+        seq.setStutter(stutter)
+ 
+        time = 0
+ 
+        all_notes = timingInfo.grabCombo(seq,k,n,0,list(seqtypes))
+ 
+        post_notes_to_score(all_notes)
+        
+        CURRENT_DATA.update(root,mode,chordSeq,["%s"%x for x in seqtypes],division,note_prop,chord_len,k,n)
+        if CURRENT_DATA.changed :
+            Utils.log("Changed\n%s" % CURRENT_DATA)
+            
+    except Exception as e :
+        Utils.log("Exception\n%s" % e)
+        
