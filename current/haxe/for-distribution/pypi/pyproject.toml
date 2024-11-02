@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "goldenpond"
+version = "0.3.0"
+description = "A Python library for interpreting the GoldenPond DSL for making musical chord progressions."
+readme = "README.md"
+authors = ["Phil Jones <interstar@gmail.com>"]
+license = "GPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
