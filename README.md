@@ -22,7 +22,7 @@ GoldenPond was then rewritten in Python for use with the [FoxDot](https://github
 
 I then further developed some of my ideas for generating chord progressions in a series of YouTube [video tutorials](https://www.youtube.com/watch?v=qd8SEL_rTNw&list=PLuBDEereAQUz2iiEZb7yGLH0Bzi52egGp) using [Sonic Pi](https://sonic-pi.net/). Some of the most interesting ideas came out of those videos. There was not a single code-base, just some functions to be pasted into a Sonic Pi window. But I will, for now, collect examples of these scripts in `attic/sonic-pi`. Eventually the new GoldenPond codebase will be translated to Sonic Pi as well.
 
-The latest incarnation of GoldenPond is rewritten from scratch in Python. And was initially inspired by the fact that FL Studio now supports [Python scripting for its piano-roll](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/pianoroll_scripting_api.htm). This is the first time I decided to include a parser. Previously the little language of the music had to be embedded in the syntax of the hosting language, whether Haskell, Python or Ruby (Sonic Pi) and was therefore constrained by them.
+Then there was another rewrite from scratch in Python. Which was initially inspired by the fact that FL Studio now supports [Python scripting for its piano-roll](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/pianoroll_scripting_api.htm). This is the first time I decided to include a parser. Previously the little language of the music had to be embedded in the syntax of the hosting language, whether Haskell, Python or Ruby (Sonic Pi) and was therefore constrained by them.
 
 Now, though, we can have the language and syntax for describing music that we actually want. Yay!
 
@@ -100,6 +100,26 @@ midi_data.write('./gp_example.mid')
 ```
 ### Future
 
-There is a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. I'm currenly looking into translation of this Python code to other languages. I've experimented with using ChatGPT (natch) to translate it into Javascript, Clojurescript and others. I'm now coming around to looking at Haxe. Maybe eventually I'll migrate it to Haxe and make Python and FL Studio scripting, one target of several. When there is progress in any of these experiments, I'll add them to this repository.
+There is a more ambitious goal. The problem with writing music software is that there are many specific targets for where it needs to run. The latest work in progress is to a rewrite GoldenPond in Haxe ([https://haxe.org/](https://haxe.org/)), a language designed to be transpiled to other languages. You can see work in progress in the haxe subdirectory.
 
-Meanwhile, GoldenPond as an idea, and actually usable code, is now a thing. And I'm very excited about it. I'm starting to consolidate it, together with some of my other music/code projects under a new "micro-research lab" : [Gilbert Lister Research](http://gilbertlisterresearch.com) That's where you'll find more documentation / tutorials too.
+As of October 2024, the Haxe code-base is now the official main development, going forward. I am successfully compiling it into both Python and Javascript. And experimentally to Java and C++. **All future development on GoldenPond is going to be to the code currently in the haxe subdir of this repository. Everything else is deprecated and will eventually disappear**
+
+The status of the Haxe->Python code is that :
+
+- it successfully transpiles and runs all the tests in the Python version.
+- it can be built into a working FL Studio script (although there are a couple of small bugs with the final script that I'll need to iron out before the Haxe derived version of the FL script becomes the official one)
+- it will shortly be uploaded to PyPI so will be pip installable anywhere
+- I am trying to get it working with [Renardo](https://renardo.org/), a Python based live-coding environment. I've not succeeded yet, but that's more to do with Renardo
+
+The status of the Haxe->JS code is that :
+- it successfully transpiles and runs as JS
+- it doesn't pass all the tests, but this is to do with quirks of Javascript equality tests.
+- it runs successfully in the browser as part of a demonstration web-editor / web-app.
+- this web version will shortly be made public.
+
+The status of the Haxe->C++ code is that :
+- it successfully transpiles to C++, compiles and runs the tests
+- the longer term goal is to build it into a VST or other plugin so it can run in any DAW (But this is for next year)
+
+The status of the Haxe->Java code is that there are issues. Obviously it would be great to have in Java so I can write an Android app featuring the library. That's also a 2025 or 2026 goal.
+
