@@ -75,7 +75,33 @@ s = s.strip(",")
 chord_sequence = ChordProgression(45,MAJOR,s).toNotes()
 chord_sequence2 = ChordProgression(45,MINOR,s).toNotes()
 
-play_chord_sequence(chord_sequence+chord_sequence2,0.5)       
+#play_chord_sequence(chord_sequence+chord_sequence2,0.5)       
+
+# cush chords /  chromatic mediants (up)
+s = "74,73,72,75,71,>3,74,73,72,75,<3,71"
+cs = ChordProgression(45,MINOR,s).toNotes()
+#play_chord_sequence(cs)
+
+# cush chords /  chromatic mediants (down)
+s = "74,73,72,75,71,<3,74,73,72,75,>3,71"
+cs = ChordProgression(45,MINOR,s).toNotes()
+#play_chord_sequence(cs)
+
+# double chromatic mediants
+s = "74,73,72,75,71,!,>3,74,73,72,75,!,<3,71"
+cs = ChordProgression(45,MAJOR,s).toNotes()
+#play_chord_sequence(cs)
+ 
 
 
+# secondary diminished?
+s = "71,<5,75,>5,73,72,75,71"
+cs = ChordProgression(52,MAJOR,s).toNotes()
+#play_chord_sequence(cs)
+
+
+# flat 6
+s = "71,73,-76,75"
+cs = ChordProgression(52,MAJOR,s).toNotes()
+play_chord_sequence(cs)
     
