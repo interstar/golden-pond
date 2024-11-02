@@ -2,6 +2,8 @@
 
 cp ../../out/python/goldenpond.py generated.py
 
-cat pre.py generated.py post.py > final_output.py
+cat pre.py generated.py post.py > goldenpond.pyscript
+
+echo "Now put the goldenpond.pyscript wherever FL Studio can find it. Probably  <User>/YOURNAME/Documents/Image-Line/FL Studio/Settings/Piano roll scripts/goldenpond.pyscript"
 
 
