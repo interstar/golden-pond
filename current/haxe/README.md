@@ -28,7 +28,7 @@ The build information for each target language is in the respective build file
 
     haxe --interp -cp src/goldenpond --main TestGoldenPond
 
-runs the unit tests in the Haxe interpretter 
+runs the unit tests in the Haxe interpreter 
 
 #### For Python
 
