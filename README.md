@@ -36,7 +36,7 @@ The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
 - it doesn't pass all the tests, but this is to do with quirks of Javascript equality tests.
 - it runs successfully in the browser as part of a demonstration web-editor / web-app. (See haxe/for-distribution/web-app/, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html)
-- this web version will shortly be visible online
+- you can try this web version [here](https://gilbertlisterresearch.com/identity_assets/webapp/index.html) Not that it's still very much work in progress.
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
