@@ -78,8 +78,8 @@ from goldenpond import Mode, ChordProgression, TimeManipulator
 seq = ChordProgression(48,MAJOR,'71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3)
 
 # The TimeManipulator can take the list of chords as notes and spreads these notes in time
-
-ti = TimeManipulator(4,1.2,16,0.7)
+ti = TimeManipulator()
+ti.setNoteLen(1.2).setChordLen(16).setPPQ(0.7)
 
 # If we ask it for chords, we get all the notes of each chord at the same time. 
 chords = ti.chords(seq, 0, 0)
