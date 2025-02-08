@@ -1,4 +1,3 @@
-
 import Mode;
 import ChordThing;
 import ChordParser;
@@ -324,176 +323,231 @@ static function testChordFactory() {
 	}
 
 
-        static function testNotes() {
+    static function testNotes() {
 	  trace("Testing Notes");
-	  var n = new Note(0,68,4,0.5);
+	  var n = new Note(0,68,100,4,0.5);
 	  testit("Note transposition",
 		 n.transpose(12),
-		 new Note(0,80,4,0.5),
+		 new Note(0,80,100,4,0.5),
 		 "note transposition");
 
+      testit("Note to string",
+      	n.toString(),
+      	'Note[chan: 0, note: 68, vel: 100, startTime: 4, length: 0.5]',
+      	"note to string"
+      );
 	  trace("Transposing collections of Notes");
-	  var ns = [new Note(0,68,4,0.5), new Note(0,64,8,0.5)];
+	  var ns = [new Note(0,68,100,4,0.5), new Note(0,64,50,8,0.5)];
 	  testit("Note collection transposition",
 		 ScoreUtilities.transposeNotes(ns,-4),
-		 [new Note(0,64,4,0.5), new Note(0,60,8,0.5)],
+		 [new Note(0,64,100,4,0.5), new Note(0,60,50,8,0.5)],
 		 "note collection transposition");
+	
+	  	 
 
 	}
   
 	static function testTimeManipulator() {
-		trace("Testing Timed Parts\n");
-		
+		trace("Testing Line Generators\n");
+
+		// Configure TimeManipulator like test_goldenpond.py
 		var ti = new TimeManipulator();
-		ti.setDivision(QUARTER).setNoteLen(0.8).setChordLen(16).setPPQ(960);
-		trace(ti.toString());
-		
-		
-		var seq = new ChordProgression(60, MAJOR, "72,75,71");
+		ti.setPPQ(960)
+		  .setChordLen(8)
+		  .setBPM(120);
 
+		// Create chord progression
+		var seq = new ChordProgression(50, MAJOR, "76,72,!,75,71");
 
-		
+		// Get rhythmic density values
+		var density1 = MenuHelper.rhythmicDensityToNumeric(ONE_STEP);
+		var density2 = MenuHelper.rhythmicDensityToNumeric(TWO_STEPS);
+		var density4 = MenuHelper.rhythmicDensityToNumeric(FOUR_STEPS);
 
-		testit("TimeManipulator Chords",
-		       ti.chords(seq, 7, 0),
-		    [
-		     new Note(7, 62, 0, 1536.0), new Note(7, 65, 0, 1536.0),
-		     new Note(7, 69, 0, 1536.0), new Note(7, 72, 0, 1536.0),
-		     new Note(7, 67, 3840.0, 1536.0), new Note(7, 71, 3840.0, 1536.0),
-		     new Note(7, 74, 3840.0, 1536.0), new Note(7, 77, 3840.0, 1536.0),
-		     new Note(7, 60, 7680.0, 1536.0), new Note(7, 64, 7680.0, 1536.0),
-		     new Note(7, 67, 7680.0, 1536.0), new Note(7, 71, 7680.0, 1536.0)
-		    ],
-		    "Chord Times");
+		// Test ChordLine
+		var chord_line = new ChordLine(ti, seq, 5, 8, 0.8, density1).generateNotes(0, 0, 64);
+		testit("ChordLine first five chords",
+			chord_line.slice(0, 20),
+			[
+				// First chord
+				new Note(0, 59, 64, 0, 768),
+				new Note(0, 62, 64, 0, 768),
+				new Note(0, 66, 64, 0, 768),
+				new Note(0, 69, 64, 0, 768),
+				// Second chord
+				new Note(0, 59, 64, 1920, 768),
+				new Note(0, 62, 64, 1920, 768),
+				new Note(0, 66, 64, 1920, 768),
+				new Note(0, 69, 64, 1920, 768),
+				// Third chord
+				new Note(0, 59, 64, 2880, 768),
+				new Note(0, 62, 64, 2880, 768),
+				new Note(0, 66, 64, 2880, 768),
+				new Note(0, 69, 64, 2880, 768),
+				// Fourth chord
+				new Note(0, 59, 64, 4800, 768),
+				new Note(0, 62, 64, 4800, 768),
+				new Note(0, 66, 64, 4800, 768),
+				new Note(0, 69, 64, 4800, 768),
+				// Fifth chord
+				new Note(0, 59, 64, 5760, 768),
+				new Note(0, 62, 64, 5760, 768),
+				new Note(0, 66, 64, 5760, 768),
+				new Note(0, 69, 64, 5760, 768)
+			],
+			"First five chords should have correct notes and timing"
+		);
 
-		trace("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		// Test BassLine
+		var bass_line = new BassLine(ti, seq, 4, 8, 0.8, density2).generateNotes(0, 1, 100);
+		testit("BassLine first twenty notes",
+			bass_line.slice(0, 20),
+			[
+				new Note(1, 47, 100, 0, 384),
+				new Note(1, 47, 100, 960, 384),
+				new Note(1, 47, 100, 1920, 384),
+				new Note(1, 47, 100, 2880, 384),
+				new Note(1, 47, 100, 3840, 384),
+				new Note(1, 47, 100, 4800, 384),
+				new Note(1, 47, 100, 5760, 384),
+				new Note(1, 47, 100, 6720, 384),
+				new Note(1, 40, 100, 7680, 384),
+				new Note(1, 40, 100, 8640, 384),
+				new Note(1, 40, 100, 9600, 384),
+				new Note(1, 40, 100, 10560, 384),
+				new Note(1, 40, 100, 11520, 384),
+				new Note(1, 40, 100, 12480, 384),
+				new Note(1, 40, 100, 13440, 384),
+				new Note(1, 40, 100, 14400, 384),
+				new Note(1, 45, 100, 15360, 384),
+				new Note(1, 45, 100, 16320, 384),
+				new Note(1, 45, 100, 17280, 384),
+				new Note(1, 45, 100, 18240, 384)
+			],
+			"Bass line should play root notes with correct rhythm"
+		);
 
-		testit("TimeManipulator Bass",
-		       ti.bassline(seq, 3, 8, 8, 0),
-		    [
-		     new Note(8, 50, 0, 192.0), new Note(8, 50, 720.0, 192.0),
-		     new Note(8, 50, 1200.0, 192.0), new Note(8, 50, 1920.0, 192.0),
-		     new Note(8, 50, 2640.0, 192.0), new Note(8, 50, 3120.0, 192.0),
-		     new Note(8, 55, 3840.0, 192.0), new Note(8, 55, 4560.0, 192.0),
-		     new Note(8, 55, 5040.0, 192.0), new Note(8, 55, 5760.0, 192.0),
-		     new Note(8, 55, 6480.0, 192.0), new Note(8, 55, 6960.0, 192.0),
-		     new Note(8, 48, 7680.0, 192.0), new Note(8, 48, 8400.0, 192.0),
-		     new Note(8, 48, 8880.0, 192.0), new Note(8, 48, 9600.0, 192.0),
-		     new Note(8, 48, 10320.0, 192.0), new Note(8, 48, 10800.0, 192.0)
-		    ],
-		    "Bassline Times");
-		trace("===================================================================================");
+		// Test TopLine
+		var top_line = new TopLine(ti, seq, 3, 8, 0.6, density2).generateNotes(0, 2, 100);
+		testit("TopLine first twenty notes",
+			top_line.slice(0, 20),
+			[
+				new Note(2, 81, 100, 0, 288),
+				new Note(2, 81, 100, 1440, 288),
+				new Note(2, 81, 100, 2400, 288),
+				new Note(2, 81, 100, 3840, 288),
+				new Note(2, 81, 100, 5280, 288),
+				new Note(2, 81, 100, 6240, 288),
+				new Note(2, 74, 100, 7680, 288),
+				new Note(2, 74, 100, 9120, 288),
+				new Note(2, 74, 100, 10080, 288),
+				new Note(2, 74, 100, 11520, 288),
+				new Note(2, 74, 100, 12960, 288),
+				new Note(2, 74, 100, 13920, 288),
+				new Note(2, 79, 100, 15360, 288),
+				new Note(2, 79, 100, 16800, 288),
+				new Note(2, 79, 100, 17760, 288),
+				new Note(2, 79, 100, 19200, 288),
+				new Note(2, 79, 100, 20640, 288),
+				new Note(2, 79, 100, 21600, 288),
+				new Note(2, 72, 100, 23040, 288),
+				new Note(2, 72, 100, 24480, 288)
+			],
+			"Top line should play highest notes with correct rhythm"
+		);
 
-		testit("TimeManipulator Top",
-		       ti.topline(seq, 3, 8, 4, 0),
-		    [
-		     new Note(4, 84, 0, 192.0), new Note(4, 84, 720.0, 192.0),
-		     new Note(4, 84, 1200.0, 192.0), new Note(4, 84, 1920.0, 192.0),
-		     new Note(4, 84, 2640.0, 192.0), new Note(4, 84, 3120.0, 192.0),
-		     new Note(4, 89, 3840.0, 192.0), new Note(4, 89, 4560.0, 192.0),
-		     new Note(4, 89, 5040.0, 192.0), new Note(4, 89, 5760.0, 192.0),
-		     new Note(4, 89, 6480.0, 192.0), new Note(4, 89, 6960.0, 192.0),
-		     new Note(4, 83, 7680.0, 192.0), new Note(4, 83, 8400.0, 192.0),
-		     new Note(4, 83, 8880.0, 192.0), new Note(4, 83, 9600.0, 192.0),
-		     new Note(4, 83, 10320.0, 192.0), new Note(4, 83, 10800.0, 192.0)
-		    ],
-		    "Bassline Times");
+		// Test ArpLine
+		var arp_line = new ArpLine(ti, seq, 6, 12, 0.5, density2).generateNotes(0, 3, 100);
+		testit("ArpLine first twenty notes",
+			arp_line.slice(0, 20),
+			[
+				new Note(3, 59, 100, 0, 160),
+				new Note(3, 62, 100, 640, 160),
+				new Note(3, 66, 100, 1280, 160),
+				new Note(3, 69, 100, 1920, 160),
+				new Note(3, 59, 100, 2560, 160),
+				new Note(3, 62, 100, 3200, 160),
+				new Note(3, 66, 100, 3840, 160),
+				new Note(3, 69, 100, 4480, 160),
+				new Note(3, 59, 100, 5120, 160),
+				new Note(3, 62, 100, 5760, 160),
+				new Note(3, 66, 100, 6400, 160),
+				new Note(3, 69, 100, 7040, 160),
+				new Note(3, 52, 100, 7680, 160),
+				new Note(3, 55, 100, 8320, 160),
+				new Note(3, 59, 100, 8960, 160),
+				new Note(3, 62, 100, 9600, 160),
+				new Note(3, 52, 100, 10240, 160),
+				new Note(3, 55, 100, 10880, 160),
+				new Note(3, 59, 100, 11520, 160),
+				new Note(3, 62, 100, 12160, 160)
+			],
+			"Arp line should cycle through chord tones with correct rhythm"
+		);
 
-		testit("TimeManipulator Silent",
-		       ti.silentline(seq, 3, 8, 4, 0),
-		    [],
-		    "Silence");
+		// Test RandomLine
+		var rand_line = new RandomLine(ti, seq, 5, 8, 0.5, density4).generateNotes(0, 4, 100);
 
-		testit("TimeManipulator Arpeggiate",
-		       ti.arpeggiate(seq, 3, 8, 4, 0),
-		    [
-		        new Note(4, 62, 0, 192.0), new Note(4, 65, 720.0, 192.0),
-		        new Note(4, 69, 1200.0, 192.0), new Note(4, 72, 1920.0, 192.0),
-		        new Note(4, 62, 2640.0, 192.0), new Note(4, 65, 3120.0, 192.0),	
-		        new Note(4, 67, 3840.0, 192.0), new Note(4, 71, 4560.0, 192.0),
-		        new Note(4, 74, 5040.0, 192.0), new Note(4, 77, 5760.0, 192.0),
-		        new Note(4, 67, 6480.0, 192.0), new Note(4, 71, 6960.0, 192.0),
-		        new Note(4, 60, 7680.0, 192.0), new Note(4, 64, 8400.0, 192.0),
-		        new Note(4, 67, 8880.0, 192.0), new Note(4, 71, 9600.0, 192.0),
-		        new Note(4, 60, 10320.0, 192.0), new Note(4, 64, 10800.0, 192.0)
-		    ],
-		    "Arp Times");
+		// Test timing pattern (5 hits every 8 steps)
+		var timings = new Array<Float>();
+		for (i in 0...20) {
+			timings.push(rand_line[i].startTime);
+		}
 
-		testit("Grab combo",
-		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP, SeqTypes.EUCLIDEAN]),
-		    [
-		     new Note(3, 84, 0, 192.0), new Note(3, 84, 720.0, 192.0),
-		     new Note(3, 84, 1200.0, 192.0), new Note(3, 84, 1920.0, 192.0),
-		     new Note(3, 84, 2640.0, 192.0), new Note(3, 84, 3120.0, 192.0),
-		     new Note(3, 89, 3840.0, 192.0), new Note(3, 89, 4560.0, 192.0),
-		     new Note(3, 89, 5040.0, 192.0), new Note(3, 89, 5760.0, 192.0),
-		     new Note(3, 89, 6480.0, 192.0), new Note(3, 89, 6960.0, 192.0),
-		     new Note(3, 83, 7680.0, 192.0), new Note(3, 83, 8400.0, 192.0),
-		     new Note(3, 83, 8880.0, 192.0), new Note(3, 83, 9600.0, 192.0),
-		     new Note(3, 83, 10320.0, 192.0), new Note(3, 83, 10800.0, 192.0),
-		     new Note(1, 62, 0, 192.0), new Note(1, 65, 720.0, 192.0),
-		     new Note(1, 69, 1200.0, 192.0), new Note(1, 72, 1920.0, 192.0),
-		     new Note(1, 62, 2640.0, 192.0), new Note(1, 65, 3120.0, 192.0),
-		     new Note(1, 67, 3840.0, 192.0), new Note(1, 71, 4560.0, 192.0),
-		     new Note(1, 74, 5040.0, 192.0), new Note(1, 77, 5760.0, 192.0),
-		     new Note(1, 67, 6480.0, 192.0), new Note(1, 71, 6960.0, 192.0),
-		     new Note(1, 60, 7680.0, 192.0), new Note(1, 64, 8400.0, 192.0),
-		     new Note(1, 67, 8880.0, 192.0), new Note(1, 71, 9600.0, 192.0),
-		     new Note(1, 60, 10320.0, 192.0), new Note(1, 64, 10800.0, 192.0)
-		    ],
-		    "Grab both TOP and EUCLIDEAN");
+		testit("RandomLine timing pattern",
+			timings.slice(0, 5),  // First pattern of 5 hits
+			[0, 480, 720, 1200, 1440],  // Changed from floats to integers
+			"Random line should follow 5/8 Euclidean rhythm"
+		);
 
-		testit("Grab combo of one",
-		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.TOP]),
-		    [
-		     new Note(3, 84, 0, 192.0), new Note(3, 84, 720.0, 192.0),
-		     new Note(3, 84, 1200.0, 192.0), new Note(3, 84, 1920.0, 192.0),
-		     new Note(3, 84, 2640.0, 192.0), new Note(3, 84, 3120.0, 192.0),
-		     new Note(3, 89, 3840.0, 192.0), new Note(3, 89, 4560.0, 192.0),
-		     new Note(3, 89, 5040.0, 192.0), new Note(3, 89, 5760.0, 192.0),
-		     new Note(3, 89, 6480.0, 192.0), new Note(3, 89, 6960.0, 192.0),
-		     new Note(3, 83, 7680.0, 192.0), new Note(3, 83, 8400.0, 192.0),
-		     new Note(3, 83, 8880.0, 192.0), new Note(3, 83, 9600.0, 192.0),
-		     new Note(3, 83, 10320.0, 192.0), new Note(3, 83, 10800.0, 192.0)
-		    ],
-		    "Grab TOP only");
+		// Test note properties
+		for (note in rand_line.slice(0, 20)) {
+			// All notes should be from current chord
+			var chordIndex = Math.floor(note.startTime / (ti.chordTicks));
+			var currentChord = seq.toNotes()[chordIndex];
+			testit("RandomLine note in chord",
+				currentChord.contains(note.note),
+				true,
+				'Note ${note.note} should be in chord at time ${note.startTime}'
+			);
 
-		testit("Grab Bass and Scale",
-		    ti.grabCombo(seq, 3, 8, 0, [SeqTypes.BASS, SeqTypes.SCALE]),
-		    [
-		     new Note(2, 50, 0, 192.0), new Note(2, 50, 720.0, 192.0),
-		     new Note(2, 50, 1200.0, 192.0), new Note(2, 50, 1920.0, 192.0),
-		     new Note(2, 50, 2640.0, 192.0), new Note(2, 50, 3120.0, 192.0),
-		     new Note(2, 55, 3840.0, 192.0), new Note(2, 55, 4560.0, 192.0),
-		     new Note(2, 55, 5040.0, 192.0), new Note(2, 55, 5760.0, 192.0),
-		     new Note(2, 55, 6480.0, 192.0), new Note(2, 55, 6960.0, 192.0),
-		     new Note(2, 48, 7680.0, 192.0), new Note(2, 48, 8400.0, 192.0),
-		     new Note(2, 48, 8880.0, 192.0), new Note(2, 48, 9600.0, 192.0),
-		     new Note(2, 48, 10320.0, 192.0), new Note(2, 48, 10800.0, 192.0)
-		    ],
-		    "Grab both BASS and SCALE");
-		    
+			// Note length should be consistent
+			testit("RandomLine note length",
+				note.length,
+				120.0,  // 0.5 * step size for density4
+				"Note length should be consistent"
+			);
+
+			// Channel and velocity should be consistent
+			testit("RandomLine note properties",
+				[note.chan, note.velocity],
+				[4, 100],
+				"Channel and velocity should be consistent"
+			);
+		}
 	}
 
-    static function runScoreUtils() {
+
+    static function runScoreUtils() {   
         var ti = new TimeManipulator().setPPQ(960);
-	var seq = new ChordProgression(60, MAJOR, "72,75,71");
-	trace(seq);
-	var svg = ScoreUtilities.makePianoRollSVG(ti.chords(seq, 0, 0),800,600);
-		 
-	trace(svg);
+		var seq = new ChordProgression(60, MAJOR, "72,75,71");
+		trace(seq);
+		var density = MenuHelper.rhythmicDensityToNumeric(FOUR_STEPS);  // 1/4 - divide each chord into 4 steps
+		var svg = ScoreUtilities.makePianoRollSVG(new ChordLine(ti, seq, 1, 1, 0.8, density).generateNotes(0,0,64),800,600);		 
+		trace(svg);
     }
 	
 	
     static function main() {
         runScoreUtils();
-	testNotes();
+		testNotes();
         testMode();
         testChordThing();
         testChordFactory();
         testParser();
 	testMenuHelper();
         testTimeManipulator();
+	testRhythmGenerator();
 	trace("TOTAL ERRORS :: " + ERRORS);
 
         
@@ -510,6 +564,64 @@ static function testChordFactory() {
 
 
             */
+    }
+
+    static function testRhythmGenerator() {
+        trace("Testing RhythmGenerator");
+        
+        // Test 3 in 8 pattern
+        var rGen = new RhythmGenerator(3, 8);
+        var pattern = [];
+        var hitCount = 0;
+        for (i in 0...8) {
+            var beat = rGen.next();
+            pattern.push(beat);
+            if (beat == 1) hitCount++;
+        }
+        
+        testit("RhythmGenerator 3 in 8 hit count", 
+               hitCount, 
+               3, 
+               "RhythmGenerator should produce exactly 3 hits in 8 steps");
+               
+        // Test pattern repeats correctly
+        var secondPattern = [];
+        hitCount = 0;
+        for (i in 0...8) {
+            var beat = rGen.next();
+            secondPattern.push(beat);
+            if (beat == 1) hitCount++;
+        }
+        
+        testit("RhythmGenerator pattern repeat", 
+               pattern,
+               secondPattern, 
+               "RhythmGenerator should repeat the same pattern");
+               
+        testit("RhythmGenerator second pattern hit count",
+               hitCount,
+               3,
+               "RhythmGenerator should maintain 3 hits on repeat");
+               
+        // Test other common patterns
+        function testPattern(k:Int, n:Int) {
+            var rg = new RhythmGenerator(k, n);
+            var hits = 0;
+            for (i in 0...n) {
+                if (rg.next() == 1) hits++;
+            }
+            return hits;
+        }
+        
+        testit("RhythmGenerator 4 in 8", 
+               testPattern(4, 8),
+               4,
+               "4 in 8 pattern should have 4 hits");
+               
+        testit("RhythmGenerator 2 in 8",
+               testPattern(2, 8),
+               2,
+               "2 in 8 pattern should have 2 hits");
     }
 }
 

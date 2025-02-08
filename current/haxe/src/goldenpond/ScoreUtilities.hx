@@ -21,32 +21,34 @@ To understand the GNU Affero General Public License see <https://www.gnu.org/lic
 class Note {
   public var chan:Int;
   public var note:Int;
-  public var start_time:Float;
+  public var startTime:Float;
   public var length:Float;
+  public var velocity:Int;
 
-  public function new(chan:Int, note:Int, start_time:Float, length:Float) {
+  public function new(chan:Int, note:Int, velocity:Int, startTime:Float, length:Float) {
     this.chan = chan;
     this.note = note;
-    this.start_time = start_time;
+    this.startTime = startTime;
     this.length = length;
+    this.velocity = velocity;
   }
 
   public function toString():String {
-    return 'Note[chan: ' + chan + ', note: ' + note + ', start_time: ' + start_time + ', length: ' + length + ']';
+    return 'Note[chan: ' + chan + ', note: ' + note + ', vel: ' + velocity + ', startTime: ' + startTime + ', length: ' + length + ']';
   }
 
   @:expose
   public function toStruct() {
-      return {chan: this.chan, note: this.note, start_time: this.start_time, length: this.length};
+      return {chan: this.chan, note: this.note, velocity: this.velocity, startTime: this.startTime, length: this.length};
   }
     
   public function equals(other:Note):Bool {
-    return this.note == other.note && this.start_time == other.start_time && this.length == other.length;
+    return this.note == other.note && this.velocity == other.velocity && this.startTime == other.startTime && this.length == other.length;
   }
 
   @:expose
   public function transpose(offset:Int):Note {
-    return new Note(this.chan,this.note+offset,this.start_time,this.length);
+    return new Note(this.chan,this.note+offset,this.velocity,this.startTime,this.length);
   }
 }
 
@@ -75,7 +77,7 @@ class ScoreUtilities {
     
     // Draw each note as a rectangle
     for (note in notes) {
-      var x = note.start_time * timeScale;
+      var x = note.startTime * timeScale;
       var y = svgHeight - ((note.note - pitchOffset) * noteHeight) - noteHeight;         
       var width = note.length * timeScale;
       var height = noteHeight;

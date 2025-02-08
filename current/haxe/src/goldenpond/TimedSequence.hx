@@ -47,10 +47,30 @@ enum DivisionValue {
   WHOLE;
 }
 
+enum RhythmicDensity {
+    SIXTEEN_STEPS;
+    TWELVE_STEPS;
+    EIGHT_STEPS;
+    SIX_STEPS;
+    FOUR_STEPS;
+    THREE_STEPS;
+    TWO_STEPS;
+    ONE_STEP;
+}
+
 interface IRhythmGenerator {
     public function hasNext():Bool;
     public function next():Int;
 }
+
+
+ 
+interface ILineGenerator {
+    function generateNotes(startTime: Float, channel: Int, velocity: Int): Array<Note>;
+    function getPitches(): Array<Int>;
+    function getDurations(): Array<Float>;
+}
+
 
 class SilentIterator implements IRhythmGenerator {
     public function new() {}
@@ -70,6 +90,10 @@ class RhythmGenerator implements IRhythmGenerator {
 
     public function new(k:Int, n:Int) {
         this.rhythm = TimeManipulator.distributePulsesEvenly(k, n);
+        this.index = 0;
+    }
+
+    public function restart() {
         this.index = 0;
     }
 
@@ -144,175 +168,291 @@ class MenuHelper {
     return [SIXTEENTH=>1/16, TWELFTH=>1/12, EIGHTH=>1/8, SIXTH=>1/6, QUARTER=>1/4, THIRD=>1/3, HALF=>1/2, WHOLE=>1][dv];
   }
   
+  public static function getRhythmicDensityNames():Array<String> {
+    return ["16 steps/chord", "12 steps/chord", "8 steps/chord", 
+            "6 steps/chord", "4 steps/chord", "3 steps/chord", 
+            "2 steps/chord", "1 step/chord"];
+  }
+
+  public static function getRhythmicDensityValues():Array<RhythmicDensity> {
+    return [SIXTEEN_STEPS, TWELVE_STEPS, EIGHT_STEPS, SIX_STEPS,
+            FOUR_STEPS, THREE_STEPS, TWO_STEPS, ONE_STEP];
+  }
+
+  public static function getRhythmicDensityFor(i:Int):RhythmicDensity {
+    return getRhythmicDensityValues()[i];
+  }
+
+  public static function rhythmicDensityToNumeric(rd:RhythmicDensity):Float {
+    return [
+        SIXTEEN_STEPS => 1/16, TWELVE_STEPS => 1/12, 
+        EIGHT_STEPS => 1/8, SIX_STEPS => 1/6,
+        FOUR_STEPS => 1/4, THREE_STEPS => 1/3,
+        TWO_STEPS => 1/2, ONE_STEP => 1
+    ][rd];
+  }
 }
 
 @:expose
 class TimeManipulator {
-    public var ppq:Float;
-    public var beatFraction:Float;
-    public var noteProportion:Float;
-    public var chordMultiplier:Float;
-    public var beatLength:Float;
-    public var noteLength:Float;
-    public var chordLength:Float;
+	public var ppq:Float;                    // Ticks per quarter note - fundamental resolution
+	public var chordDuration:Float;          // How many quarter notes each chord lasts
+	public var chordTicks:Float;             // Total ticks for one chord
+	public var bpm:Float;                    // Tempo in beats per minute
 
-
-  //public function new(beatCode:Int, noteProportion:Float, chordMultiplier:Float, ppq:Int) {
-    public function new() {
-        this.ppq = 1000;
-        this.beatFraction = 1/4;
-        this.noteProportion = 0.8;
-        this.chordMultiplier = 16;
-	recalc();
-    }
-
-    private function recalc() {
-        this.beatLength = this.ppq * this.beatFraction;
-        this.noteLength = this.beatLength * this.noteProportion;
-        this.chordLength = this.beatLength * this.chordMultiplier;
-    }
-  
-    public function setDivision(dv:DivisionValue):TimeManipulator {
-      this.beatFraction = MenuHelper.divisionValue2Numeric(dv);
-      recalc();
-      return this;
-    }
-
-    public function setNoteLen(np:Float):TimeManipulator {
-      this.noteProportion=np;
-      recalc();
-      return this;
-    }
-
-    public function setChordLen(cl:Float):TimeManipulator {
-      this.chordMultiplier = cl;
-      recalc();
-      return this;
-    }
-
-    public function setPPQ(p:Float):TimeManipulator {
-      this.ppq = p;
-      recalc();
-      return this;
-    }
-
-    public function toString():String {
-      return "\nTimeManipulator\n  PPQ:: " + this.ppq + "\n  Division:: " + this.beatFraction + "\n  Chord Length:: " + this.chordMultiplier + "\n  Note Length:: " + this.noteLength;
-    }
-  
-    // Ensure SeqTypes accessible
-    public function getSeqTypes() {
-        return SeqTypes;	
-    }
- 
-    public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
-        var rhythm = new Array<Int>();
-        for (i in 0...n) rhythm.push(0);
-        var stepSize = n / k;
-        var currentStep = 0.0;
-        for (i in 0...k) {
-            rhythm[Math.round(currentStep)] = 1;
-            currentStep += stepSize;
-        }
-        return rhythm;
-    }
-
-     public function chords(seq:ChordProgression, chan:Int, startTime:Float):Array<Note> {
-        var allNotes = new Array<Note>();
-        var currentTime = startTime;
-        for (c in seq.toNotes()) {
-            for (note in c) {
-	      allNotes.push(new Note(chan, note, currentTime, this.noteLength * this.chordMultiplier * 0.5));
-            }
-            currentTime += this.beatLength * this.chordMultiplier;
-        }
-        return allNotes;
-    }
-
-    public function noteline(seq:ChordProgression, noteSelector: Array<Int> -> Int, rhythmGen: IRhythmGenerator, chan:Int, startTime:Float):Array<Note> {
-        var allNotes = new Array<Note>();
-        var currentTime = startTime;
-        for (c in seq.toNotes()) {
-            var beatsForCurrentChord = 0;
-            while (beatsForCurrentChord < this.chordMultiplier) {
-                var beat = rhythmGen.next();
-                if (beat == 1) {
-		  allNotes.push(new Note(chan, noteSelector(c), currentTime, this.noteLength));
-                }
-                currentTime += this.beatLength;
-                beatsForCurrentChord++;
-            }
-        }
-        return allNotes;
-    }
-
-    public function bassline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-        var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[0] - 12; });
-        var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[0] - 12; }, rGen, chan, startTime);
-    }
-
-    public function topline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-        var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; });
-        var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[chord.length - 1] + 12; }, rGen, chan, startTime);
-    }
-
-    public function randline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-        var nGen = new NoteSelectorIterator(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; });
-        var rGen = new RhythmGenerator(k, n);
-        return this.noteline(seq, function(chord:Array<Int>):Int { return chord[Math.floor(Math.random() * chord.length)] + 12; }, rGen, chan, startTime);
-    }
-
-    public function arpeggiate(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-		var rGen = new RhythmGenerator(k, n);
-		var allNotes = new Array<Note>();
-		var currentTime = startTime;
-
-		for (c in seq.toNotes()) {
-		    var beatsForCurrentChord = 0;
-		    var arpIter = new ArpIterator(c);
-		    while (beatsForCurrentChord < this.chordMultiplier) {
-		        var beat = rGen.next();
-		        if (beat == 1) {
-			  allNotes.push(new Note(chan, arpIter.next(), currentTime, this.noteLength));
-		        }
-		        currentTime += this.beatLength;
-		        beatsForCurrentChord++;
-		    }
-		    rGen = new RhythmGenerator(k, n); // Reset the rhythm generator after finishing the beats for one chord
-		}
-		return allNotes;
+	public function new() {
+	    this.ppq = 1000;
+	    this.chordDuration = 16;
+	    this.bpm = 120; 
+	    recalc();
 	}
 
-    public function scaleline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-        return [];
+	private function recalc() {
+	    this.chordTicks = this.ppq * this.chordDuration;
+	}
+
+	public function setChordLen(cl:Float):TimeManipulator {
+	    this.chordDuration = cl;
+	    recalc();
+	    return this;
+	}
+
+	public function setPPQ(p:Float):TimeManipulator {
+	    this.ppq = p;
+	    recalc();
+	    return this;
+	}
+
+	public function setBPM(b:Float):TimeManipulator {
+		this.bpm = b;
+		recalc();
+		return this;
+	}
+
+	public function toString():String {
+	    return "\nTimeManipulator\n  PPQ: " + this.ppq + 
+	           "\n  Chord Length Multiplier: " + this.chordDuration +
+	           "\n  quarterToMS: " + this.quarterToMS() + 
+	           "\n  chordTicks:" + this.chordTicks;
+	}
+
+	public function quarterToMS():Float {
+		return 60 / this.bpm;
+	}
+
+	// Static utility method for rhythm generation
+	public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
+	    var rhythm = new Array<Int>();
+	    for (i in 0...n) rhythm.push(0);
+	    var stepSize = n / k;
+	    var currentStep = 0.0;
+	    for (i in 0...k) {
+	        rhythm[Math.round(currentStep)] = 1;
+	        currentStep += stepSize;
+	    }
+	    return rhythm;
+	}
+}
+
+ 
+class AbstractLineGenerator implements ILineGenerator {
+    @:protected var seq: ChordProgression;
+    @:protected var timeManipulator: TimeManipulator;
+    @:protected var gateLength: Float;
+    @:protected var cachedNotes: Array<Note>;
+    public var k: Int = 1;  // Initialize with default value
+    public var n: Int = 1;  // Initialize with default value
+    @:protected var rhythmicDensity: Float;
+
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        this.timeManipulator = timeManipulator;
+        this.seq = seq;
+        this.k = k;
+        this.n = n;
+        this.gateLength = gateLength;
+        this.rhythmicDensity = rhythmicDensity;
+        this.cachedNotes = generateCachedNotes();
     }
 
-    public function silentline(seq:ChordProgression, k:Int, n:Int, chan:Int, startTime:Float):Array<Note> {
-        var rGen = new SilentIterator();
-        return this.noteline(seq, function(chord:Array<Int>):Int { return 0; }, rGen, chan, startTime);
-    }
 
-    public function grabCombo(seq:ChordProgression, k:Int, n:Int, startTime:Float, seqset:Array<SeqTypes>):Array<Note> {
+    @:protected function generateCachedNotes(): Array<Note> {
         var notes = new Array<Note>();
-        for (val in seqset) {
-            switch (val) {
-                case SeqTypes.CHORDS:
-		  notes = notes.concat(this.chords(seq, 0, startTime));
-                case SeqTypes.EUCLIDEAN:
-		  notes = notes.concat(this.arpeggiate(seq, k, n, 1, startTime));
-                case SeqTypes.BASS:
-		  notes = notes.concat(this.bassline(seq, k, n, 2, startTime));
-                case SeqTypes.TOP:
-		  notes = notes.concat(this.topline(seq, k, n, 3, startTime));
-                case SeqTypes.RANDOM:
-		  notes = notes.concat(this.randline(seq, k, n, 4, startTime));
-                case SeqTypes.SCALE:
-		  notes = notes.concat(this.scaleline(seq, k, n, 5, startTime));
+        var currentTime = 0.0;
+        
+        var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
+        var euclideanStepSize = patternDuration / n;
+        var patternsPerChord = Math.floor(1 / rhythmicDensity);
+
+        for (c in seq.toNotes()) {
+            // For each pattern that fits in this chord
+            for (pattern in 0...patternsPerChord) {
+                var rGen = new RhythmGenerator(this.k, this.n);
+                
+                // Play through the n steps of this pattern
+                for (step in 0...n) {
+                    var beat = rGen.next();
+                    if (beat == 1) {
+                        // Get all notes for this beat and create a Note for each
+                        for (noteValue in pickNotesFromChord(c)) {
+                            notes.push(new Note(
+                                0,
+                                noteValue,
+                                100,
+                                currentTime,
+                                euclideanStepSize * gateLength
+                            ));
+                        }
+                    }
+                    currentTime += euclideanStepSize;
+                }
+            }
+        }
+        return notes;
+    }
+
+    @:protected function pickNotesFromChord(chord:Array<Int>):Array<Int> {
+        throw new haxe.exceptions.NotImplementedException();
+    }
+
+    public function getPitches(): Array<Int> {
+        var pitches = new Array<Int>();
+        for (note in cachedNotes) {
+            pitches.push(note.note);
+        }
+        return pitches;
+    }
+
+    public function getDurations(): Array<Float> {
+        var durations = new Array<Float>();
+        if (cachedNotes.length == 0) return durations;
+
+        for (i in 0...cachedNotes.length - 1) {
+            var currentNote = cachedNotes[i];
+            var nextNote = cachedNotes[i + 1];
+            var duration = nextNote.startTime - currentNote.startTime;
+            durations.push(duration);
+        }
+
+        // For the last note, use its length
+        durations.push(cachedNotes[cachedNotes.length - 1].length);
+
+        return durations;
+    }
+
+    public function generateNotes(startTime: Float, channel: Int, velocity: Int): Array<Note> {
+        var adjustedNotes = new Array<Note>();
+        for (note in cachedNotes) {
+            adjustedNotes.push(new Note(
+                channel,
+                note.note,
+                velocity,
+                note.startTime + startTime,
+                note.length
+            ));
+        }
+        return adjustedNotes;
+    }
+}
+
+
+
+class ChordLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
+    }
+
+    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
+        return chord;  // Return all notes from the chord
+    }
+}
+
+
+@:expose
+class BassLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
+    }
+
+    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
+        return [chord[0] - 12];  // First note, octave down
+    }
+}
+
+
+
+@:expose
+class TopLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
+    }
+
+    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
+        return [chord[chord.length - 1] + 12];  // Last note, octave up
+    }
+}
+
+
+class ArpLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
+    }
+
+
+    override function generateCachedNotes(): Array<Note> {
+        var notes = new Array<Note>();
+        var currentTime = 0.0;
+        
+        var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
+        var euclideanStepSize = patternDuration / n;
+        var patternsPerChord = Math.floor(1 / rhythmicDensity);
+
+        for (c in seq.toNotes()) {
+            var arpIter = new ArpIterator(c);  // New iterator for each chord
+            
+            // For each pattern that fits in this chord
+            for (pattern in 0...patternsPerChord) {
+                var rGen = new RhythmGenerator(this.k, this.n);
+                // Play through the n steps of this pattern
+                for (step in 0...n) {
+                    var beat = rGen.next();
+                    if (beat == 1) {
+                        notes.push(new Note(
+                            0,
+                            arpIter.next(),  // Use arpIter for note selection
+                            100,
+                            currentTime,
+                            euclideanStepSize * gateLength
+                        ));
+                    }
+                    currentTime += euclideanStepSize;
+                }
             }
         }
         return notes;
     }
 }
+
+
+class SilentLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, 1, 1, gateLength, rhythmicDensity);
+    }
+
+    override function generateCachedNotes(): Array<Note> {
+        return []; // Generates no notes
+    }
+}
+
+@:expose
+class RandomLine extends AbstractLineGenerator {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
+    }
+
+    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
+        var randomIndex = Math.floor(Math.random() * chord.length);
+        return [chord[randomIndex]];
+    }
+}
+
 
