@@ -198,7 +198,9 @@
         var theMode = (mode == 0) ? Mode.getMajorMode() : Mode.getMinorMode();
         var prog = new ChordProgression(root, theMode, chordSeq);
 
-        ti = new TimeManipulator().setNoteLen(noteProportion).setChordLen(chordLength).setPPQ(0.8);
+        ti = new TimeManipulator()
+            .setChordLen(chordLength)
+            .setPPQ(0.8);
 
         console.log("Chords: " + chordSeq);
         console.log("Mode: " + mode);
@@ -237,57 +239,52 @@
         let baseTime = audioContext.currentTime;
 
         console.log("chords");
-        var chords = ti.chords(prog, 0, 0);
         if (chordsActive) {
+            var chordLine = new ChordLine(ti, prog, noteProportion);
+            var chords = chordLine.generateNotes(0, 0, 100);
             chords.forEach(note => {
-                let sound = chord_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
-                sound.onended = function() {
-                    sound.disconnect();
-                };
+                chord_instrument.play(note.note, baseTime + note.start_time, 
+                    { duration: note.duration });
             });
         }
 
         console.log("arpeggiate");
-        var arp = ti.arpeggiate(prog, euclideanK, euclideanN, 1, 0);
         if (euclideanActive) {
+            var arpLine = new ArpLine(ti, prog, euclideanK, euclideanN, noteProportion);
+            var arp = arpLine.generateNotes(0, 1, 100);
             arp.forEach(note => {
-                let sound = arp_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
-                sound.onended = function() {
-                    sound.disconnect();
-                };
+                arp_instrument.play(note.note, baseTime + note.start_time, 
+                    { duration: note.duration });
             });
         }
 
         console.log("Bassline");
-        var bass = ti.bassline(prog, bassK, bassN, 2, 0);
         if (bassActive) {
+            var bassLine = new BassLine(ti, prog, bassK, bassN, noteProportion);
+            var bass = bassLine.generateNotes(0, 2, 100);
             bass.forEach(note => {
-                let sound = bass_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
-                sound.onended = function() {
-                    sound.disconnect();
-                };
+                bass_instrument.play(note.note, baseTime + note.start_time, 
+                    { duration: note.duration });
             });
         }
         
         console.log("Topline");
-        var top = ti.topline(prog, topK, topN, 3, 0);
         if (topActive) {
+            var topLine = new TopLine(ti, prog, topK, topN, noteProportion);
+            var top = topLine.generateNotes(0, 3, 100);
             top.forEach(note => {
-                let sound = top_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
-                sound.onended = function() {
-                    sound.disconnect();
-                };
+                top_instrument.play(note.note, baseTime + note.start_time, 
+                    { duration: note.duration });
             });
         }        
 
         console.log("Random Line");
-        var random_line = ti.randline(prog, randomK, randomN, 4, 0);
         if (randomActive) {
-            random_line.forEach(note => {
-                let sound = random_instrument.play(note.note, baseTime + note.start_time, { duration: note.duration });
-                sound.onended = function() {
-                    sound.disconnect();
-                };
+            var randomLine = new RandomLine(ti, prog, randomK, randomN, noteProportion);
+            var random = randomLine.generateNotes(0, 4, 100);
+            random.forEach(note => {
+                random_instrument.play(note.note, baseTime + note.start_time, 
+                    { duration: note.duration });
             });
         }        
         

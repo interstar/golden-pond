@@ -1,4 +1,3 @@
-
 class GoldenData :
     def __init__(self) :
         self.changed = True
@@ -114,8 +113,7 @@ def apply(form):
     root = form.GetInputValue('Root')
     mode = form.GetInputValue('Mode')
     chordSeq = form.GetInputValue('ChordSeq')
-    #gtype = form.GetInputValue('Generate')
-        
+    
     seqtypes = set([])
     if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
     if form.GetInputValue("Euclidean")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
@@ -127,41 +125,62 @@ def apply(form):
     division = MenuHelper.getDivisionFor(form.GetInputValue('Division'))
     note_prop = form.GetInputValue('Note Proportion')
     chord_len = form.GetInputValue('Chord Length')
- 
     
     k = form.GetInputValue('Rhythm k')
     n = form.GetInputValue('Rhythm n')
-
     stutter = form.GetInputValue("Stutter")
 
+    # Configure TimeManipulator
     timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
-    timingInfo.setChordLen(chord_len).setNoteLen(note_prop).setDivision(division)
-
-    division, note_prop, chord_len
-    
+    timingInfo.setChordLen(chord_len).setDivision(division)
 
     flp.score.clearNotes(False)
 
-    if form.GetInputValue("Silent")==1 : return
-    try : 
-        if mode == 0 : 
-            theMode = Mode.getMajorMode()
-        else :
-            theMode = Mode.getMinorMode()
-     
-        seq = ChordProgression(root,theMode,chordSeq)
+    if form.GetInputValue("Silent")==1: 
+        return
+
+    try:
+        # Create chord progression
+        theMode = Mode.getMajorMode() if mode == 0 else Mode.getMinorMode()
+        seq = ChordProgression(root, theMode, chordSeq)
         seq.setStutter(stutter)
- 
-        time = 0
- 
-        all_notes = timingInfo.grabCombo(seq,k,n,0,list(seqtypes))
- 
+
+        all_notes = []
+        
+        # Generate notes for each selected line type
+        if SeqTypes.CHORDS in seqtypes:
+            chord_line = ChordLine(timingInfo, seq, note_prop)
+            all_notes.extend(chord_line.generateNotes(0, 0, 100))
+            
+        if SeqTypes.EUCLIDEAN in seqtypes:
+            arp_line = ArpLine(timingInfo, seq, k, n, note_prop)
+            all_notes.extend(arp_line.generateNotes(0, 1, 100))
+            
+        if SeqTypes.BASS in seqtypes:
+            bass_line = BassLine(timingInfo, seq, k, n, note_prop)
+            all_notes.extend(bass_line.generateNotes(0, 2, 100))
+            
+        if SeqTypes.TOP in seqtypes:
+            top_line = TopLine(timingInfo, seq, k, n, note_prop)
+            all_notes.extend(top_line.generateNotes(0, 3, 100))
+            
+        if SeqTypes.RANDOM in seqtypes:
+            random_line = RandomLine(timingInfo, seq, k, n, note_prop)
+            all_notes.extend(random_line.generateNotes(0, 4, 100))
+            
+        if SeqTypes.SCALE in seqtypes:
+            scale_line = ScaleLine(timingInfo, seq, k, n, note_prop)
+            all_notes.extend(scale_line.generateNotes(0, 5, 100))
+
         post_notes_to_score(all_notes)
         
-        CURRENT_DATA.update(root,mode,chordSeq,["%s"%x for x in seqtypes],division,note_prop,chord_len,k,n)
-        if CURRENT_DATA.changed :
+        # Update display data
+        CURRENT_DATA.update(root, mode, chordSeq, 
+                          ["%s"%x for x in seqtypes],
+                          division, note_prop, chord_len, k, n)
+        if CURRENT_DATA.changed:
             Utils.log("Changed\n%s" % CURRENT_DATA)
             
-    except Exception as e :
+    except Exception as e:
         Utils.log("Exception\n%s" % e)
         
