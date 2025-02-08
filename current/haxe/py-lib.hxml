@@ -1,6 +1,9 @@
-
 -cp src/goldenpond
 
-GoldenPond
+# Main classes to expose
+TimedSequence
+ChordParser
+Mode
+ScoreUtilities
  
 -python out/python/goldenpond.py
