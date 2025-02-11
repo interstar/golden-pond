@@ -6,21 +6,21 @@ import ScoreUtilities;
 
 class TestGoldenPond {
     static var ERRORS = 0;
+    static var TEST_COUNT = 0;  // Add counter for total tests
 
     static function testit(id:String, val:Dynamic, target:Dynamic, msg:String) {
+        TEST_COUNT++;  // Increment test counter
         if (!deepEquals(val, target)) {
-            trace("ERROR IN " + id + " : " + msg);
-            trace("Wanted:*" + Std.string(target) + "**");
-            trace("Got:*" + Std.string(val) + "**");
+            trace('ERROR IN ${id} : ${msg}');
+            trace('Wanted:*${Std.string(target)}**');
+            trace('Got:*${Std.string(val)}**');
             compareDetails(val, target);
-	    ERRORS=ERRORS+1;
+            ERRORS++;
         } else {
-            trace(id + " OK");
+            trace('${id} OK');
         }
     }
 
-
- 
     static function compareChordThings(a:ChordThing, b:ChordThing):Bool {
     	trace("In compareChordThings \n" + a + "\n" + b);
         return a.key == b.key &&
@@ -40,32 +40,30 @@ class TestGoldenPond {
         return true;
     }
 
-static function deepEquals(a:Dynamic, b:Dynamic):Bool {
-    if (a == null || b == null) return a == b; // Handle null cases
+    static function deepEquals(a:Dynamic, b:Dynamic):Bool {
+        if (a == null || b == null) return a == b; // Handle null cases
 
-    if (Std.isOfType(a, Array) && Std.isOfType(b, Array)) {
-        if (a.length != b.length) return false;
-        for (i in 0...a.length) {
-            if (!deepEquals(a[i], b[i])) return false;
+        if (Std.isOfType(a, Array) && Std.isOfType(b, Array)) {
+            if (a.length != b.length) return false;
+            for (i in 0...a.length) {
+                if (!deepEquals(a[i], b[i])) return false;
+            }
+            return true;
         }
-        return true;
+
+        
+        if (Std.isOfType(a, Note) && Std.isOfType(b, Note)) {
+            return a.equals(b);
+        }
+        
+        if (Std.isOfType(a, ChordThing) && Std.isOfType(b, ChordThing)) {
+            return a.equals(b);
+        }
+
+        // Fallback to standard equality check
+        return a == b;
     }
 
-    
-    if (Std.isOfType(a, Note) && Std.isOfType(b, Note)) {
-        return a.equals(b);
-    }
-    
-    if (Std.isOfType(a, ChordThing) && Std.isOfType(b, ChordThing)) {
-        return a.equals(b);
-    }
-
-    // Fallback to standard equality check
-    return a == b;
-}
-
-
-  
     static function compareDetails(a:Dynamic, b:Dynamic):Void {
 		trace("In compareDetails SHOULDN'T BE HERE");
         if (Std.isOfType(a, Array) && Std.isOfType(b, Array)) {
@@ -176,56 +174,56 @@ static function deepEquals(a:Dynamic, b:Dynamic):Bool {
         testit("ChordThing get mode3", new ChordThing(24, Mode.getMajorMode(), 3, 2).modal_interchange().get_mode(), Mode.getMinorMode(), "ChordThing.getMode");
     }
 	
-static function testChordFactory() {
-    trace("Testing ChordFactory");
+    static function testChordFactory() {
+        trace("Testing ChordFactory");
 
-    var MAJOR = Mode.getMajorMode();
-    var MINOR = Mode.getMinorMode();
+        var MAJOR = Mode.getMajorMode();
+        var MINOR = Mode.getMinorMode();
 
-    // Test Major Triad
-    testit("Major Triad C",
-        ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 1)),
-        [60, 64, 67],
-        "Major triad C not correctly generated.");
+        // Test Major Triad
+        testit("Major Triad C",
+            ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 1)),
+            [60, 64, 67],
+            "Major triad C not correctly generated.");
 
-    // Test Minor Triad
-    testit("Minor Triad A",
-        ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1)),
-        [57, 60, 64],
-        "Minor triad A not correctly generated.");
+        // Test Minor Triad
+        testit("Minor Triad A",
+            ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1)),
+            [57, 60, 64],
+            "Minor triad A not correctly generated.");
 
-    // Test Major Seventh Chord
-    testit("Major Seventh C",
-        ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 1).seventh()),
-        [60, 64, 67, 71],
-        "Major seventh C not correctly generated.");
+        // Test Major Seventh Chord
+        testit("Major Seventh C",
+            ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 1).seventh()),
+            [60, 64, 67, 71],
+            "Major seventh C not correctly generated.");
 
-    // Test Minor Seventh Chord
-    testit("Minor Seventh A",
-        ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1).seventh()),
-        [57, 60, 64, 67],
-        "Minor seventh A not correctly generated.");
+        // Test Minor Seventh Chord
+        testit("Minor Seventh A",
+            ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1).seventh()),
+            [57, 60, 64, 67],
+            "Minor seventh A not correctly generated.");
 
-    testit("Minor Ninth A",
-        ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1).ninth()),
-        [57, 60, 64, 67, 71],
-        "Minor ninth A not correctly generated.");
+        testit("Minor Ninth A",
+            ChordFactory.generateChordNotes(new ChordThing(57, MINOR, 1).ninth()),
+            [57, 60, 64, 67, 71],
+            "Minor ninth A not correctly generated.");
 
-    testit("Secondary Dominant of iii chord in C",
-        ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 3).set_as_secondary(5).seventh()),
-        [71, 75, 78, 81],
-        "Secondary dominant of iii in C not correctly generated.");
+        testit("Secondary Dominant of iii chord in C",
+            ChordFactory.generateChordNotes(new ChordThing(60, MAJOR, 3).set_as_secondary(5).seventh()),
+            [71, 75, 78, 81],
+            "Secondary dominant of iii in C not correctly generated.");
         
 
-    trace("Testing chord progressions");
+        trace("Testing chord progressions");
 
-    testit("A chord progression",
-        ChordFactory.chordProgression([new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 4), new ChordThing(60, MAJOR, 6), new ChordThing(60, MAJOR, 5)]),
-        [[60, 64, 67], [65, 69, 72], [69, 72, 76], [67, 71, 74]],
-        "Chord progression not generated by ChordFactory");        
-}
+        testit("A chord progression",
+            ChordFactory.chordProgression([new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 4), new ChordThing(60, MAJOR, 6), new ChordThing(60, MAJOR, 5)]),
+            [[60, 64, 67], [65, 69, 72], [69, 72, 76], [67, 71, 74]],
+            "Chord progression not generated by ChordFactory");        
+    }
 
-	static function testParser() {
+    static function testParser() {
         trace("Testing Parser");
 
         var cp = new ChordParser(60, MAJOR);
@@ -303,7 +301,7 @@ static function testChordFactory() {
 	       "stuttering");
 	}
 	
-        static function testMenuHelper() {
+    static function testMenuHelper() {
 	  trace("Testing Menu Helper");
 	  testit("Division names",
 		 MenuHelper.getDivisionNames(),
@@ -321,7 +319,6 @@ static function testChordFactory() {
 		 1/8,
 		 "division value EIGHTH to numeric 1/8");
 	}
-
 
     static function testNotes() {
 	  trace("Testing Notes");
@@ -347,22 +344,22 @@ static function testChordFactory() {
 
 	}
   
-	static function testTimeManipulator() {
+    static function testTimeManipulator() {
 		trace("Testing Line Generators\n");
 
 		// Configure TimeManipulator like test_goldenpond.py
 		var ti = new TimeManipulator();
 		ti.setPPQ(960)
-		  .setChordLen(8)
+		  .setChordDuration(8)
 		  .setBPM(120);
 
 		// Create chord progression
 		var seq = new ChordProgression(50, MAJOR, "76,72,!,75,71");
 
 		// Get rhythmic density values
-		var density1 = MenuHelper.rhythmicDensityToNumeric(ONE_STEP);
-		var density2 = MenuHelper.rhythmicDensityToNumeric(TWO_STEPS);
-		var density4 = MenuHelper.rhythmicDensityToNumeric(FOUR_STEPS);
+		var density1 = MenuHelper.rhythmicDensityToNumeric(ONE);
+		var density2 = MenuHelper.rhythmicDensityToNumeric(TWO);
+		var density4 = MenuHelper.rhythmicDensityToNumeric(FOUR);
 
 		// Test ChordLine
 		var chord_line = new ChordLine(ti, seq, 5, 8, 0.8, density1).generateNotes(0, 0, 64);
@@ -525,45 +522,60 @@ static function testChordFactory() {
 				"Channel and velocity should be consistent"
 			);
 		}
-	}
 
+		// Test ChordLine with transposition
+		var transposed_line = new ChordLine(ti, seq, 5, 8, 0.8, density1);
+		transposed_line.transpose(12);  // Transpose up one octave
+		var transposed_notes = transposed_line.generateNotes(0, 0, 64);
+
+		testit("ChordLine transposition",
+			transposed_notes.slice(0, 4),  // Test first chord
+			[
+				new Note(0, 71, 64, 0, 768),  // Original 59 + 12
+				new Note(0, 74, 64, 0, 768),  // Original 62 + 12
+				new Note(0, 78, 64, 0, 768),  // Original 66 + 12
+				new Note(0, 81, 64, 0, 768)   // Original 69 + 12
+			],
+			"Transposed line should be one octave higher"
+		);
+	}
 
     static function runScoreUtils() {   
         var ti = new TimeManipulator().setPPQ(960);
 		var seq = new ChordProgression(60, MAJOR, "72,75,71");
 		trace(seq);
-		var density = MenuHelper.rhythmicDensityToNumeric(FOUR_STEPS);  // 1/4 - divide each chord into 4 steps
+		var density = MenuHelper.rhythmicDensityToNumeric(FOUR);  // 1/4 - divide each chord into 4 steps
 		var svg = ScoreUtilities.makePianoRollSVG(new ChordLine(ti, seq, 1, 1, 0.8, density).generateNotes(0,0,64),800,600);		 
 		trace(svg);
     }
 	
-	
     static function main() {
-        runScoreUtils();
-		testNotes();
-        testMode();
-        testChordThing();
-        testChordFactory();
-        testParser();
-	testMenuHelper();
-        testTimeManipulator();
-	testRhythmGenerator();
-	trace("TOTAL ERRORS :: " + ERRORS);
-
+        trace("Starting tests...");
         
-/*
-
-
-
-        //TODO Unit test this
-        trace("-------------------------\nVoice Lead diagnostics");
-        trace(voice_lead([60, 63, 66], [60, 63, 66]));
-        trace(voice_lead([60, 63, 66], [65, 69, 72]));
-        trace(voice_lead([60, 63, 66], [55, 58, 62]));
-        trace("-------------------------");
-
-
-            */
+        testNotes();  // Add this back
+        
+        var testGroups = [
+            { name: "Mode Tests", fn: testMode },
+            { name: "ChordThing Tests", fn: testChordThing },
+            { name: "ChordFactory Tests", fn: testChordFactory },
+            { name: "Parser Tests", fn: testParser },
+            { name: "MenuHelper Tests", fn: testMenuHelper },
+            { name: "TimeManipulator Tests", fn: testTimeManipulator },
+            { name: "RhythmGenerator Tests", fn: testRhythmGenerator },
+            { name: "DeltaEvent Tests", fn: testDeltaEvents }
+        ];
+        
+        for (group in testGroups) {
+            var startCount = TEST_COUNT;
+            trace('\n=== Running ${group.name} ===');
+            group.fn();
+            trace('${group.name}: ${TEST_COUNT - startCount} tests run\n');
+        }
+        
+        trace('-------------------------');
+        trace('TOTAL TESTS RUN: ${TEST_COUNT}');
+        trace('TOTAL ERRORS: ${ERRORS}');
+        trace('-------------------------');
     }
 
     static function testRhythmGenerator() {
@@ -622,6 +634,63 @@ static function testChordFactory() {
                testPattern(2, 8),
                2,
                "2 in 8 pattern should have 2 hits");
+    }
+
+    static function testDeltaEvents() {
+        trace("\n=== Testing Delta Events ===");
+        var startCount = TEST_COUNT;
+        
+        var ti = new TimeManipulator().setPPQ(96);
+        var seq = new ChordProgression(60, MAJOR, "1,4,5");
+        
+        // Test chord line with k=1
+        var chordLine = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
+        var deltaEvents = chordLine.asDeltaEvents();
+        
+        trace("First 6 delta events:");
+        for (i in 0...6) {
+            trace(deltaEvents[i]);
+        }
+        
+        // First chord should have all notes start at delta 0
+        testit("Chord deltaEvents - first chord noteOns", 
+            deltaEvents.slice(0, 3).map(e -> e.deltaFromLast),
+            [0.0, 0.0, 0.0],
+            "First chord notes should start together"
+        );
+        
+        // Note offs should come after note length
+        testit("Chord deltaEvents - first chord noteOffs",
+            deltaEvents.slice(3, 6).map(e -> e.deltaFromLast),
+            [76.8, 0.0, 0.0],  // 96 * 0.8 = 76.8
+            "First chord notes should end together"
+        );
+        
+        // Next chord should start after one pattern duration
+        testit("Chord deltaEvents - second chord start",
+            deltaEvents[6].deltaFromLast,
+            307.2,  // (384 - 76.8)
+            "Second chord should start at correct delta"
+        );
+        
+        // Test arpeggio line with k>1
+        var arpLine = new ArpLine(ti, seq, 3, 4, 0.5, 1.0);
+        var arpDeltaEvents = arpLine.asDeltaEvents();
+        
+        // First three notes should be evenly spaced
+        testit("Arp deltaEvents - first three notes",
+            arpDeltaEvents.slice(0, 3).map(e -> e.deltaFromLast),
+            [0.0, 96.0, 96.0],
+            "Arp notes should be evenly spaced"
+        );
+
+        testit("DeltaEvents ordering",
+            deltaEvents.filter(e -> e.deltaFromLast == 0).map(e -> e.type),
+            [NOTE_ON, NOTE_ON, NOTE_ON, NOTE_OFF, NOTE_OFF, NOTE_OFF],
+            "Simultaneous events should be ordered correctly"
+        );
+
+        trace('Delta Events: ${TEST_COUNT - startCount} tests run\n');
     }
 }
 

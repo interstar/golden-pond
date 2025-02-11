@@ -48,14 +48,14 @@ enum DivisionValue {
 }
 
 enum RhythmicDensity {
-    SIXTEEN_STEPS;
-    TWELVE_STEPS;
-    EIGHT_STEPS;
-    SIX_STEPS;
-    FOUR_STEPS;
-    THREE_STEPS;
-    TWO_STEPS;
-    ONE_STEP;
+    SIXTEEN;
+    TWELVE;
+    EIGHT;
+    SIX;
+    FOUR;
+    THREE;
+    TWO;
+    ONE;
 }
 
 interface IRhythmGenerator {
@@ -169,14 +169,13 @@ class MenuHelper {
   }
   
   public static function getRhythmicDensityNames():Array<String> {
-    return ["16 steps/chord", "12 steps/chord", "8 steps/chord", 
-            "6 steps/chord", "4 steps/chord", "3 steps/chord", 
-            "2 steps/chord", "1 step/chord"];
+    return ["16 patterns/chord", "12 patterns/chord", "8 patterns/chord", 
+            "6 patterns/chord", "4 patterns/chord", "3 patterns/chord", 
+            "2 patterns/chord", "1 pattern/chord"];
   }
 
   public static function getRhythmicDensityValues():Array<RhythmicDensity> {
-    return [SIXTEEN_STEPS, TWELVE_STEPS, EIGHT_STEPS, SIX_STEPS,
-            FOUR_STEPS, THREE_STEPS, TWO_STEPS, ONE_STEP];
+    return [SIXTEEN, TWELVE, EIGHT, SIX, FOUR, THREE, TWO, ONE];
   }
 
   public static function getRhythmicDensityFor(i:Int):RhythmicDensity {
@@ -184,12 +183,15 @@ class MenuHelper {
   }
 
   public static function rhythmicDensityToNumeric(rd:RhythmicDensity):Float {
-    return [
-        SIXTEEN_STEPS => 1/16, TWELVE_STEPS => 1/12, 
-        EIGHT_STEPS => 1/8, SIX_STEPS => 1/6,
-        FOUR_STEPS => 1/4, THREE_STEPS => 1/3,
-        TWO_STEPS => 1/2, ONE_STEP => 1
+    trace('Converting rhythmic density: ' + rd);
+    var result = [
+        SIXTEEN => 1/16, TWELVE => 1/12, 
+        EIGHT => 1/8, SIX => 1/6,
+        FOUR => 1/4, THREE => 1/3,
+        TWO => 1/2, ONE => 1
     ][rd];
+    trace('Result: ' + result);
+    return result;
   }
 }
 
@@ -211,7 +213,7 @@ class TimeManipulator {
 	    this.chordTicks = this.ppq * this.chordDuration;
 	}
 
-	public function setChordLen(cl:Float):TimeManipulator {
+	public function setChordDuration(cl:Float):TimeManipulator {
 	    this.chordDuration = cl;
 	    recalc();
 	    return this;
@@ -256,13 +258,14 @@ class TimeManipulator {
 
  
 class AbstractLineGenerator implements ILineGenerator {
-    @:protected var seq: ChordProgression;
-    @:protected var timeManipulator: TimeManipulator;
-    @:protected var gateLength: Float;
-    @:protected var cachedNotes: Array<Note>;
-    public var k: Int = 1;  // Initialize with default value
-    public var n: Int = 1;  // Initialize with default value
-    @:protected var rhythmicDensity: Float;
+    private var timeManipulator: TimeManipulator;
+    private var seq: ChordProgression;
+    private var k: Int;
+    private var n: Int;
+    private var gateLength: Float;
+    private var rhythmicDensity: Float;
+    private var transposition: Int;  // Add transposition property
+    private var cachedNotes: Array<Note>;
 
     public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
         this.timeManipulator = timeManipulator;
@@ -271,9 +274,16 @@ class AbstractLineGenerator implements ILineGenerator {
         this.n = n;
         this.gateLength = gateLength;
         this.rhythmicDensity = rhythmicDensity;
-        this.cachedNotes = generateCachedNotes();
+        this.transposition = 0;  // Initialize to 0
+        this.cachedNotes = null;
     }
 
+    // Add transpose method
+    public function transpose(offset: Int): AbstractLineGenerator {
+        this.transposition = offset;
+        this.cachedNotes = null;  // Clear cache to force regeneration
+        return this;
+    }
 
     @:protected function generateCachedNotes(): Array<Note> {
         var notes = new Array<Note>();
@@ -282,6 +292,17 @@ class AbstractLineGenerator implements ILineGenerator {
         var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
         var euclideanStepSize = patternDuration / n;
         var patternsPerChord = Math.floor(1 / rhythmicDensity);
+
+        trace('Debug values:');
+        trace('  timeManipulator: ' + timeManipulator);
+        trace('  chordTicks: ' + timeManipulator.chordTicks);
+        trace('  rhythmicDensity: ' + rhythmicDensity);
+        trace('  patternDuration: ' + patternDuration);
+        trace('  euclideanStepSize: ' + euclideanStepSize);
+        trace('  gateLength: ' + gateLength);
+        trace('  patternsPerChord: ' + patternsPerChord);
+        trace('  n: ' + n);
+        trace('  k: ' + k);
 
         for (c in seq.toNotes()) {
             // For each pattern that fits in this chord
@@ -294,12 +315,18 @@ class AbstractLineGenerator implements ILineGenerator {
                     if (beat == 1) {
                         // Get all notes for this beat and create a Note for each
                         for (noteValue in pickNotesFromChord(c)) {
+                            var noteLength = euclideanStepSize * gateLength;
+                            trace('Note calculation:');
+                            trace('  euclideanStepSize: ' + euclideanStepSize);
+                            trace('  gateLength: ' + gateLength);
+                            trace('  noteLength: ' + noteLength);
+                            trace('  currentTime: ' + currentTime);
                             notes.push(new Note(
                                 0,
                                 noteValue,
                                 100,
                                 currentTime,
-                                euclideanStepSize * gateLength
+                                noteLength
                             ));
                         }
                     }
@@ -340,11 +367,15 @@ class AbstractLineGenerator implements ILineGenerator {
     }
 
     public function generateNotes(startTime: Float, channel: Int, velocity: Int): Array<Note> {
+        if (cachedNotes == null) {
+            cachedNotes = generateCachedNotes();
+        }
+        
         var adjustedNotes = new Array<Note>();
         for (note in cachedNotes) {
             adjustedNotes.push(new Note(
                 channel,
-                note.note,
+                note.note + transposition,  // Apply transposition here
                 velocity,
                 note.startTime + startTime,
                 note.length
@@ -352,10 +383,65 @@ class AbstractLineGenerator implements ILineGenerator {
         }
         return adjustedNotes;
     }
+
+    public function asDeltaEvents():Array<DeltaEvent> {
+        var events = new Array<DeltaEvent>();
+        var notes = generateCachedNotes();
+        
+        // First create all events with absolute times
+        var timeEvents = new Array<{time:Float, event:DeltaEvent}>();
+        
+        for (note in notes) {
+            // Note-on event
+            timeEvents.push({
+                time: note.startTime,
+                event: new DeltaEvent(
+                    note.chan, 
+                    note.note, 
+                    note.velocity, 
+                    0,  // Delta will be calculated later
+                    NOTE_ON
+                )
+            });
+            
+            // Note-off event - use exact note length
+            timeEvents.push({
+                time: note.startTime + note.length,
+                event: new DeltaEvent(
+                    note.chan, 
+                    note.note, 
+                    0,  // Zero velocity for note-off
+                    0,  // Delta will be calculated later
+                    NOTE_OFF
+                )
+            });
+        }
+        
+        // Sort by absolute time, ensuring note-offs come before note-ons at same time
+        timeEvents.sort((a, b) -> {
+            var timeDiff = a.time - b.time;
+            if (timeDiff == 0) {
+                // At same time, note-offs come before note-ons
+                return a.event.type == NOTE_OFF ? -1 : 1;
+            }
+            return Std.int(timeDiff);
+        });
+        
+        // Calculate deltas from sorted events
+        var lastTime = 0.0;
+        for (te in timeEvents) {
+            te.event.deltaFromLast = te.time - lastTime;
+            lastTime = te.time;
+            events.push(te.event);
+        }
+        
+        return events;
+    }
 }
 
 
 
+@:expose
 class ChordLine extends AbstractLineGenerator {
     public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
         super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
@@ -392,6 +478,7 @@ class TopLine extends AbstractLineGenerator {
 }
 
 
+@:expose
 class ArpLine extends AbstractLineGenerator {
     public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
         super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
@@ -432,7 +519,7 @@ class ArpLine extends AbstractLineGenerator {
     }
 }
 
-
+@:expose
 class SilentLine extends AbstractLineGenerator {
     public function new(timeManipulator: TimeManipulator, seq: ChordProgression, gateLength: Float, rhythmicDensity: Float) {
         super(timeManipulator, seq, 1, 1, gateLength, rhythmicDensity);
