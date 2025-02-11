@@ -3,9 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <title>GoldenPond</title>
-    <link rel="stylesheet" href="styles.css"> <!-- Link to your CSS file -->
-    <script src="https://cdn.jsdelivr.net/npm/soundfont-player/dist/soundfont-player.min.js"></script>
+    <style>
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .control-section {
+            margin: 20px 0;
+        }
+
+        .line-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .part-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .button-group {
+            margin: 10px 0;
+        }
+
+        .button-group button {
+            padding: 8px 16px;
+            margin-right: 10px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1000px) {
+            .line-controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .line-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .controls-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .preview-column {
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+        }
+
+        .piano-roll-preview {
+            width: 300px;
+            height: 150px;
+            background-color: #f8f8f8;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        .slider-group {
+            margin: 10px 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- First load Soundfont player -->
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+    
+    <!-- Then load goldenpond -->
     <script src="./goldenpond.js"></script>
+
+    <!-- Then load MIDI file writer -->
+    <script src="./midi-file.js"></script>
 </head>
 <body>
   <div class="container">
@@ -33,16 +120,8 @@
         <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,&lt;12,77ii,&gt;12,71,96,74ii,75</textarea>
     </div>
 
-    <!-- Division, Note Length, Chord Length -->
+    <!-- Note Length, Chord Length -->
     <div class="control-section">
-        <div class="control-group">
-            <label for="division">Division:</label>
-            <select id="division">
-                <option value="4">1/4</option>
-                <option value="6">1/6</option>
-                <!-- ... other options ... -->
-            </select>
-        </div>
         <div class="control-group">
             <label for="noteProportion">Note Length:</label>
             <input type="range" id="noteProportion" name="noteProportion" min="0.1" max="1.5" step="0.1" value="0.8">
@@ -50,326 +129,612 @@
         </div>
         <div class="control-group">
             <label for="chordLength">Chord Length:</label>
-            <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
-            <span id="chordLengthValue">4</span>
+            <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="8">
+            <span id="chordLengthValue">8</span>
+        </div>
+    </div>
+
+    <!-- Add BPM control and play buttons -->
+    <div class="control-section">
+        <div class="control-group">
+            <label for="bpm">Tempo (BPM):</label>
+            <input type="range" id="bpm" name="bpm" min="40" max="200" value="120">
+            <span id="bpmValue">120</span>
+        </div>
+        <div class="button-group">
+            <button onclick="play()">Play</button>
+            <button onclick="stop()">Stop</button>
+            <button onclick="downloadMidi()">Download MIDI</button>
         </div>
     </div>
 
     <!-- Generate Types Section -->
     <div class="control-section">
         <h3>Generate Types:</h3>
-
-        <!-- Chords Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="chords" name="seqTypes" value="CHORDS" checked>
-                <label for="chords"><strong>Chords</strong></label>
-            </div>
-            <!-- Chords might not need k and n sliders -->
-        </div>
-
-        <!-- Euclidean Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="euclidean" name="seqTypes" value="EUCLIDEAN" checked>
-                <label for="euclidean"><strong>Euclidean</strong></label>
-            </div>
-            <div class="control-group">
-                <label for="euclideanK">Rhythm k:</label>
-                <input type="range" id="euclideanK" name="euclideanK" min="1" max="24" value="9">
-                <span id="euclideanKValue">9</span>
-            </div>
-            <div class="control-group">
-                <label for="euclideanN">Rhythm n:</label>
-                <input type="range" id="euclideanN" name="euclideanN" min="1" max="24" value="13">
-                <span id="euclideanNValue">13</span>
-            </div>
-        </div>
-
-        <!-- Bass Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="bass" name="seqTypes" value="BASS" checked>
-                <label for="bass"><strong>Bass</strong></label>
-            </div>
-            <div class="control-group">
-                <label for="bassK">Rhythm k:</label>
-                <input type="range" id="bassK" name="bassK" min="1" max="24" value="5">
-                <span id="bassKValue">5</span>
-            </div>
-            <div class="control-group">
-                <label for="bassN">Rhythm n:</label>
-                <input type="range" id="bassN" name="bassN" min="1" max="24" value="8">
-                <span id="bassNValue">8</span>
-            </div>
-        </div>
-
-        <!-- Top Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="top" name="seqTypes" value="TOP">
-                <label for="top"><strong>Top</strong></label>
-            </div>
-            <div class="control-group">
-                <label for="topK">Rhythm k:</label>
-                <input type="range" id="topK" name="topK" min="1" max="24" value="7">
-                <span id="topKValue">7</span>
-            </div>
-            <div class="control-group">
-                <label for="topN">Rhythm n:</label>
-                <input type="range" id="topN" name="topN" min="1" max="24" value="12">
-                <span id="topNValue">12</span>
-            </div>
-        </div>
-
-        <!-- Random Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="random" name="seqTypes" value="RANDOM">
-                <label for="random"><strong>Random</strong></label>
-            </div>
-            <div class="control-group">
-                <label for="randomK">Rhythm k:</label>
-                <input type="range" id="randomK" name="randomK" min="1" max="24" value="6">
-                <span id="randomKValue">6</span>
-            </div>
-            <div class="control-group">
-                <label for="randomN">Rhythm n:</label>
-                <input type="range" id="randomN" name="randomN" min="1" max="24" value="10">
-                <span id="randomNValue">10</span>
-            </div>
-        </div>
-
-        <!-- Scale Part -->
-        <div class="part-section">
-            <div class="part-header">
-                <input type="checkbox" id="scale" name="seqTypes" value="SCALE">
-                <label for="scale"><strong>Scale</strong></label>
-            </div>
-            <div class="control-group">
-                <label for="scaleK">Rhythm k:</label>
-                <input type="range" id="scaleK" name="scaleK" min="1" max="24" value="8">
-                <span id="scaleKValue">8</span>
-            </div>
-            <div class="control-group">
-                <label for="scaleN">Rhythm n:</label>
-                <input type="range" id="scaleN" name="scaleN" min="1" max="24" value="16">
-                <span id="scaleNValue">16</span>
-            </div>
-        </div>
+        <div id="line-controls"></div>
     </div>
 
     <br>
-    <button onclick="play()">Play Chords</button>
   </div>
 <script>
-    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let chord_instrument, arp_instrument, bass_instrument, top_instrument, random_instrument, scale_instrument;
+    console.log('Start of main script, goldenpond =', typeof goldenpond);
+    
+    // Global variables
+    let domLoaded = false;
+    let instrumentsLoaded = false;
+    let tm = null;
+    let prog = null;
+    let audioContext = null;
+    let chord_instrument, arp_instrument, bass_instrument, top_instrument, random_instrument;
+    let currentLines = [];
+    let currentTimeManipulator = null;
+    let currentProgression = null;
+    let instruments = {};
+
+    // Function to initialize audio after user gesture
+    function initAudio() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            tm = new TimeManipulator();
+            loadInstruments();
+        }
+    }
+
+    // Add loading indicator
+    function showLoading(show) {
+        document.querySelectorAll('button').forEach(button => {
+            button.disabled = show;
+        });
+        if (show) {
+            document.querySelector('.button-group').insertAdjacentHTML('beforeend', 
+                '<span id="loading-text"> Loading sounds...</span>');
+        } else {
+            document.getElementById('loading-text')?.remove();
+        }
+    }
+
+    // Function to create all line controls
+    function createAllLineControls() {
+        const container = document.getElementById('line-controls');
+        lineTypes.forEach(lineType => {
+            const controls = createLineControls(lineType);
+            container.appendChild(controls);
+        });
+    }
+
+    // Add this function before createAllLineControls
+    function createLineControls(lineType) {
+        const section = document.createElement('div');
+        section.className = 'line-controls';
+
+        // Controls column
+        const controlsColumn = document.createElement('div');
+        controlsColumn.className = 'controls-column';
+
+        // Active checkbox
+        const activeLabel = document.createElement('label');
+        const activeCheckbox = document.createElement('input');
+        activeCheckbox.type = 'checkbox';
+        activeCheckbox.id = `${lineType.id}-active`;
+        activeCheckbox.checked = lineType.checked;
+        activeLabel.appendChild(activeCheckbox);
+        activeLabel.appendChild(document.createTextNode(` ${lineType.name}`));
+        controlsColumn.appendChild(activeLabel);
+
+        // Density dropdown
+        const densityLabel = document.createElement('label');
+        densityLabel.textContent = 'Density:';
+        const densitySelect = document.createElement('select');
+        densitySelect.id = `${lineType.id}-density`;
+        MenuHelper.getRhythmicDensityNames().forEach((name, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.text = name;
+            densitySelect.appendChild(option);
+        });
+        densitySelect.value = "4"; // Default to quarter notes
+        controlsColumn.appendChild(densityLabel);
+        controlsColumn.appendChild(densitySelect);
+
+        // K and N sliders
+        ['k', 'n'].forEach(param => {
+            const sliderContainer = document.createElement('div');
+            sliderContainer.className = 'slider-group';
+            
+            const sliderLabel = document.createElement('div');
+            sliderLabel.className = 'slider-label';
+            sliderLabel.innerHTML = `${param.toUpperCase()}: <span id="${lineType.id}-${param}-value">${lineType[`default${param.toUpperCase()}`]}</span>`;
+            
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.id = `${lineType.id}-${param}`;
+            slider.min = '1';
+            slider.max = '24';
+            slider.value = lineType[`default${param.toUpperCase()}`];
+            
+            slider.oninput = () => {
+                document.getElementById(`${lineType.id}-${param}-value`).textContent = slider.value;
+                updateControls();
+            };
+            
+            sliderContainer.appendChild(sliderLabel);
+            sliderContainer.appendChild(slider);
+            controlsColumn.appendChild(sliderContainer);
+        });
+
+        // Preview column
+        const previewColumn = document.createElement('div');
+        previewColumn.className = 'preview-column';
+        
+        const previewTitle = document.createElement('div');
+        previewTitle.textContent = 'Preview';
+        previewColumn.appendChild(previewTitle);
+
+        const pianoRoll = document.createElement('div');
+        pianoRoll.id = `${lineType.id}-preview`;
+        pianoRoll.className = 'piano-roll-preview';
+        pianoRoll.style.width = '300px';  // Explicit width
+        pianoRoll.style.height = '150px'; // Explicit height
+        previewColumn.appendChild(pianoRoll);
+
+        // Add event listeners
+        activeCheckbox.addEventListener('change', updateControls);
+        densitySelect.addEventListener('change', updateControls);
+
+        // Combine columns
+        section.appendChild(controlsColumn);
+        section.appendChild(previewColumn);
+
+        return section;
+    }
 
     // Load the instruments asynchronously
-    Promise.all([
-        Soundfont.instrument(audioContext, 'acoustic_grand_piano').then(inst => { chord_instrument = inst; }),
-        Soundfont.instrument(audioContext, 'electric_guitar_jazz').then(inst => { arp_instrument = inst; }),
-        Soundfont.instrument(audioContext, 'koto').then(inst => { bass_instrument = inst; }),
-        Soundfont.instrument(audioContext, 'clavinet').then(inst => { top_instrument = inst; }),
-        Soundfont.instrument(audioContext, 'marimba').then(inst => { random_instrument = inst;}),
-        Soundfont.instrument(audioContext, 'soprano_sax').then(inst => { scale_instrument = inst; })
-    ]).then(() => {
-        console.log("All instruments loaded!");
-    });
+    function loadInstruments() {
+        showLoading(true);
+        Promise.all([
+            Soundfont.instrument(audioContext, 'acoustic_grand_piano'),
+            Soundfont.instrument(audioContext, 'orchestral_harp'),
+            Soundfont.instrument(audioContext, 'acoustic_bass'),
+            Soundfont.instrument(audioContext, 'flute'),
+            Soundfont.instrument(audioContext, 'marimba')
+        ]).then(([piano, harp, bass, flute, marimba]) => {
+            instruments = {
+                'chords': piano,
+                'arpeggio': harp,
+                'bass': bass,
+                'top': flute,
+                'random': marimba
+            };
+            instrumentsLoaded = true;
+            showLoading(false);
+        }).catch(err => {
+            console.error('Error loading instruments:', err);
+            showLoading(false);
+        });
+    }
 
+    // Configuration for each line type
+    const lineTypes = [
+        {
+            id: 'chords',
+            name: 'Chords',
+            defaultK: 2,
+            defaultN: 4,
+            checked: true
+        },
+        {
+            id: 'arpeggio',
+            name: 'Arpeggio',
+            defaultK: 2,
+            defaultN: 4,
+            checked: false
+        },
+        {
+            id: 'bass',
+            name: 'Bass',
+            defaultK: 2,
+            defaultN: 4,
+            checked: false
+        },
+        {
+            id: 'top',
+            name: 'Top',
+            defaultK: 2,
+            defaultN: 4,
+            checked: false
+        },
+        {
+            id: 'random',
+            name: 'Random',
+            defaultK: 2,
+            defaultN: 4,
+            checked: false
+        }
+    ];
+
+    // Function to update time and progression settings
+    function updateTimeAndProgression() {
+        if (!tm) return;
+        
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const beatsPerChord = parseInt(document.getElementById('chordLength').value);
+        const root = parseInt(document.getElementById('root').value);
+        const mode = document.getElementById('mode').value == "0" ? 
+            Mode.getMajorMode() : 
+            Mode.getMinorMode();
+        const chordSequence = document.getElementById('chordSequence').value;
+        
+        // Update TimeManipulator
+        tm.setPPQ(96)
+          .setChordDuration(beatsPerChord)
+          .setBPM(bpm);
+        
+        // Update ChordProgression
+        prog = new ChordProgression(root, mode, chordSequence);
+        
+        console.log('Updated settings:', {
+            bpm, beatsPerChord, root, 
+            mode: mode == Mode.getMajorMode() ? 'major' : 'minor',
+            chordSequence
+        });
+    }
+
+    // Function to update all music state
+    function updateMusicState() {
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const beatsPerChord = parseInt(document.getElementById('chordLength').value);
+        const noteProportion = parseFloat(document.getElementById('noteProportion').value);
+        
+        // Update time manipulator
+        currentTimeManipulator = new TimeManipulator();
+        currentTimeManipulator.setPPQ(96)
+            .setChordDuration(beatsPerChord)
+            .setBPM(bpm);
+
+        // Update progression
+        currentProgression = new ChordProgression(
+            parseInt(document.getElementById('root').value),
+            document.getElementById('mode').value == "0" ? Mode.getMajorMode() : Mode.getMinorMode(),
+            document.getElementById('chordSequence').value
+        );
+
+        // Update all lines
+        currentLines = [];
+        lineTypes.forEach(lineType => {
+            const values = getLineValues(lineType);
+            if (values.active) {
+                let line;
+                switch(lineType.name) {
+                    case 'Chords':
+                        line = new ChordLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                        break;
+                    case 'Arpeggio':
+                        line = new ArpLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                        break;
+                    case 'Bass':
+                        line = new BassLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                        break;
+                    case 'Top':
+                        line = new TopLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                        break;
+                    case 'Random':
+                        line = new RandomLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                        break;
+                }
+                if (line) {
+                    currentLines.push({
+                        type: lineType,
+                        line: line,
+                        notes: line.generateNotes(0, 0, 100)
+                    });
+                }
+            }
+        });
+
+        // Update previews
+        updatePreviews();
+    }
+
+    // Modify updateControls to use the global state
+    function updateControls() {
+        updateMusicState();
+        // Rest of updateControls remains the same
+    }
+
+    // Modify play() to use the global state
     function play() {
-        console.log("In Play()");
- 
-        if (!chord_instrument || !arp_instrument || !bass_instrument || !top_instrument || !random_instrument || !scale_instrument) {
-            console.log("Instruments are still loading...");
+        if (!audioContext) initAudio();
+        
+        if (!instrumentsLoaded) {
+            console.warn('Instruments not loaded yet');
             return;
         }
         
-        let root = parseInt(document.getElementById('root').value);
-        let mode = parseInt(document.getElementById('mode').value);
-
-        let chordSeq = document.getElementById('chordSequence').value;
-        let division = parseInt(document.getElementById('division').value);
-        let noteProportion = parseFloat(document.getElementById('noteProportion').value);
-        let chordLength = parseInt(document.getElementById('chordLength').value);
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const secondsPerBeat = 60.0 / bpm;
+        const baseTime = audioContext.currentTime + 0.1;
         
-
-        var theMode = (mode == 0) ? Mode.getMajorMode() : Mode.getMinorMode();
-        var prog = new ChordProgression(root, theMode, chordSeq);
-
-        ti = new TimeManipulator()
-            .setChordLen(chordLength)
-            .setPPQ(0.8);
-
-        console.log("Chords: " + chordSeq);
-        console.log("Mode: " + mode);
-        console.log("Root: " + root);
-        console.log(ti.toString());        
-
-         // Chords
-        let chordsActive = document.getElementById('chords').checked;
-        // Chords may not have rhythmK and rhythmN sliders, so we don't read them
-
-        // Euclidean
-        let euclideanActive = document.getElementById('euclidean').checked;
-        let euclideanK = parseInt(document.getElementById('euclideanK').value);
-        let euclideanN = parseInt(document.getElementById('euclideanN').value);
-
-        // Bass
-        let bassActive = document.getElementById('bass').checked;
-        let bassK = parseInt(document.getElementById('bassK').value);
-        let bassN = parseInt(document.getElementById('bassN').value);
-
-        // Top
-        let topActive = document.getElementById('top').checked;
-        let topK = parseInt(document.getElementById('topK').value);
-        let topN = parseInt(document.getElementById('topN').value);
-
-        // Random
-        let randomActive = document.getElementById('random').checked;
-        let randomK = parseInt(document.getElementById('randomK').value);
-        let randomN = parseInt(document.getElementById('randomN').value);
-
-        // Scale
-        let scaleActive = document.getElementById('scale').checked;
-        let scaleK = parseInt(document.getElementById('scaleK').value);
-        let scaleN = parseInt(document.getElementById('scaleN').value);
-
-        let baseTime = audioContext.currentTime;
-
-        console.log("chords");
-        if (chordsActive) {
-            var chordLine = new ChordLine(ti, prog, noteProportion);
-            var chords = chordLine.generateNotes(0, 0, 100);
-            chords.forEach(note => {
-                chord_instrument.play(note.note, baseTime + note.start_time, 
-                    { duration: note.duration });
-            });
-        }
-
-        console.log("arpeggiate");
-        if (euclideanActive) {
-            var arpLine = new ArpLine(ti, prog, euclideanK, euclideanN, noteProportion);
-            var arp = arpLine.generateNotes(0, 1, 100);
-            arp.forEach(note => {
-                arp_instrument.play(note.note, baseTime + note.start_time, 
-                    { duration: note.duration });
-            });
-        }
-
-        console.log("Bassline");
-        if (bassActive) {
-            var bassLine = new BassLine(ti, prog, bassK, bassN, noteProportion);
-            var bass = bassLine.generateNotes(0, 2, 100);
-            bass.forEach(note => {
-                bass_instrument.play(note.note, baseTime + note.start_time, 
-                    { duration: note.duration });
-            });
-        }
+        console.log('Playing lines:', currentLines.map(l => ({
+            type: l.type.id,
+            noteCount: l.notes.length,
+            hasInstrument: !!instruments[l.type.id]
+        })));
         
-        console.log("Topline");
-        if (topActive) {
-            var topLine = new TopLine(ti, prog, topK, topN, noteProportion);
-            var top = topLine.generateNotes(0, 3, 100);
-            top.forEach(note => {
-                top_instrument.play(note.note, baseTime + note.start_time, 
-                    { duration: note.duration });
-            });
-        }        
-
-        console.log("Random Line");
-        if (randomActive) {
-            var randomLine = new RandomLine(ti, prog, randomK, randomN, noteProportion);
-            var random = randomLine.generateNotes(0, 4, 100);
-            random.forEach(note => {
-                random_instrument.play(note.note, baseTime + note.start_time, 
-                    { duration: note.duration });
-            });
-        }        
-        
+        currentLines.forEach(({type, notes}) => {
+            const instrument = instruments[type.id];
+            if (instrument) {
+                console.log(`Playing ${type.name} with ${notes.length} notes`);
+                notes.forEach(note => {
+                    const startInSeconds = (note.startTime / currentTimeManipulator.ppq) * secondsPerBeat;
+                    const durationInSeconds = (note.length / currentTimeManipulator.ppq) * secondsPerBeat;
+                    instrument.play(note.note, baseTime + startInSeconds, { duration: durationInSeconds });
+                });
+            } else {
+                console.warn(`No instrument found for ${type.name} (id: ${type.id})`);
+            }
+        });
     }
 
-document.addEventListener("DOMContentLoaded", function() {
-    // Initialize the <span> values on page load
-    updateDisplayValue('root', 'rootValue');
-    updateDisplayValue('noteProportion', 'noteProportionValue');
-    updateDisplayValue('chordLength', 'chordLengthValue');
+    // Modify downloadMidi to use the global state
+    function downloadMidi() {
+        console.log('Starting MIDI export...');
+        
+        const midi = {
+            header: {
+                format: 1,
+                numTracks: currentLines.length + 1,
+                ticksPerBeat: currentTimeManipulator.ppq
+            },
+            tracks: [
+                [{
+                    deltaTime: 0,
+                    type: 'setTempo',
+                    microsecondsPerBeat: Math.floor(60000000 / parseInt(document.getElementById('bpm').value))
+                }]
+            ]
+        };
 
-    // Event listener for Root slider
-    document.getElementById('root').addEventListener('input', function() {
-        updateDisplayValue('root', 'rootValue');
+        // Add tracks using existing code but with currentLines
+        currentLines.forEach(({type, notes}, index) => {
+            const track = [];
+            
+            // Add program change
+            track.push({
+                deltaTime: 0,
+                type: 'programChange',
+                programNumber: type.id === 'chords' ? 0 : 46,
+                channel: index
+            });
+
+            // Convert note timings to MIDI ticks
+            const events = [];
+            notes.forEach(note => {
+                // Convert from TimeManipulator's timing to MIDI ticks
+                const startTick = Math.round(note.startTime);
+                const endTick = Math.round(note.startTime + note.length);
+                
+                events.push({
+                    tick: startTick,
+                    type: 'noteOn',
+                    noteNumber: note.note,
+                    velocity: note.velocity || 100,
+                    channel: index
+                });
+                
+                events.push({
+                    tick: endTick,
+                    type: 'noteOff',
+                    noteNumber: note.note,
+                    velocity: 0,
+                    channel: index
+                });
+            });
+
+            // Sort events by time
+            events.sort((a, b) => a.tick - b.tick);
+
+            // Calculate deltas
+            let lastTick = 0;
+            events.forEach(evt => {
+                const delta = evt.tick - lastTick;
+                lastTick = evt.tick;
+                track.push({
+                    ...evt,
+                    deltaTime: Math.max(0, Math.round(delta)) // Ensure no negative deltas
+                });
+            });
+
+            midi.tracks.push(track);
+
+            // Debug output
+            console.log(`Track ${type.name} timing:`, {
+                ppq: currentTimeManipulator.ppq,
+                firstNote: notes[0],
+                noteCount: notes.length,
+                eventCount: events.length,
+                sampleDeltas: events.slice(0, 4).map(e => ({
+                    tick: e.tick,
+                    delta: e.tick - (events[events.indexOf(e) - 1]?.tick || 0)
+                }))
+            });
+        });
+
+        // Before converting to bytes
+        console.log('Final MIDI structure:', midiFile.debugMidiData(midi));
+        
+        // Convert and download
+        const data = midiFile.writeMidi(midi);
+        
+        // Download
+        const blob = new Blob([new Uint8Array(data)], { type: 'audio/midi' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'goldenpond.mid';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    // Modify the DOMContentLoaded handler
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded');
+        domLoaded = true;
+        
+        try {
+            // First create all the controls
+            createAllLineControls();
+            console.log('Line controls created successfully');
+            
+            // Add event listeners for global controls
+            ['root', 'noteProportion', 'chordLength', 'bpm'].forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.warn(`Could not find element with id: ${id}`);
+                    return;
+                }
+                element.addEventListener('input', function() {
+                    updateDisplayValue(id, `${id}Value`);
+                });
+            });
+            
+            // Add handlers for time and progression updates
+            ['bpm', 'chordLength', 'root', 'mode', 'chordSequence'].forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.warn(`Could not find element with id: ${id}`);
+                    return;
+                }
+                element.addEventListener('change', function() {
+                    updateTimeAndProgression();
+                    updateControls();
+                });
+            });
+
+            console.log('All event listeners attached successfully');
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
+
+        // Initialize audio on first user interaction
+        document.body.addEventListener('click', function initOnClick() {
+            initAudio();
+            document.body.removeEventListener('click', initOnClick);
+        });
     });
 
-    // Event listeners for Note Length and Chord Length sliders
-    document.getElementById('noteProportion').addEventListener('input', function() {
-        updateDisplayValue('noteProportion', 'noteProportionValue');
-    });
-    document.getElementById('chordLength').addEventListener('input', function() {
-        updateDisplayValue('chordLength', 'chordLengthValue');
-    });
+    // Get values for a line type
+    function getLineValues(lineType) {
+        return {
+            active: document.getElementById(`${lineType.id}-active`).checked,
+            density: MenuHelper.rhythmicDensityToNumeric(
+                MenuHelper.getRhythmicDensityFor(document.getElementById(`${lineType.id}-density`).value)
+            ),
+            k: parseInt(document.getElementById(`${lineType.id}-k`).value),
+            n: parseInt(document.getElementById(`${lineType.id}-n`).value)
+        };
+    }
 
-    // Euclidean Part
-    updateDisplayValue('euclideanK', 'euclideanKValue');
-    updateDisplayValue('euclideanN', 'euclideanNValue');
-
-    document.getElementById('euclideanK').addEventListener('input', function() {
-        updateDisplayValue('euclideanK', 'euclideanKValue');
-    });
-    document.getElementById('euclideanN').addEventListener('input', function() {
-        updateDisplayValue('euclideanN', 'euclideanNValue');
-    });
-
-    // Bass Part
-    updateDisplayValue('bassK', 'bassKValue');
-    updateDisplayValue('bassN', 'bassNValue');
-
-    document.getElementById('bassK').addEventListener('input', function() {
-        updateDisplayValue('bassK', 'bassKValue');
-    });
-    document.getElementById('bassN').addEventListener('input', function() {
-        updateDisplayValue('bassN', 'bassNValue');
-    });
-
-    // Top Part
-    updateDisplayValue('topK', 'topKValue');
-    updateDisplayValue('topN', 'topNValue');
-
-    document.getElementById('topK').addEventListener('input', function() {
-        updateDisplayValue('topK', 'topKValue');
-    });
-    document.getElementById('topN').addEventListener('input', function() {
-        updateDisplayValue('topN', 'topNValue');
-    });
-
-    // Random Part
-    updateDisplayValue('randomK', 'randomKValue');
-    updateDisplayValue('randomN', 'randomNValue');
-
-    document.getElementById('randomK').addEventListener('input', function() {
-        updateDisplayValue('randomK', 'randomKValue');
-    });
-    document.getElementById('randomN').addEventListener('input', function() {
-        updateDisplayValue('randomN', 'randomNValue');
-    });
-
-    // Scale Part
-    updateDisplayValue('scaleK', 'scaleKValue');
-    updateDisplayValue('scaleN', 'scaleNValue');
-
-    document.getElementById('scaleK').addEventListener('input', function() {
-        updateDisplayValue('scaleK', 'scaleKValue');
-    });
-    document.getElementById('scaleN').addEventListener('input', function() {
-        updateDisplayValue('scaleN', 'scaleNValue');
-    });
-});
-
+    // Add variable to track scheduled notes
+    let scheduledNotes = [];
     
-    function updateDisplayValue(inputId, displayId) {
-        console.log(inputId + " - " + displayId);
-        let inputValue = document.getElementById(inputId).value;
-        document.getElementById(displayId).innerText = inputValue;
+    // Add stop function
+    function stop() {
+        if (!audioContext) return;
+        
+        // Stop all active instruments
+        Object.values(instruments).forEach(instrument => {
+            if (instrument && typeof instrument.stop === 'function') {
+                instrument.stop(audioContext.currentTime);
+            }
+        });
+        
+        // Clear scheduled notes
+        scheduledNotes = [];
+    }
+
+    function updateDisplayValue(sliderId, valueId) {
+        console.log(`Updating display value: ${sliderId} -> ${valueId}`);
+        const slider = document.getElementById(sliderId);
+        const valueDisplay = document.getElementById(valueId);
+        
+        if (!slider || !valueDisplay) {
+            console.warn(`Could not find elements: slider=${sliderId}, value=${valueId}`);
+            return;
+        }
+        
+        valueDisplay.textContent = slider.value;
+    }
+
+    // Add this function after updateMusicState
+    function updatePreviews() {
+        lineTypes.forEach(lineType => {
+            const previewElement = document.getElementById(`${lineType.id}-preview`);
+            if (!previewElement) return;
+
+            // Find the current line data for this type
+            const lineData = currentLines.find(l => l.type.id === lineType.id);
+            
+            if (!lineData) {
+                // Line is not active, clear preview
+                previewElement.innerHTML = '';
+                return;
+            }
+
+            const notes = lineData.notes;
+            
+            if (notes.length === 0) {
+                previewElement.innerHTML = '';
+                return;
+            }
+
+            // Calculate timing range for all notes
+            const timingRange = notes.reduce((range, note) => ({
+                min: Math.min(range.min, note.startTime),
+                max: Math.max(range.max, note.startTime + note.length)
+            }), { min: Infinity, max: -Infinity });
+
+            console.log('Note timing range:', timingRange);
+
+            // Create SVG
+            const width = 300;
+            const height = 150;
+            const noteHeight = 1.5;
+
+            let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+            // Draw staff lines
+            for (let i = 0; i < height; i += noteHeight) {
+                svg += `<line x1="0" y1="${i}" x2="${width}" y2="${i}" stroke="#ddd" />`;
+            }
+
+            // Draw notes
+            notes.forEach(note => {
+                // Calculate note position
+                const x = (note.startTime - timingRange.min) * width / (timingRange.max - timingRange.min);
+                const y = (127 - note.note) * noteHeight;
+                const noteWidth = (note.length) * width / (timingRange.max - timingRange.min);
+
+                // Draw note rectangle
+                svg += `<rect x="${x}" y="${y}" width="${noteWidth}" height="${noteHeight}" fill="black" />`;
+            });
+
+            svg += '</svg>';
+            previewElement.innerHTML = svg;
+
+            // Log first note details for debugging
+            if (notes.length > 0) {
+                console.log('First note details:', {
+                    ...notes[0],
+                    calculated: {
+                        x: (notes[0].startTime - timingRange.min) * width / (timingRange.max - timingRange.min),
+                        width: (notes[0].length) * width / (timingRange.max - timingRange.min),
+                        y: (127 - notes[0].note) * noteHeight
+                    }
+                });
+            }
+        });
     }
 </script>
 
