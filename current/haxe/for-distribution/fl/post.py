@@ -1,14 +1,16 @@
+
+
 class GoldenData :
     def __init__(self) :
         self.changed = True
         self.current_str = ""
         
-    def update(self,root,mode,chordSeq,seqset,division,note_prop,chord_len,k,n) :
+    def update(self,root,mode,chordSeq,seqset,density,note_prop,chord_len,k,n) :
         self.root = root
         self.mode = mode
         self.chordSeq = chordSeq
         self.generate = seqset
-        self.division = division
+        self.density = density
         self.note_prop = note_prop
         self.chord_len = chord_len
         self.k = k
@@ -29,18 +31,18 @@ ChordSeq : %s\r\n
 Generate Type: %s\r\n
 Division : %s\r\n
 Note Proportion : %s\r\n
-Chord Length : %s\r\n
-Euclidean: k=%s, n=%s\r\n
+Chord Duration : %s\r\n
+Arp: k=%s, n=%s\r\n
 ...........................................
      
-""" % (self.root, self.mode, self.chordSeq, self.generate, self.division,
+""" % (self.root, self.mode, self.chordSeq, self.generate, self.density,
 self.note_prop,self.chord_len,self.k,self.n)
 
 CURRENT_DATA = GoldenData()         
 
 
   
-def makeNote(num, time, length, color=0, velocity=65):
+def makeNote(num, time, length, color=0, velocity=0.5):
     """
     make a new Note object
 
@@ -66,7 +68,7 @@ def createDialog():
     form.AddInputText('ChordSeq', "1,4,5,1")
     
     form.AddInputCheckbox('Chords',False)
-    form.AddInputCheckbox('Euclidean',False)
+    form.AddInputCheckbox('Arp',False)
     form.AddInputCheckbox('Bass',False)
     form.AddInputCheckbox('Top',False)
     form.AddInputCheckbox('Random',False)
@@ -75,17 +77,17 @@ def createDialog():
     form.AddInputKnobInt('Rhythm k',4,1,24)
     form.AddInputKnobInt('Rhythm n',8,1,24)
     
-    divisionItems = MenuHelper.getDivisionNames()
+    densityItems = MenuHelper.getRhythmicDensityNames()
 
-    form.AddInputCombo('Division',divisionItems,4)
+    form.AddInputCombo('Density',densityItems,4)
     form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
-    form.AddInputKnobInt('Chord Length',4,1,16)
+    form.AddInputKnobInt('Chord Duration',4,1,16)
     
     form.AddInputKnobInt("Stutter",0,0,16)
     form.AddInputCheckbox("Silent",False)
     
 
-    #form.AddInputCombo('Generate',['Chords','Euclidean','Bass','C+E','E+B','C+B','All','All E+12','Top'],0)
+    #form.AddInputCombo('Generate',['Chords','Arp','Bass','C+E','E+B','C+B','All','All E+12','Top'],0)
 
     return form
 
@@ -93,7 +95,7 @@ def createDialog():
 def post_notes_to_score(notes_list):
     for note_data in notes_list:
         note_value = note_data.note
-        start_time = note_data.start_time
+        start_time = note_data.startTime
         note_duration = note_data.length
         color = note_data.chan
         note = makeNote(note_value, start_time, note_duration,color=color)
@@ -116,15 +118,14 @@ def apply(form):
     
     seqtypes = set([])
     if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
-    if form.GetInputValue("Euclidean")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
+    if form.GetInputValue("Arp")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
     if form.GetInputValue("Bass")==1: seqtypes.add(SeqTypes.BASS)
     if form.GetInputValue("Top")==1: seqtypes.add(SeqTypes.TOP)
     if form.GetInputValue("Random")==1: seqtypes.add(SeqTypes.RANDOM)
     if form.GetInputValue("Scale")==1: seqtypes.add(SeqTypes.SCALE)
 
-    division = MenuHelper.getDivisionFor(form.GetInputValue('Division'))
     note_prop = form.GetInputValue('Note Proportion')
-    chord_len = form.GetInputValue('Chord Length')
+    chord_len = form.GetInputValue('Chord Duration')
     
     k = form.GetInputValue('Rhythm k')
     n = form.GetInputValue('Rhythm n')
@@ -132,7 +133,7 @@ def apply(form):
 
     # Configure TimeManipulator
     timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
-    timingInfo.setChordLen(chord_len).setDivision(division)
+    timingInfo.setChordDuration(chord_len)
 
     flp.score.clearNotes(False)
 
@@ -147,37 +148,39 @@ def apply(form):
 
         all_notes = []
         
+        # Get rhythmic density value
+        density = MenuHelper.rhythmicDensityToNumeric(
+            MenuHelper.getRhythmicDensityFor(form.GetInputValue('Density'))
+        )
+
         # Generate notes for each selected line type
         if SeqTypes.CHORDS in seqtypes:
-            chord_line = ChordLine(timingInfo, seq, note_prop)
+            chord_line = ChordLine(timingInfo, seq, k, n, note_prop, density)
             all_notes.extend(chord_line.generateNotes(0, 0, 100))
             
         if SeqTypes.EUCLIDEAN in seqtypes:
-            arp_line = ArpLine(timingInfo, seq, k, n, note_prop)
+            arp_line = ArpLine(timingInfo, seq, k, n, note_prop, density)
             all_notes.extend(arp_line.generateNotes(0, 1, 100))
             
         if SeqTypes.BASS in seqtypes:
-            bass_line = BassLine(timingInfo, seq, k, n, note_prop)
+            bass_line = BassLine(timingInfo, seq, k, n, note_prop, density)
             all_notes.extend(bass_line.generateNotes(0, 2, 100))
             
         if SeqTypes.TOP in seqtypes:
-            top_line = TopLine(timingInfo, seq, k, n, note_prop)
+            top_line = TopLine(timingInfo, seq, k, n, note_prop, density)
             all_notes.extend(top_line.generateNotes(0, 3, 100))
             
         if SeqTypes.RANDOM in seqtypes:
-            random_line = RandomLine(timingInfo, seq, k, n, note_prop)
+            random_line = RandomLine(timingInfo, seq, k, n, note_prop, density)
             all_notes.extend(random_line.generateNotes(0, 4, 100))
             
-        if SeqTypes.SCALE in seqtypes:
-            scale_line = ScaleLine(timingInfo, seq, k, n, note_prop)
-            all_notes.extend(scale_line.generateNotes(0, 5, 100))
 
         post_notes_to_score(all_notes)
         
         # Update display data
         CURRENT_DATA.update(root, mode, chordSeq, 
                           ["%s"%x for x in seqtypes],
-                          division, note_prop, chord_len, k, n)
+                          density, note_prop, chord_len, k, n)
         if CURRENT_DATA.changed:
             Utils.log("Changed\n%s" % CURRENT_DATA)
             
