@@ -494,8 +494,8 @@
             ]
         };
 
-        // Add tracks using existing code but with currentLines
-        currentLines.forEach(({type, notes}, index) => {
+        // Add tracks using asDeltaEvents
+        currentLines.forEach(({type, line}, index) => {
             const track = [];
             
             // Add program change
@@ -506,41 +506,17 @@
                 channel: index
             });
 
-            // Convert note timings to MIDI ticks
-            const events = [];
-            notes.forEach(note => {
-                // Convert from TimeManipulator's timing to MIDI ticks
-                const startTick = Math.round(note.startTime);
-                const endTick = Math.round(note.startTime + note.length);
-                
-                events.push({
-                    tick: startTick,
-                    type: 'noteOn',
-                    noteNumber: note.note,
-                    velocity: note.velocity || 100,
-                    channel: index
-                });
-                
-                events.push({
-                    tick: endTick,
-                    type: 'noteOff',
-                    noteNumber: note.note,
-                    velocity: 0,
-                    channel: index
-                });
-            });
-
-            // Sort events by time
-            events.sort((a, b) => a.tick - b.tick);
-
-            // Calculate deltas
-            let lastTick = 0;
-            events.forEach(evt => {
-                const delta = evt.tick - lastTick;
-                lastTick = evt.tick;
+            // Get delta events directly from the line
+            const deltaEvents = line.asDeltaEvents();
+            
+            // Convert delta events to MIDI events
+            deltaEvents.forEach(evt => {
                 track.push({
-                    ...evt,
-                    deltaTime: Math.max(0, Math.round(delta)) // Ensure no negative deltas
+                    deltaTime: Math.round(evt.deltaFromLast),
+                    type: evt.type === ScoreUtilities.getNoteOn() ? 'noteOn' : 'noteOff',
+                    noteNumber: evt.note,
+                    velocity: evt.type === ScoreUtilities.getNoteOn() ? evt.velocity : 0,
+                    channel: index
                 });
             });
 
@@ -549,13 +525,7 @@
             // Debug output
             console.log(`Track ${type.name} timing:`, {
                 ppq: currentTimeManipulator.ppq,
-                firstNote: notes[0],
-                noteCount: notes.length,
-                eventCount: events.length,
-                sampleDeltas: events.slice(0, 4).map(e => ({
-                    tick: e.tick,
-                    delta: e.tick - (events[events.indexOf(e) - 1]?.tick || 0)
-                }))
+                deltaEvents: deltaEvents.slice(0, 4)
             });
         });
 
@@ -673,67 +643,20 @@
             const previewElement = document.getElementById(`${lineType.id}-preview`);
             if (!previewElement) return;
 
-            // Find the current line data for this type
             const lineData = currentLines.find(l => l.type.id === lineType.id);
-            
             if (!lineData) {
-                // Line is not active, clear preview
                 previewElement.innerHTML = '';
                 return;
             }
 
             const notes = lineData.notes;
-            
             if (notes.length === 0) {
                 previewElement.innerHTML = '';
                 return;
             }
 
-            // Calculate timing range for all notes
-            const timingRange = notes.reduce((range, note) => ({
-                min: Math.min(range.min, note.startTime),
-                max: Math.max(range.max, note.startTime + note.length)
-            }), { min: Infinity, max: -Infinity });
-
-            console.log('Note timing range:', timingRange);
-
-            // Create SVG
-            const width = 300;
-            const height = 150;
-            const noteHeight = 1.5;
-
-            let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-            // Draw staff lines
-            for (let i = 0; i < height; i += noteHeight) {
-                svg += `<line x1="0" y1="${i}" x2="${width}" y2="${i}" stroke="#ddd" />`;
-            }
-
-            // Draw notes
-            notes.forEach(note => {
-                // Calculate note position
-                const x = (note.startTime - timingRange.min) * width / (timingRange.max - timingRange.min);
-                const y = (127 - note.note) * noteHeight;
-                const noteWidth = (note.length) * width / (timingRange.max - timingRange.min);
-
-                // Draw note rectangle
-                svg += `<rect x="${x}" y="${y}" width="${noteWidth}" height="${noteHeight}" fill="black" />`;
-            });
-
-            svg += '</svg>';
-            previewElement.innerHTML = svg;
-
-            // Log first note details for debugging
-            if (notes.length > 0) {
-                console.log('First note details:', {
-                    ...notes[0],
-                    calculated: {
-                        x: (notes[0].startTime - timingRange.min) * width / (timingRange.max - timingRange.min),
-                        width: (notes[0].length) * width / (timingRange.max - timingRange.min),
-                        y: (127 - notes[0].note) * noteHeight
-                    }
-                });
-            }
+            // Use ScoreUtilities.makePianoRollSVG instead of our JS implementation
+            previewElement.innerHTML = ScoreUtilities.makePianoRollSVG(notes, 300, 150);
         });
     }
 </script>
