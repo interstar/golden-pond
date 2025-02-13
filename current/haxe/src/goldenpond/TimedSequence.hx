@@ -1,4 +1,4 @@
-package;
+    package;
 
 /*
 GoldenPond FL Studio Script
@@ -197,63 +197,63 @@ class MenuHelper {
 
 @:expose
 class TimeManipulator {
-	public var ppq:Float;                    // Ticks per quarter note - fundamental resolution
-	public var chordDuration:Float;          // How many quarter notes each chord lasts
-	public var chordTicks:Float;             // Total ticks for one chord
-	public var bpm:Float;                    // Tempo in beats per minute
+    public var ppq:Float;                    // Ticks per quarter note - fundamental resolution
+    public var chordDuration:Float;          // How many quarter notes each chord lasts
+    public var chordTicks:Float;             // Total ticks for one chord
+    public var bpm:Float;                    // Tempo in beats per minute
 
-	public function new() {
-	    this.ppq = 1000;
-	    this.chordDuration = 16;
-	    this.bpm = 120; 
-	    recalc();
-	}
+    public function new() {
+        this.ppq = 1000;
+        this.chordDuration = 16;
+        this.bpm = 120; 
+        recalc();
+    }
 
-	private function recalc() {
-	    this.chordTicks = this.ppq * this.chordDuration;
-	}
+    private function recalc() {
+        this.chordTicks = this.ppq * this.chordDuration;
+    }
 
-	public function setChordDuration(cl:Float):TimeManipulator {
-	    this.chordDuration = cl;
-	    recalc();
-	    return this;
-	}
+    public function setChordDuration(cl:Float):TimeManipulator {
+        this.chordDuration = cl;
+        recalc();
+        return this;
+    }
 
-	public function setPPQ(p:Float):TimeManipulator {
-	    this.ppq = p;
-	    recalc();
-	    return this;
-	}
+    public function setPPQ(p:Float):TimeManipulator {
+        this.ppq = p;
+        recalc();
+        return this;
+    }
 
-	public function setBPM(b:Float):TimeManipulator {
-		this.bpm = b;
-		recalc();
-		return this;
-	}
+    public function setBPM(b:Float):TimeManipulator {
+        this.bpm = b;
+        recalc();
+        return this;
+    }
 
-	public function toString():String {
-	    return "\nTimeManipulator\n  PPQ: " + this.ppq + 
-	           "\n  Chord Length Multiplier: " + this.chordDuration +
-	           "\n  quarterToMS: " + this.quarterToMS() + 
-	           "\n  chordTicks:" + this.chordTicks;
-	}
+    public function toString():String {
+        return "\nTimeManipulator\n  PPQ: " + this.ppq + 
+               "\n  Chord Length Multiplier: " + this.chordDuration +
+               "\n  quarterToMS: " + this.quarterToMS() + 
+               "\n  chordTicks:" + this.chordTicks;
+    }
 
-	public function quarterToMS():Float {
-		return 60 / this.bpm;
-	}
+    public function quarterToMS():Float {
+        return 60 / this.bpm;
+    }
 
-	// Static utility method for rhythm generation
-	public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
-	    var rhythm = new Array<Int>();
-	    for (i in 0...n) rhythm.push(0);
-	    var stepSize = n / k;
-	    var currentStep = 0.0;
-	    for (i in 0...k) {
-	        rhythm[Math.round(currentStep)] = 1;
-	        currentStep += stepSize;
-	    }
-	    return rhythm;
-	}
+    // Static utility method for rhythm generation
+    public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
+        var rhythm = new Array<Int>();
+        for (i in 0...n) rhythm.push(0);
+        var stepSize = n / k;
+        var currentStep = 0.0;
+        for (i in 0...k) {
+            rhythm[Math.round(currentStep)] = 1;
+            currentStep += stepSize;
+        }
+        return rhythm;
+    }
 }
 
  
@@ -290,47 +290,31 @@ class AbstractLineGenerator implements ILineGenerator {
         var currentTime = 0.0;
         
         var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
-        var euclideanStepSize = patternDuration / n;
+        var stepSize = patternDuration / n;
+        var noteLength = stepSize * gateLength;  // Always use stepSize * gateLength
         var patternsPerChord = Math.floor(1 / rhythmicDensity);
 
-        trace('Debug values:');
-        trace('  timeManipulator: ' + timeManipulator);
-        trace('  chordTicks: ' + timeManipulator.chordTicks);
-        trace('  rhythmicDensity: ' + rhythmicDensity);
-        trace('  patternDuration: ' + patternDuration);
-        trace('  euclideanStepSize: ' + euclideanStepSize);
-        trace('  gateLength: ' + gateLength);
-        trace('  patternsPerChord: ' + patternsPerChord);
-        trace('  n: ' + n);
-        trace('  k: ' + k);
-
         for (c in seq.toNotes()) {
+            var rGen = new RhythmGenerator(this.k, this.n);
+            
             // For each pattern that fits in this chord
             for (pattern in 0...patternsPerChord) {
-                var rGen = new RhythmGenerator(this.k, this.n);
-                
                 // Play through the n steps of this pattern
                 for (step in 0...n) {
                     var beat = rGen.next();
                     if (beat == 1) {
-                        // Get all notes for this beat and create a Note for each
-                        for (noteValue in pickNotesFromChord(c)) {
-                            var noteLength = euclideanStepSize * gateLength;
-                            trace('Note calculation:');
-                            trace('  euclideanStepSize: ' + euclideanStepSize);
-                            trace('  gateLength: ' + gateLength);
-                            trace('  noteLength: ' + noteLength);
-                            trace('  currentTime: ' + currentTime);
+                        var notesToAdd = pickNotesFromChord(c);
+                        for (note in notesToAdd) {
                             notes.push(new Note(
                                 0,
-                                noteValue,
+                                note,
                                 100,
                                 currentTime,
-                                noteLength
+                                noteLength  // Use calculated note length
                             ));
                         }
                     }
-                    currentTime += euclideanStepSize;
+                    currentTime += stepSize;  // Always advance by step size
                 }
             }
         }
@@ -384,11 +368,7 @@ class AbstractLineGenerator implements ILineGenerator {
         return adjustedNotes;
     }
 
-    public function asDeltaEvents():Array<DeltaEvent> {
-        var events = new Array<DeltaEvent>();
-        var notes = generateCachedNotes();
-        
-        // First create all events with absolute times
+    public function notesToTimeEvents(notes:Array<Note>):Array<{time:Float, event:DeltaEvent}> {
         var timeEvents = new Array<{time:Float, event:DeltaEvent}>();
         
         for (note in notes) {
@@ -399,40 +379,71 @@ class AbstractLineGenerator implements ILineGenerator {
                     note.chan, 
                     note.note, 
                     note.velocity, 
-                    0,  // Delta will be calculated later
+                    0,
                     NOTE_ON
                 )
             });
             
-            // Note-off event - use exact note length
+            // Note-off event
             timeEvents.push({
                 time: note.startTime + note.length,
                 event: new DeltaEvent(
                     note.chan, 
                     note.note, 
-                    0,  // Zero velocity for note-off
-                    0,  // Delta will be calculated later
+                    0,
+                    0,
                     NOTE_OFF
                 )
             });
         }
-        
-        // Sort by absolute time, ensuring note-offs come before note-ons at same time
+        return timeEvents;
+    }
+
+    public function sortTimeEvents(timeEvents:Array<{time:Float, event:DeltaEvent}>):Array<{time:Float, event:DeltaEvent}> {
         timeEvents.sort((a, b) -> {
             var timeDiff = a.time - b.time;
-            if (timeDiff == 0) {
-                // At same time, note-offs come before note-ons
-                return a.event.type == NOTE_OFF ? -1 : 1;
+            if (Math.abs(timeDiff) < 0.0001) {
+                // At same time:
+                // 1. If same note, NOTE_OFF comes before NOTE_ON
+                if (a.event.note == b.event.note && a.event.type != b.event.type) {
+                    return a.event.type == NOTE_OFF ? -1 : 1;
+                }
+                // 2. If different notes, maintain original order based on note value
+                return a.event.note - b.event.note;
             }
-            return Std.int(timeDiff);
+            return timeDiff > 0 ? 1 : -1;
         });
+        return timeEvents;
+    }
+
+    public function asDeltaEvents():Array<DeltaEvent> {
+        var events = new Array<DeltaEvent>();
+        var notes = generateCachedNotes();
         
-        // Calculate deltas from sorted events
-        var lastTime = 0.0;
+        // First convert to time events and sort them
+        var timeEvents = notesToTimeEvents(notes);
+        timeEvents = sortTimeEvents(timeEvents);
+        
+        // Debug output
+        trace("Sorted time events:");
         for (te in timeEvents) {
-            te.event.deltaFromLast = te.time - lastTime;
-            lastTime = te.time;
-            events.push(te.event);
+            trace('time: ${te.time}, note: ${te.event.note}, type: ${te.event.type}');
+        }
+        
+        // Calculate deltas by comparing with previous event's time
+        for (i in 0...timeEvents.length) {
+            var previousTime = (i > 0) ? timeEvents[i-1].time : 0.0;
+            var currentTime = timeEvents[i].time;
+            var delta = currentTime - previousTime;
+            
+            timeEvents[i].event.deltaFromLast = delta;
+            events.push(timeEvents[i].event);
+        }
+        
+        // Debug output
+        trace("Generated delta events:");
+        for (e in events) {
+            trace('delta: ${e.deltaFromLast}, note: ${e.note}, type: ${e.type}');
         }
         
         return events;

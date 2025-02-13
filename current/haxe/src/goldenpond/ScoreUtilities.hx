@@ -57,6 +57,14 @@ class Note {
 @:expose
 class ScoreUtilities {
 
+  public static function getNoteOn():NoteEventType {
+    return NOTE_ON;
+  }
+
+  public static function getNoteOff():NoteEventType {
+    return NOTE_OFF;
+  }
+
   public static function transposeNotes(notes:Array<Note>,offset:Int):Array<Note> {
     return [for (n in notes) n.transpose(offset)];
   }
@@ -108,6 +116,8 @@ class ScoreUtilities {
     svg.add('</svg>');
     return svg.toString();
   }
+
+  
 }
 
 @:expose

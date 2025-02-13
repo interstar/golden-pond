@@ -562,7 +562,8 @@ class TestGoldenPond {
             { name: "MenuHelper Tests", fn: testMenuHelper },
             { name: "TimeManipulator Tests", fn: testTimeManipulator },
             { name: "RhythmGenerator Tests", fn: testRhythmGenerator },
-            { name: "DeltaEvent Tests", fn: testDeltaEvents }
+            { name: "DeltaEvent Tests", fn: testDeltaEvents },
+            { name: "Time Event Generation Tests", fn: testTimeEventGeneration }
         ];
         
         for (group in testGroups) {
@@ -690,7 +691,55 @@ class TestGoldenPond {
             "Simultaneous events should be ordered correctly"
         );
 
+        testit("DeltaEvents mixed note ordering",
+            deltaEvents.filter(e -> e.deltaFromLast == 0 && e.note != 60).map(e -> e.type),
+            [NOTE_ON, NOTE_OFF, NOTE_OFF],
+            "Simultaneous events for different notes can be in any order"
+        );
+
         trace('Delta Events: ${TEST_COUNT - startCount} tests run\n');
+    }
+
+    static function testTimeEventGeneration() {
+        trace("\n=== Testing Time Event Generation ===");
+        
+        // Create a simple set of notes
+        var notes = [
+            new Note(0, 60, 100, 0.0, 76.8),    // C, starts at 0
+            new Note(0, 64, 100, 0.0, 76.8),    // E, starts at 0
+            new Note(0, 67, 100, 0.0, 76.8)     // G, starts at 0
+        ];
+        
+        var line = new ChordLine(new TimeManipulator(), new ChordProgression(60, Mode.getMajorMode(), "1"), 1, 4, 0.8, 1.0);
+        var timeEvents = line.notesToTimeEvents(notes);
+        
+        // Test event generation
+        testit("Time event count", 
+            timeEvents.length, 
+            6,  // 3 note-ons + 3 note-offs
+            "Should generate ON and OFF events for each note"
+        );
+        
+        // Test event times
+        testit("Note-on times",
+            timeEvents.filter(te -> te.event.type == NOTE_ON).map(te -> te.time),
+            [0.0, 0.0, 0.0],
+            "All notes should start at time 0"
+        );
+        
+        testit("Note-off times",
+            timeEvents.filter(te -> te.event.type == NOTE_OFF).map(te -> te.time),
+            [76.8, 76.8, 76.8],
+            "All notes should end at time 76.8"
+        );
+        
+        // Test sorting
+        var sorted = line.sortTimeEvents(timeEvents);
+        testit("Sorted event order",
+            sorted.map(te -> te.event.type),
+            [NOTE_ON, NOTE_ON, NOTE_ON, NOTE_OFF, NOTE_OFF, NOTE_OFF],
+            "Should group ONs and OFFs together"
+        );
     }
 }
 
