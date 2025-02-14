@@ -183,14 +183,12 @@ class MenuHelper {
   }
 
   public static function rhythmicDensityToNumeric(rd:RhythmicDensity):Float {
-    trace('Converting rhythmic density: ' + rd);
     var result = [
         SIXTEEN => 1/16, TWELVE => 1/12, 
         EIGHT => 1/8, SIX => 1/6,
         FOUR => 1/4, THREE => 1/3,
         TWO => 1/2, ONE => 1
     ][rd];
-    trace('Result: ' + result);
     return result;
   }
 }
@@ -420,45 +418,20 @@ class AbstractLineGenerator implements ILineGenerator {
         var events = new Array<DeltaEvent>();
         var notes = generateCachedNotes();
         
-        trace('k=${k}, n=${n}'); // Debug k and n values
-        trace('First few notes:');
-        for (i in 0...Std.int(Math.min(notes.length, 3))) {
-            trace('Note ${i}: startTime=${notes[i].startTime}, length=${notes[i].length}, note=${notes[i].note}');
-        }
-        
         // First convert to time events and sort them
         var timeEvents = notesToTimeEvents(notes);
-        trace('Created ${timeEvents.length} time events (${Math.round(timeEvents.length / 2)} notes)');
-        trace('First few time events before sorting:');
-        for (i in 0...Std.int(Math.min(timeEvents.length, 6))) {
-            trace('Event ${i}: time=${timeEvents[i].time}, ' +
-                  'type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
-        }
-        
         timeEvents = sortTimeEvents(timeEvents);
-        trace('First few time events after sorting:');
-        for (i in 0...Std.int(Math.min(timeEvents.length, 6))) {
-            trace('Event ${i}: time=${timeEvents[i].time}, ' +
-                  'type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
-        }
         
         // Calculate deltas by comparing with previous event's time
-        trace('\nCalculating delta events:');
         for (i in 0...timeEvents.length) {
             var previousTime = (i > 0) ? timeEvents[i-1].time : 0.0;
             var currentTime = timeEvents[i].time;
             var delta = currentTime - previousTime;
             
-            if (i < 6 || delta > 200) { // Debug first few events and large deltas
-                trace('Event ${i}: currentTime=${currentTime}, previousTime=${previousTime}, ' +
-                      'delta=${delta}, type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
-            }
-            
             timeEvents[i].event.deltaFromLast = delta;
             events.push(timeEvents[i].event);
         }
         
-        trace('Created ${events.length} delta events');
         return events;
     }
 }

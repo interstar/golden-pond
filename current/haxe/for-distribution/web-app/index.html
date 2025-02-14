@@ -93,6 +93,9 @@
 
     <!-- Then load MIDI file writer -->
     <script src="./midi-file.js"></script>
+
+    <!-- Add this after the other script tags in the head section -->
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
 </head>
 <body>
   <div class="container">
@@ -475,68 +478,52 @@
         });
     }
 
-    // Modify downloadMidi to use the global state
+    // Define instrument mappings
+    const INSTRUMENT_PROGRAMS = {
+        'chords': 0,    // Acoustic Grand Piano
+        'bass': 32,     // Acoustic Bass
+        'top': 73,      // Flute
+        'arp': 46,      // Harp
+        'random': 25    // Acoustic Guitar
+    };
+
     function downloadMidi() {
-        console.log('Starting MIDI export...');
+        console.log('Starting MIDI export with Tone.js...');
         
-        const midi = {
-            header: {
-                format: 1,
-                numTracks: currentLines.length + 1,
-                ticksPerBeat: currentTimeManipulator.ppq
-            },
-            tracks: [
-                [{
-                    deltaTime: 0,
-                    type: 'setTempo',
-                    microsecondsPerBeat: Math.floor(60000000 / parseInt(document.getElementById('bpm').value))
-                }]
-            ]
-        };
+        // Create a new MIDI file
+        const midi = new Midi();
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const secondsPerBeat = 60.0 / bpm;
+        
+        midi.header.setTempo(bpm);
+        midi.header.timeSignature = [4, 4];
+        midi.header.ppq = currentTimeManipulator.ppq;
 
-        // Add tracks using asDeltaEvents
+        // Add tracks for each line
         currentLines.forEach(({type, line}, index) => {
-            const track = [];
+            const track = midi.addTrack();
             
-            // Add program change
-            track.push({
-                deltaTime: 0,
-                type: 'programChange',
-                programNumber: type.id === 'chords' ? 0 : 46,
-                channel: index
-            });
-
-            // Get delta events directly from the line
-            const deltaEvents = line.asDeltaEvents();
+            // Set instrument and channel
+            track.channel = index;
+            track.instrument.number = INSTRUMENT_PROGRAMS[type.id] || 0;
             
-            // Convert delta events to MIDI events
-            deltaEvents.forEach(evt => {
-                track.push({
-                    deltaTime: Math.round(evt.deltaFromLast),
-                    type: evt.type === ScoreUtilities.getNoteOn() ? 'noteOn' : 'noteOff',
-                    noteNumber: evt.note,
-                    velocity: evt.type === ScoreUtilities.getNoteOn() ? evt.velocity : 0,
-                    channel: index
+            // Get notes with absolute timing
+            const notes = line.generateNotes(0, index, 100);
+            
+            // Add notes to track
+            notes.forEach(note => {
+                track.addNote({
+                    midi: note.note,
+                    time: (note.startTime / currentTimeManipulator.ppq) * secondsPerBeat,
+                    duration: (note.length / currentTimeManipulator.ppq) * secondsPerBeat,
+                    velocity: note.velocity
                 });
-            });
-
-            midi.tracks.push(track);
-
-            // Debug output
-            console.log(`Track ${type.name} timing:`, {
-                ppq: currentTimeManipulator.ppq,
-                deltaEvents: deltaEvents.slice(0, 4)
             });
         });
 
-        // Before converting to bytes
-        console.log('Final MIDI structure:', midiFile.debugMidiData(midi));
-        
-        // Convert and download
-        const data = midiFile.writeMidi(midi);
-        
-        // Download
-        const blob = new Blob([new Uint8Array(data)], { type: 'audio/midi' });
+        // Convert to MIDI file and download
+        const bytes = midi.toArray();
+        const blob = new Blob([new Uint8Array(bytes)], { type: 'audio/midi' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
