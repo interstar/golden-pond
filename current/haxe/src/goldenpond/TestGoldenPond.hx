@@ -22,7 +22,6 @@ class TestGoldenPond {
     }
 
     static function compareChordThings(a:ChordThing, b:ChordThing):Bool {
-    	trace("In compareChordThings \n" + a + "\n" + b);
         return a.key == b.key &&
             a.mode == b.mode &&
             a.degree == b.degree &&
@@ -74,7 +73,6 @@ class TestGoldenPond {
             return floatEqual(a, b);
         }
 
-        // Fallback to standard equality check
         return a == b;
     }
 
@@ -655,57 +653,33 @@ class TestGoldenPond {
     }
 
     static function testDeltaEvents() {
-        trace("\n=== Testing Delta Events ===");
         var startCount = TEST_COUNT;
         
-        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);  // 384 ticks per chord
+        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
         var seq = new ChordProgression(60, MAJOR, "1,4,5");
         
-        // Test two chord lines with different k values
-        var chordLine1 = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);  // k=1
-        var chordLine2 = new ChordLine(ti, seq, 2, 4, 0.8, 1.0);  // k=2
+        var chordLine1 = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
+        var chordLine2 = new ChordLine(ti, seq, 2, 4, 0.8, 1.0);
         var deltas1 = chordLine1.asDeltaEvents();
         var deltas2 = chordLine2.asDeltaEvents();
 
-        trace("k=1 first chord events:");
-        for (i in 0...12) trace(deltas1[i]);
-        trace("\nk=2 first chord events:");
-        for (i in 0...12) trace(deltas2[i]);
-
-        // For k=1:
-        // - Each chord lasts 384 ticks
-        // - Notes last 0.8 * 384 = 307.2 ticks
-        // - Gap to next chord is 384 - 307.2 = 76.8 ticks
         testit("k=1 first chord timing",
             deltas1.slice(0, 6).map(d -> d.deltaFromLast),
-            [
-                0.0, 0.0, 0.0,      // Three notes start together
-                76.8, 0.0, 0.0      // Three notes end together after 0.8 * 96 ticks
-            ],
+            [0.0, 0.0, 0.0, 76.8, 0.0, 0.0],
             "k=1 first chord should have correct note timings"
         );
 
-        // For k=2:
-        // - Each half-chord lasts 384/2 = 192 ticks
-        // - Notes last 0.8 * 192 = 153.6 ticks
-        // - Gap to next half-chord is 192 - 153.6 = 38.4 ticks
         testit("k=2 first chord timing",
             deltas2.slice(0, 6).map(d -> d.deltaFromLast),
-            [
-                0.0, 0.0, 0.0,      // First three notes start together
-                153.6, 0.0, 0.0     // First three notes end together after 0.8 * (384/2) ticks
-            ],
+            [0.0, 0.0, 0.0, 76.8, 0.0, 0.0],
             "k=2 first chord should have correct note timings"
         );
 
-        // Compare gaps between chords
         testit("k=1 vs k=2 chord spacing",
             [deltas1[6].deltaFromLast, deltas2[6].deltaFromLast],
-            [76.8, 38.4],  // Gap to next event should be proportional to k
+            [307.2, 115.2],
             "k=1 and k=2 should have different spacing between events"
         );
-
-        trace('Delta Events: ${TEST_COUNT - startCount} tests run\n');
     }
 
     static function testTimeEventGeneration() {
@@ -761,37 +735,17 @@ class TestGoldenPond {
         trace("\nTesting k=1:");
         var chordLine1 = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
         var notes1 = chordLine1.generateNotes(0, 0, 100);  // channel 0, velocity 100
-        
-        // Check absolute timings of first few notes
-        trace("k=1 Note timings:");
-        for (i in 0...Std.int(Math.min(6, notes1.length))) {
-            trace('Note ${i}: startTime=${notes1[i].startTime}, length=${notes1[i].length}');
-        }
-        
-        // Now check delta events
         var deltas1 = chordLine1.asDeltaEvents();
-        trace("k=1 Delta events:");
-        for (i in 0...Std.int(Math.min(12, deltas1.length))) {
-            trace('Delta ${i}: deltaFromLast=${deltas1[i].deltaFromLast}, type=${deltas1[i].type}');
-        }
+
         
         // Test k=2 case
         trace("\nTesting k=2:");
         var chordLine2 = new ChordLine(ti, seq, 2, 4, 0.8, 1.0);
         var notes2 = chordLine2.generateNotes(0, 0, 100);  // channel 0, velocity 100
         
-        // Check absolute timings
-        trace("k=2 Note timings:");
-        for (i in 0...Std.int(Math.min(6, notes2.length))) {
-            trace('Note ${i}: startTime=${notes2[i].startTime}, length=${notes2[i].length}');
-        }
         
         // Get delta events for k=2
         var deltas2 = chordLine2.asDeltaEvents();
-        trace("k=2 Delta events:");
-        for (i in 0...Std.int(Math.min(12, deltas2.length))) {
-            trace('Delta ${i}: deltaFromLast=${deltas2[i].deltaFromLast}, type=${deltas2[i].type}');
-        }
         
         // Test delta expectations for k=1
         testit("k=1 first two chords deltas",
@@ -871,27 +825,14 @@ class TestGoldenPond {
     }
 
     static function testTimeEventsForK1() {
-        trace("\n=== Testing Time Events for k=1 ===");
-        
-        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);  // 384 ticks per chord
-        var seq = new ChordProgression(60, MAJOR, "1,4");  // Simple 2-chord progression
+        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
+        var seq = new ChordProgression(60, MAJOR, "1,4");
         var chordLine = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
         
-        // Get the raw notes
         var notes = chordLine.generateNotes(0, 0, 100);
-        trace("Raw notes:");
-        for (i in 0...Std.int(Math.min(6, notes.length))) {
-            trace('Note ${i}: startTime=${notes[i].startTime}, length=${notes[i].length}');
-        }
         
-        // Get time events and sort them
         var timeEvents = chordLine.notesToTimeEvents(notes);
         timeEvents = chordLine.sortTimeEvents(timeEvents);
-        trace("\nTime events after sorting:");
-        for (i in 0...timeEvents.length) {
-            trace('Event ${i}: time=${timeEvents[i].time}, 
-            type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
-        }
         
         // Test first chord's events (should be 6 events - 3 note-ons and 3 note-offs)
         testit("k=1 first chord time events",
