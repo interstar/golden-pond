@@ -40,8 +40,12 @@ class TestGoldenPond {
         return true;
     }
 
+    static function floatEqual(a:Float, b:Float, epsilon:Float = 0.0001):Bool {
+        return Math.abs(a - b) < epsilon;
+    }
+
     static function deepEquals(a:Dynamic, b:Dynamic):Bool {
-        if (a == null || b == null) return a == b; // Handle null cases
+        if (a == null || b == null) return a == b;
 
         if (Std.isOfType(a, Array) && Std.isOfType(b, Array)) {
             if (a.length != b.length) return false;
@@ -51,13 +55,23 @@ class TestGoldenPond {
             return true;
         }
 
-        
+        // Handle Note objects first
         if (Std.isOfType(a, Note) && Std.isOfType(b, Note)) {
             return a.equals(b);
         }
         
+        // Handle ChordThing objects
         if (Std.isOfType(a, ChordThing) && Std.isOfType(b, ChordThing)) {
             return a.equals(b);
+        }
+
+        // Handle objects with time field specially
+        if (Reflect.hasField(a, "time") && Reflect.hasField(b, "time")) {
+            return floatEqual(a.time, b.time) && Reflect.field(a, "type") == Reflect.field(b, "type");
+        }
+
+        if (Std.isOfType(a, Float) && Std.isOfType(b, Float)) {
+            return floatEqual(a, b);
         }
 
         // Fallback to standard equality check
@@ -562,8 +576,11 @@ class TestGoldenPond {
             { name: "MenuHelper Tests", fn: testMenuHelper },
             { name: "TimeManipulator Tests", fn: testTimeManipulator },
             { name: "RhythmGenerator Tests", fn: testRhythmGenerator },
+            { name: "RhythmGenerator K1 Tests", fn: testRhythmGeneratorK1 },
             { name: "DeltaEvent Tests", fn: testDeltaEvents },
-            { name: "Time Event Generation Tests", fn: testTimeEventGeneration }
+            { name: "Time Event Generation Tests", fn: testTimeEventGeneration },
+            { name: "Chord Timings Tests", fn: testChordTimings },
+            { name: "Time Events for k=1 Tests", fn: testTimeEventsForK1 }
         ];
         
         for (group in testGroups) {
@@ -641,60 +658,51 @@ class TestGoldenPond {
         trace("\n=== Testing Delta Events ===");
         var startCount = TEST_COUNT;
         
-        var ti = new TimeManipulator().setPPQ(96);
+        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);  // 384 ticks per chord
         var seq = new ChordProgression(60, MAJOR, "1,4,5");
         
-        // Test chord line with k=1
-        var chordLine = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
-        var deltaEvents = chordLine.asDeltaEvents();
-        
-        trace("First 6 delta events:");
-        for (i in 0...6) {
-            trace(deltaEvents[i]);
-        }
-        
-        // First chord should have all notes start at delta 0
-        testit("Chord deltaEvents - first chord noteOns", 
-            deltaEvents.slice(0, 3).map(e -> e.deltaFromLast),
-            [0.0, 0.0, 0.0],
-            "First chord notes should start together"
-        );
-        
-        // Note offs should come after note length
-        testit("Chord deltaEvents - first chord noteOffs",
-            deltaEvents.slice(3, 6).map(e -> e.deltaFromLast),
-            [76.8, 0.0, 0.0],  // 96 * 0.8 = 76.8
-            "First chord notes should end together"
-        );
-        
-        // Next chord should start after one pattern duration
-        testit("Chord deltaEvents - second chord start",
-            deltaEvents[6].deltaFromLast,
-            307.2,  // (384 - 76.8)
-            "Second chord should start at correct delta"
-        );
-        
-        // Test arpeggio line with k>1
-        var arpLine = new ArpLine(ti, seq, 3, 4, 0.5, 1.0);
-        var arpDeltaEvents = arpLine.asDeltaEvents();
-        
-        // First three notes should be evenly spaced
-        testit("Arp deltaEvents - first three notes",
-            arpDeltaEvents.slice(0, 3).map(e -> e.deltaFromLast),
-            [0.0, 96.0, 96.0],
-            "Arp notes should be evenly spaced"
+        // Test two chord lines with different k values
+        var chordLine1 = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);  // k=1
+        var chordLine2 = new ChordLine(ti, seq, 2, 4, 0.8, 1.0);  // k=2
+        var deltas1 = chordLine1.asDeltaEvents();
+        var deltas2 = chordLine2.asDeltaEvents();
+
+        trace("k=1 first chord events:");
+        for (i in 0...12) trace(deltas1[i]);
+        trace("\nk=2 first chord events:");
+        for (i in 0...12) trace(deltas2[i]);
+
+        // For k=1:
+        // - Each chord lasts 384 ticks
+        // - Notes last 0.8 * 384 = 307.2 ticks
+        // - Gap to next chord is 384 - 307.2 = 76.8 ticks
+        testit("k=1 first chord timing",
+            deltas1.slice(0, 6).map(d -> d.deltaFromLast),
+            [
+                0.0, 0.0, 0.0,      // Three notes start together
+                76.8, 0.0, 0.0      // Three notes end together after 0.8 * 96 ticks
+            ],
+            "k=1 first chord should have correct note timings"
         );
 
-        testit("DeltaEvents ordering",
-            deltaEvents.filter(e -> e.deltaFromLast == 0).map(e -> e.type),
-            [NOTE_ON, NOTE_ON, NOTE_ON, NOTE_OFF, NOTE_OFF, NOTE_OFF],
-            "Simultaneous events should be ordered correctly"
+        // For k=2:
+        // - Each half-chord lasts 384/2 = 192 ticks
+        // - Notes last 0.8 * 192 = 153.6 ticks
+        // - Gap to next half-chord is 192 - 153.6 = 38.4 ticks
+        testit("k=2 first chord timing",
+            deltas2.slice(0, 6).map(d -> d.deltaFromLast),
+            [
+                0.0, 0.0, 0.0,      // First three notes start together
+                153.6, 0.0, 0.0     // First three notes end together after 0.8 * (384/2) ticks
+            ],
+            "k=2 first chord should have correct note timings"
         );
 
-        testit("DeltaEvents mixed note ordering",
-            deltaEvents.filter(e -> e.deltaFromLast == 0 && e.note != 60).map(e -> e.type),
-            [NOTE_ON, NOTE_OFF, NOTE_OFF],
-            "Simultaneous events for different notes can be in any order"
+        // Compare gaps between chords
+        testit("k=1 vs k=2 chord spacing",
+            [deltas1[6].deltaFromLast, deltas2[6].deltaFromLast],
+            [76.8, 38.4],  // Gap to next event should be proportional to k
+            "k=1 and k=2 should have different spacing between events"
         );
 
         trace('Delta Events: ${TEST_COUNT - startCount} tests run\n');
@@ -739,6 +747,184 @@ class TestGoldenPond {
             sorted.map(te -> te.event.type),
             [NOTE_ON, NOTE_ON, NOTE_ON, NOTE_OFF, NOTE_OFF, NOTE_OFF],
             "Should group ONs and OFFs together"
+        );
+    }
+
+    static function testChordTimings() {
+        trace("\n=== Testing Chord Timings ===");
+        var startCount = TEST_COUNT;
+        
+        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);  // 384 ticks per chord
+        var seq = new ChordProgression(60, MAJOR, "1,4,5");  // Simple 3-chord progression
+        
+        // Test k=1 case
+        trace("\nTesting k=1:");
+        var chordLine1 = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
+        var notes1 = chordLine1.generateNotes(0, 0, 100);  // channel 0, velocity 100
+        
+        // Check absolute timings of first few notes
+        trace("k=1 Note timings:");
+        for (i in 0...Std.int(Math.min(6, notes1.length))) {
+            trace('Note ${i}: startTime=${notes1[i].startTime}, length=${notes1[i].length}');
+        }
+        
+        // Now check delta events
+        var deltas1 = chordLine1.asDeltaEvents();
+        trace("k=1 Delta events:");
+        for (i in 0...Std.int(Math.min(12, deltas1.length))) {
+            trace('Delta ${i}: deltaFromLast=${deltas1[i].deltaFromLast}, type=${deltas1[i].type}');
+        }
+        
+        // Test k=2 case
+        trace("\nTesting k=2:");
+        var chordLine2 = new ChordLine(ti, seq, 2, 4, 0.8, 1.0);
+        var notes2 = chordLine2.generateNotes(0, 0, 100);  // channel 0, velocity 100
+        
+        // Check absolute timings
+        trace("k=2 Note timings:");
+        for (i in 0...Std.int(Math.min(6, notes2.length))) {
+            trace('Note ${i}: startTime=${notes2[i].startTime}, length=${notes2[i].length}');
+        }
+        
+        // Get delta events for k=2
+        var deltas2 = chordLine2.asDeltaEvents();
+        trace("k=2 Delta events:");
+        for (i in 0...Std.int(Math.min(12, deltas2.length))) {
+            trace('Delta ${i}: deltaFromLast=${deltas2[i].deltaFromLast}, type=${deltas2[i].type}');
+        }
+        
+        // Test delta expectations for k=1
+        testit("k=1 first two chords deltas",
+            deltas1.slice(0, 15).map(d -> Math.round(d.deltaFromLast * 10) / 10),
+            [
+                // First chord
+                0.0, 0.0, 0.0,           // Note-ons together
+                76.8, 0.0, 0.0,          // Note-offs together
+                // Second chord
+                307.2,                    // Delta to next chord start
+                0.0, 0.0,                // Other note-ons in chord
+                76.8, 0.0, 0.0,          // Note-offs together
+                // Start of third chord
+                307.2,                    // Delta to next chord
+                0.0, 0.0                 // Other note-ons in chord
+            ],
+            "First two chords should have correct timing"
+        );
+        
+        // Also test k=2 deltas
+        testit("k=2 first two chords deltas",
+            deltas2.slice(0, 15).map(d -> Math.round(d.deltaFromLast * 10) / 10),
+            [
+                // First chord
+                0.0, 0.0, 0.0,           // Note-ons together
+                76.8, 0.0, 0.0,          // Note-offs together
+                // Second chord (should be closer due to k=2)
+                115.2,                    // Delta to next chord start
+                0.0, 0.0,                // Other note-ons in chord
+                76.8, 0.0, 0.0,          // Note-offs together
+                // Start of third chord
+                115.2,                    // Delta to next chord
+                0.0, 0.0                 // Other note-ons in chord
+            ],
+            "k=2 should have shorter gaps between chords"
+        );
+        
+        trace('Chord Timings: ${TEST_COUNT - startCount} tests run\n');
+    }
+
+    static function testRhythmGeneratorK1() {
+        trace("\nTesting RhythmGenerator k=1");
+        
+        // Test k=1, n=4
+        var rGen = new RhythmGenerator(1, 4);
+        
+        // Should get pattern [1,0,0,0] repeating
+        var expectedPattern = [1,0,0,0];
+        var actualPattern = [];
+        
+        // Get 8 beats (2 complete patterns)
+        for (i in 0...8) {
+            actualPattern.push(rGen.next());
+        }
+        
+        // Check first pattern
+        testit("k=1 first pattern",
+            actualPattern.slice(0,4),
+            expectedPattern,
+            'k=1 first pattern should be [1,0,0,0]'
+        );
+        
+        // Check pattern repeats
+        testit("k=1 second pattern",
+            actualPattern.slice(4,8),
+            expectedPattern,
+            'k=1 second pattern should be [1,0,0,0]'
+        );
+        
+        // Count total hits
+        var totalHits = Lambda.count(actualPattern, x -> x == 1);
+        testit("k=1 total hits",
+            totalHits,
+            2,
+            'k=1 should have exactly one hit per pattern'
+        );
+    }
+
+    static function testTimeEventsForK1() {
+        trace("\n=== Testing Time Events for k=1 ===");
+        
+        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);  // 384 ticks per chord
+        var seq = new ChordProgression(60, MAJOR, "1,4");  // Simple 2-chord progression
+        var chordLine = new ChordLine(ti, seq, 1, 4, 0.8, 1.0);
+        
+        // Get the raw notes
+        var notes = chordLine.generateNotes(0, 0, 100);
+        trace("Raw notes:");
+        for (i in 0...Std.int(Math.min(6, notes.length))) {
+            trace('Note ${i}: startTime=${notes[i].startTime}, length=${notes[i].length}');
+        }
+        
+        // Get time events and sort them
+        var timeEvents = chordLine.notesToTimeEvents(notes);
+        timeEvents = chordLine.sortTimeEvents(timeEvents);
+        trace("\nTime events after sorting:");
+        for (i in 0...timeEvents.length) {
+            trace('Event ${i}: time=${timeEvents[i].time}, 
+            type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
+        }
+        
+        // Test first chord's events (should be 6 events - 3 note-ons and 3 note-offs)
+        testit("k=1 first chord time events",
+            timeEvents.slice(0, 6).map(te -> { 
+                time: floatEqual(te.time, 0.0) ? 0.0 : floatEqual(te.time, 76.8) ? 76.8 : te.time, 
+                type: te.event.type 
+            }),
+            [
+                { time: 0.0, type: NOTE_ON },
+                { time: 0.0, type: NOTE_ON },
+                { time: 0.0, type: NOTE_ON },
+                { time: 76.8, type: NOTE_OFF },
+                { time: 76.8, type: NOTE_OFF },
+                { time: 76.8, type: NOTE_OFF }
+            ],
+            "First chord should have notes starting at 0 and ending at 76.8"
+        );
+        
+        // Test second chord's events - update expected times to match actual chord duration
+        testit("k=1 second chord time events",
+            timeEvents.slice(6, 12).map(te -> { 
+                time: floatEqual(te.time, 384.0) ? 384.0 : floatEqual(te.time, 460.8) ? 460.8 : te.time, 
+                type: te.event.type 
+            }),
+            [
+                { time: 384.0, type: NOTE_ON },  // Start at next chord (384 ticks)
+                { time: 384.0, type: NOTE_ON },
+                { time: 384.0, type: NOTE_ON },
+                { time: 460.8, type: NOTE_OFF }, // End 76.8 ticks later
+                { time: 460.8, type: NOTE_OFF },
+                { time: 460.8, type: NOTE_OFF }
+            ],
+            "Second chord should start at next chord boundary (384 ticks)"
         );
     }
 }

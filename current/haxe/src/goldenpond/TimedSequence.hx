@@ -420,32 +420,45 @@ class AbstractLineGenerator implements ILineGenerator {
         var events = new Array<DeltaEvent>();
         var notes = generateCachedNotes();
         
+        trace('k=${k}, n=${n}'); // Debug k and n values
+        trace('First few notes:');
+        for (i in 0...Std.int(Math.min(notes.length, 3))) {
+            trace('Note ${i}: startTime=${notes[i].startTime}, length=${notes[i].length}, note=${notes[i].note}');
+        }
+        
         // First convert to time events and sort them
         var timeEvents = notesToTimeEvents(notes);
-        timeEvents = sortTimeEvents(timeEvents);
+        trace('Created ${timeEvents.length} time events (${Math.round(timeEvents.length / 2)} notes)');
+        trace('First few time events before sorting:');
+        for (i in 0...Std.int(Math.min(timeEvents.length, 6))) {
+            trace('Event ${i}: time=${timeEvents[i].time}, ' +
+                  'type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
+        }
         
-        // Debug output
-        trace("Sorted time events:");
-        for (te in timeEvents) {
-            trace('time: ${te.time}, note: ${te.event.note}, type: ${te.event.type}');
+        timeEvents = sortTimeEvents(timeEvents);
+        trace('First few time events after sorting:');
+        for (i in 0...Std.int(Math.min(timeEvents.length, 6))) {
+            trace('Event ${i}: time=${timeEvents[i].time}, ' +
+                  'type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
         }
         
         // Calculate deltas by comparing with previous event's time
+        trace('\nCalculating delta events:');
         for (i in 0...timeEvents.length) {
             var previousTime = (i > 0) ? timeEvents[i-1].time : 0.0;
             var currentTime = timeEvents[i].time;
             var delta = currentTime - previousTime;
             
+            if (i < 6 || delta > 200) { // Debug first few events and large deltas
+                trace('Event ${i}: currentTime=${currentTime}, previousTime=${previousTime}, ' +
+                      'delta=${delta}, type=${timeEvents[i].event.type}, note=${timeEvents[i].event.note}');
+            }
+            
             timeEvents[i].event.deltaFromLast = delta;
             events.push(timeEvents[i].event);
         }
         
-        // Debug output
-        trace("Generated delta events:");
-        for (e in events) {
-            trace('delta: ${e.deltaFromLast}, note: ${e.note}, type: ${e.type}');
-        }
-        
+        trace('Created ${events.length} delta events');
         return events;
     }
 }
