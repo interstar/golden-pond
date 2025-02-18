@@ -3,6 +3,7 @@
     max-width: 960px; /* Adjust this value as needed */
     margin: 0 auto;   /* Centers the container */
     padding: 0 20px;  /* Adds horizontal padding */
+    margin-top: 60px;  /* Height of transport panel + some padding */
 }
 
 /* General Styles */
@@ -91,4 +92,89 @@ textarea {
         width: auto;
         margin-top: 5px;
     }
+}
+
+/* Add these styles */
+.transport-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 10px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.transport-panel .button-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+}
+
+/* Add these styles */
+.root-mode-section {
+    margin: 20px 0;
+}
+
+.root-mode-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.root-control, .mode-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.root-control label, .mode-control label {
+    min-width: 50px;
+    text-align: right;
+}
+
+.root-control .value-display {
+    display: flex;
+    gap: 5px;
+    min-width: 100px;
+}
+
+.preview-column {
+    background: white;
+    padding: 10px;
+    border-radius: 3px;
+    flex: 1;
+    min-width: 0;  /* Allows flex item to shrink below content size */
+}
+
+.piano-roll-preview {
+    width: 100%;
+    height: 200px;
+    background-color: #f8f8f8;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.root-mode-container .control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.root-mode-container .control-group label {
+    min-width: 100px;  /* Consistent width for labels */
+    text-align: right;
+    margin-right: 10px;
+}
+
+.root-mode-container .control-group input[type="range"],
+.root-mode-container .control-group select {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.root-mode-container .control-group span {
+    min-width: 50px;  /* Space for the value display */
 }

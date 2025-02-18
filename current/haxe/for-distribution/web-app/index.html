@@ -82,6 +82,43 @@
             justify-content: space-between;
             margin-bottom: 5px;
         }
+
+        .root-mode-section {
+            margin: 20px 0;
+        }
+
+        .root-mode-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .root-control {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mode-control {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .root-control input[type="range"] {
+            width: 200px;
+        }
+
+        .mode-control select {
+            width: 100px;
+        }
+
+        .root-control span {
+            text-align: center;
+        }
+
+        .root-control span#rootNoteName {
+            font-size: 1em;
+        }
     </style>
     <link rel="stylesheet" href="styles.css">
     
@@ -91,65 +128,63 @@
     <!-- Then load goldenpond -->
     <script src="./goldenpond.js"></script>
 
-    <!-- Then load MIDI file writer -->
-    <script src="./midi-file.js"></script>
 
     <!-- Add this after the other script tags in the head section -->
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
 </head>
 <body>
+  <div class="transport-panel">
+    <div class="button-group">
+      <button onclick="play()">Play</button>
+      <button onclick="stop()">Stop</button>
+      <button onclick="downloadMidi()">Download MIDI</button>
+    </div>
+  </div>
   <div class="container">
     <h2>GoldenPond</h2>
 
     <!-- Root and Mode Section -->
-    <div class="control-section">
-        <div class="control-group">
-            <label for="root">Root:</label>
-            <input type="range" id="root" name="root" min="32" max="96" value="65">
-            <span id="rootValue">65</span>
-        </div>
-        <div class="control-group">
-            <label for="mode">Mode:</label>
-            <select id="mode">
-                <option value="0">Major</option>
-                <option value="1">Minor</option>
-            </select>
+    <div class="control-section root-mode-section">
+        <div class="root-mode-container">
+            <div class="control-group root-control">
+                <label for="root">Root: <span id="rootNoteName">65 (F4)</span></label> 
+                <input type="range" id="root" name="root" min="32" max="96" value="65" style="width: 200px;">
+                
+            </div>
+            <div class="control-group mode-control">
+                <label for="mode">Mode:</label>
+                <select id="mode" style="width: 100px;">
+                    <option value="0">Major</option>
+                    <option value="1">Minor</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="chordLength">Chord Duration (in quarter-notes): <span id="chordLengthValue">4</span></label>
+                <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
+                
+            </div>
+
+            <div class="control-group">
+                <label for="bpm">Tempo (BPM):</label>
+                <input type="range" id="bpm" name="bpm" min="40" max="200" value="120">
+                <span id="bpmValue">120</span>
+            </div>
+    
         </div>
     </div>
 
     <!-- Chord Sequence -->
     <div class="control-section">
         <label for="chordSequence">Chord Sequence:</label><br>
-        <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,&lt;12,77ii,&gt;12,71,96,74ii,75</textarea>
+        <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75</textarea>
     </div>
 
-    <!-- Note Length, Chord Length -->
-    <div class="control-section">
-        <div class="control-group">
-            <label for="noteProportion">Note Length:</label>
-            <input type="range" id="noteProportion" name="noteProportion" min="0.1" max="1.5" step="0.1" value="0.8">
-            <span id="noteProportionValue">0.8</span>
-        </div>
-        <div class="control-group">
-            <label for="chordLength">Chord Length:</label>
-            <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="8">
-            <span id="chordLengthValue">8</span>
-        </div>
-    </div>
 
     <!-- Add BPM control and play buttons -->
     <div class="control-section">
-        <div class="control-group">
-            <label for="bpm">Tempo (BPM):</label>
-            <input type="range" id="bpm" name="bpm" min="40" max="200" value="120">
-            <span id="bpmValue">120</span>
-        </div>
-        <div class="button-group">
-            <button onclick="play()">Play</button>
-            <button onclick="stop()">Stop</button>
-            <button onclick="downloadMidi()">Download MIDI</button>
-        </div>
     </div>
+
 
     <!-- Generate Types Section -->
     <div class="control-section">
@@ -173,6 +208,7 @@
     let currentTimeManipulator = null;
     let currentProgression = null;
     let instruments = {};
+    let currentConfig = null;
 
     // Function to initialize audio after user gesture
     function initAudio() {
@@ -197,9 +233,16 @@
     }
 
     // Function to create all line controls
-    function createAllLineControls() {
+    function createAllLineControls(config) {
         const container = document.getElementById('line-controls');
-        lineTypes.forEach(lineType => {
+        container.innerHTML = ''; // Clear existing controls
+        
+        Object.entries(config.lines).forEach(([lineId, settings]) => {
+            const lineType = {
+                id: lineId,
+                name: lineId.charAt(0).toUpperCase() + lineId.slice(1),
+                ...settings  // This spreads all settings including gateLength
+            };
             const controls = createLineControls(lineType);
             container.appendChild(controls);
         });
@@ -265,6 +308,58 @@
             controlsColumn.appendChild(sliderContainer);
         });
 
+        // Add octave transpose slider after K and N sliders
+        const octaveContainer = document.createElement('div');
+        octaveContainer.className = 'slider-group';
+        
+        const octaveLabel = document.createElement('div');
+        octaveLabel.className = 'slider-label';
+        octaveLabel.innerHTML = `Octave: <span id="${lineType.id}-octave-value">0</span>`;
+        
+        const octaveSlider = document.createElement('input');
+        octaveSlider.type = 'range';
+        octaveSlider.id = `${lineType.id}-octave`;
+        octaveSlider.min = '-2';
+        octaveSlider.max = '2';
+        octaveSlider.value = '0';
+        octaveSlider.step = '1';
+        
+        octaveSlider.oninput = () => {
+            const value = parseInt(octaveSlider.value);
+            document.getElementById(`${lineType.id}-octave-value`).textContent = value;
+            updateControls();
+        };
+        
+        octaveContainer.appendChild(octaveLabel);
+        octaveContainer.appendChild(octaveSlider);
+        controlsColumn.appendChild(octaveContainer);
+
+        // Gate Length slider
+        const gateLengthContainer = document.createElement('div');
+        gateLengthContainer.className = 'slider-group';
+        
+        const gateLengthLabel = document.createElement('div');
+        gateLengthLabel.className = 'slider-label';
+        gateLengthLabel.innerHTML = `Gate Length: <span id="${lineType.id}-gateLength-value">${lineType.gateLength.toFixed(2)}</span>`;
+        
+        const gateLengthSlider = document.createElement('input');
+        gateLengthSlider.type = 'range';
+        gateLengthSlider.id = `${lineType.id}-gateLength`;
+        gateLengthSlider.min = '0.1';
+        gateLengthSlider.max = '1.0';
+        gateLengthSlider.step = '0.1';
+        gateLengthSlider.value = lineType.gateLength;
+        
+        gateLengthSlider.oninput = () => {
+            const value = parseFloat(gateLengthSlider.value);
+            document.getElementById(`${lineType.id}-gateLength-value`).textContent = value.toFixed(2);
+            updateControls();
+        };
+        
+        gateLengthContainer.appendChild(gateLengthLabel);
+        gateLengthContainer.appendChild(gateLengthSlider);
+        controlsColumn.appendChild(gateLengthContainer);
+
         // Preview column
         const previewColumn = document.createElement('div');
         previewColumn.className = 'preview-column';
@@ -276,8 +371,6 @@
         const pianoRoll = document.createElement('div');
         pianoRoll.id = `${lineType.id}-preview`;
         pianoRoll.className = 'piano-roll-preview';
-        pianoRoll.style.width = '300px';  // Explicit width
-        pianoRoll.style.height = '150px'; // Explicit height
         previewColumn.appendChild(pianoRoll);
 
         // Add event listeners
@@ -316,45 +409,6 @@
         });
     }
 
-    // Configuration for each line type
-    const lineTypes = [
-        {
-            id: 'chords',
-            name: 'Chords',
-            defaultK: 2,
-            defaultN: 4,
-            checked: true
-        },
-        {
-            id: 'arpeggio',
-            name: 'Arpeggio',
-            defaultK: 2,
-            defaultN: 4,
-            checked: false
-        },
-        {
-            id: 'bass',
-            name: 'Bass',
-            defaultK: 2,
-            defaultN: 4,
-            checked: false
-        },
-        {
-            id: 'top',
-            name: 'Top',
-            defaultK: 2,
-            defaultN: 4,
-            checked: false
-        },
-        {
-            id: 'random',
-            name: 'Random',
-            defaultK: 2,
-            defaultN: 4,
-            checked: false
-        }
-    ];
-
     // Function to update time and progression settings
     function updateTimeAndProgression() {
         if (!tm) return;
@@ -386,7 +440,6 @@
     function updateMusicState() {
         const bpm = parseInt(document.getElementById('bpm').value);
         const beatsPerChord = parseInt(document.getElementById('chordLength').value);
-        const noteProportion = parseFloat(document.getElementById('noteProportion').value);
         
         // Update time manipulator
         currentTimeManipulator = new TimeManipulator();
@@ -403,30 +456,32 @@
 
         // Update all lines
         currentLines = [];
-        lineTypes.forEach(lineType => {
-            const values = getLineValues(lineType);
+        Object.entries(currentConfig.lines).forEach(([lineId, settings]) => {
+            const values = getLineValues(lineId);
             if (values.active) {
                 let line;
-                switch(lineType.name) {
-                    case 'Chords':
-                        line = new ChordLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                switch(lineId) {
+                    case 'chords':
+                        line = new ChordLine(currentTimeManipulator, currentProgression, 
+                            values.k, values.n, values.gateLength, values.density);
                         break;
-                    case 'Arpeggio':
-                        line = new ArpLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                    case 'arpeggio':
+                        line = new ArpLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
                         break;
-                    case 'Bass':
-                        line = new BassLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                    case 'bass':
+                        line = new BassLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
                         break;
-                    case 'Top':
-                        line = new TopLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                    case 'top':
+                        line = new TopLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
                         break;
-                    case 'Random':
-                        line = new RandomLine(currentTimeManipulator, currentProgression, values.k, values.n, noteProportion, values.density);
+                    case 'random':
+                        line = new RandomLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
                         break;
                 }
                 if (line) {
+                    line.transpose(values.octave * 12);
                     currentLines.push({
-                        type: lineType,
+                        type: { id: lineId, name: lineId.charAt(0).toUpperCase() + lineId.slice(1) },
                         line: line,
                         notes: line.generateNotes(0, 0, 100)
                     });
@@ -541,11 +596,11 @@
         
         try {
             // First create all the controls
-            createAllLineControls();
+            createAllLineControls(pieces.simpleMajor);
             console.log('Line controls created successfully');
             
             // Add event listeners for global controls
-            ['root', 'noteProportion', 'chordLength', 'bpm'].forEach(id => {
+            ['root', 'chordLength', 'bpm'].forEach(id => {
                 const element = document.getElementById(id);
                 if (!element) {
                     console.warn(`Could not find element with id: ${id}`);
@@ -582,15 +637,18 @@
     });
 
     // Get values for a line type
-    function getLineValues(lineType) {
-        return {
-            active: document.getElementById(`${lineType.id}-active`).checked,
+    function getLineValues(lineId) {
+        const values = {
+            active: document.getElementById(`${lineId}-active`).checked,
             density: MenuHelper.rhythmicDensityToNumeric(
-                MenuHelper.getRhythmicDensityFor(document.getElementById(`${lineType.id}-density`).value)
+                MenuHelper.getRhythmicDensityFor(document.getElementById(`${lineId}-density`).value)
             ),
-            k: parseInt(document.getElementById(`${lineType.id}-k`).value),
-            n: parseInt(document.getElementById(`${lineType.id}-n`).value)
+            k: parseInt(document.getElementById(`${lineId}-k`).value),
+            n: parseInt(document.getElementById(`${lineId}-n`).value),
+            octave: parseInt(document.getElementById(`${lineId}-octave`).value),
+            gateLength: parseFloat(document.getElementById(`${lineId}-gateLength`).value)
         };
+        return values;
     }
 
     // Add variable to track scheduled notes
@@ -624,13 +682,13 @@
         valueDisplay.textContent = slider.value;
     }
 
-    // Add this function after updateMusicState
+    // Update the updatePreviews function
     function updatePreviews() {
-        lineTypes.forEach(lineType => {
-            const previewElement = document.getElementById(`${lineType.id}-preview`);
+        Object.keys(currentConfig.lines).forEach(lineId => {
+            const previewElement = document.getElementById(`${lineId}-preview`);
             if (!previewElement) return;
 
-            const lineData = currentLines.find(l => l.type.id === lineType.id);
+            const lineData = currentLines.find(l => l.type.id === lineId);
             if (!lineData) {
                 previewElement.innerHTML = '';
                 return;
@@ -642,10 +700,174 @@
                 return;
             }
 
-            // Use ScoreUtilities.makePianoRollSVG instead of our JS implementation
-            previewElement.innerHTML = ScoreUtilities.makePianoRollSVG(notes, 300, 150);
+            const rect = previewElement.getBoundingClientRect();
+            previewElement.innerHTML = ScoreUtilities.makePianoRollSVG(notes, rect.width, rect.height);
         });
     }
+
+    // Add root note name update:
+    document.getElementById('root').addEventListener('input', function() {
+        const rootValue = parseInt(this.value);
+        
+        document.getElementById('rootNoteName').textContent = getMidiNoteName(rootValue);
+        updateControls();
+    });
+
+    // Add note name calculation function:
+    function getMidiNoteName(midiNumber) {
+        const notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        const note = notes[midiNumber % 12];
+        const octave = Math.floor(midiNumber / 12) - 1;
+        return `${midiNumber} (${note}${octave})`;
+    }
+
+    // Update loadPieceConfig to store the current config
+    function loadPieceConfig(config) {
+        currentConfig = config;  // Store current configuration
+        createAllLineControls(config);
+        
+        // Then set all the values
+        document.getElementById('root').value = config.root;
+        document.getElementById('mode').value = config.mode;
+        document.getElementById('bpm').value = config.bpm;
+        document.getElementById('chordLength').value = config.chordLength;
+
+        document.getElementById('chordSequence').value = config.chordSequence;
+        
+        // Update displays
+        updateDisplayValue('bpm', 'bpmValue');
+        updateDisplayValue('chordLength', 'chordLengthValue');
+        document.getElementById('rootNoteName').textContent = getMidiNoteName(config.root);
+        
+        // Set line controls
+        Object.entries(config.lines).forEach(([lineId, settings]) => {
+            document.getElementById(`${lineId}-active`).checked = settings.active;
+            document.getElementById(`${lineId}-k`).value = settings.k;
+            document.getElementById(`${lineId}-n`).value = settings.n;
+            document.getElementById(`${lineId}-density`).value = settings.density;
+            document.getElementById(`${lineId}-octave`).value = settings.octave;
+            document.getElementById(`${lineId}-gateLength`).value = settings.gateLength;
+            
+            // Update displays
+            document.getElementById(`${lineId}-k-value`).textContent = settings.k;
+            document.getElementById(`${lineId}-n-value`).textContent = settings.n;
+            document.getElementById(`${lineId}-octave-value`).textContent = settings.octave;
+            document.getElementById(`${lineId}-gateLength-value`).textContent = settings.gateLength.toFixed(2);
+        });
+        
+        // Update everything
+        updateControls();
+    }
+
+    // Example piece configurations
+    const pieces = {
+        simpleMajor: {
+            root: 60,
+            mode: 0,
+            bpm: 120,
+            chordLength: 4,
+            noteProportion: 0.8,
+            chordSequence: "1,4,5,1",
+            lines: {
+                chords: { 
+                    active: true, 
+                    k: 1, 
+                    n: 4, 
+                    density: 7,
+                    octave: 0,
+                    gateLength: 0.8
+                },
+                arpeggio: { 
+                    active: true, 
+                    k: 3, 
+                    n: 4, 
+                    density: 2,
+                    octave: 0,
+                    gateLength: 0.5
+                },
+                bass: { 
+                    active: true, 
+                    k: 1, 
+                    n: 2, 
+                    density: 4,
+                    octave: -1,
+                    gateLength: 0.8
+                },
+                top: { 
+                    active: false, 
+                    k: 3, 
+                    n: 8, 
+                    density: 4,
+                    octave: 1,
+                    gateLength: 0.6
+                },
+                random: { 
+                    active: false, 
+                    k: 4, 
+                    n: 12, 
+                    density: 2,
+                    octave: 0,
+                    gateLength: 0.4
+                }
+            }
+        },
+        jazzWaltz: {
+            root: 65,
+            mode: 0,
+            bpm: 160,
+            chordLength: 3,
+            noteProportion: 0.7,
+            chordSequence: "72,75,71,74",
+            lines: {
+                chords: { 
+                    active: true, 
+                    k: 1, 
+                    n: 3, 
+                    density: 6,
+                    octave: 0,
+                    gateLength: 0.9
+                },
+                arpeggio: { 
+                    active: true, 
+                    k: 2, 
+                    n: 3, 
+                    density: 2,
+                    octave: 1,
+                    gateLength: 0.4
+                },
+                bass: { 
+                    active: true, 
+                    k: 1, 
+                    n: 3, 
+                    density: 4,
+                    octave: -1,
+                    gateLength: 0.7
+                },
+                top: { 
+                    active: true, 
+                    k: 2, 
+                    n: 6, 
+                    density: 4,
+                    octave: 1,
+                    gateLength: 0.6
+                },
+                random: { 
+                    active: false, 
+                    k: 3, 
+                    n: 6, 
+                    density: 2,
+                    octave: 0,
+                    gateLength: 0.3
+                }
+            }
+        }
+    };
+
+    // Load a default piece when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        createAllLineControls(pieces.simpleMajor);
+        loadPieceConfig(pieces.simpleMajor);
+    });
 </script>
 
 </body>
