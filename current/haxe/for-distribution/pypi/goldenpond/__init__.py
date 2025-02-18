@@ -1,1 +1,12 @@
-from .goldenpond import Mode, TimeManipulator, ChordProgression, ScoreUtilities
+from .goldenpond import (
+    Mode,
+    ChordProgression,
+    TimeManipulator,
+    ChordLine,
+    ArpLine,
+    BassLine,
+    TopLine,
+    RandomLine,
+    Note
+)
+

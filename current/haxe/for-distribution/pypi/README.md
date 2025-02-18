@@ -18,17 +18,19 @@ from goldenpond import Mode, ChordProgression, TimeManipulator, ChordLine, ArpLi
 seq = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
 MINOR = Mode.getMinorMode()
 prog = ChordProgression(48, MINOR, seq)
-tm = TimeManipulator().setPPQ(0.8)
 
-# Create lines with their own gateLength values
-chord_line = ChordLine(tm, prog, 0.8)  # 80% gate length
-arp_line = ArpLine(tm, prog, 7, 12, 0.5)  # 50% gate length for staccato
-bass_line = BassLine(tm, prog, 4, 8, 0.8)  # 80% gate length
+# TimeManipulator with PPQ, chord duration and BPM
+tm = TimeManipulator().setPPQ(96).setChordDuration(4).setBPM(120)
+
+# Create lines with k, n, gateLength and rhythmicDensity parameters
+chord_line = ChordLine(tm, prog, 1, 4, 0.8, 1.0)  # k=1, n=4, 80% gate length, density=1.0
+arp_line = ArpLine(tm, prog, 7, 12, 0.5, 0.5)    # k=7, n=12, 50% gate length, density=0.5
+bass_line = BassLine(tm, prog, 1, 4, 0.8, 0.25)   # k=1, n=4, 80% gate length, density=0.25
 
 # Generate notes from each line
-chords = chord_line.generateNotes(0, 0, 100)
-arp = arp_line.generateNotes(0, 1, 100)
-bass = bass_line.generateNotes(0, 2, 100)
+chords = chord_line.generateNotes(0, 0, 100)  # channel 0, velocity 100
+arp = arp_line.generateNotes(0, 1, 100)      # channel 1, velocity 100
+bass = bass_line.generateNotes(0, 2, 100)    # channel 2, velocity 100
 
 print([x.toString() for x in chords])
 print([x.toString() for x in arp])
@@ -55,7 +57,6 @@ Each Line class (ChordLine, ArpLine, BassLine, etc.) takes a TimeManipulator and
 - BassLine: plays just the root notes using Euclidean rhythms
 - TopLine: plays just the highest notes using Euclidean rhythms
 - RandomLine: randomly selects notes from each chord
-- ScaleLine: generates scale patterns from the chord tones
 
 The Euclidean rhythm functions use a "[Euclidean Rhythm](https://en.wikipedia.org/wiki/Euclidean_rhythm)" algorithm to spread the notes in time. The values k and n passed as arguments control the rhythm pattern. For example, ArpLine(tm, prog, 7, 12, 0.5) will create an arpeggio with 7 pulses spread evenly across 12 steps, with notes 50% of their maximum length.
 

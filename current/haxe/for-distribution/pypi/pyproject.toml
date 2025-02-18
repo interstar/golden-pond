@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "goldenpond"
-version = "0.3.0"
+version = "0.4.2"
 description = "A Python library for interpreting the GoldenPond DSL for making musical chord progressions."
 readme = "README.md"
 authors = ["Phil Jones <interstar@gmail.com>"]
