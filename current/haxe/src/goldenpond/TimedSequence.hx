@@ -252,6 +252,14 @@ class TimeManipulator {
         }
         return rhythm;
     }
+
+    public function getBPM():Float {
+        return this.bpm;
+    }
+
+    public function getPPQ():Float {
+        return this.ppq;
+    }
 }
 
  
@@ -433,6 +441,19 @@ class AbstractLineGenerator implements ILineGenerator {
         }
         
         return events;
+    }
+
+    public function notesInSeconds(startTime:Float, channel:Int, velocity:Int):Array<Note> {
+        var tickNotes = generateNotes(startTime, channel, velocity);
+        var secondsPerTick = 60.0 / (timeManipulator.getBPM() * timeManipulator.getPPQ());
+        
+        return [for (n in tickNotes) new Note(
+            n.chan,
+            n.note,
+            n.velocity,
+            n.startTime * secondsPerTick,
+            n.length * secondsPerTick
+        )];
     }
 }
 

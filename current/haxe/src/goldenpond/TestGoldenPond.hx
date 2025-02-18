@@ -578,7 +578,8 @@ class TestGoldenPond {
             { name: "DeltaEvent Tests", fn: testDeltaEvents },
             { name: "Time Event Generation Tests", fn: testTimeEventGeneration },
             { name: "Chord Timings Tests", fn: testChordTimings },
-            { name: "Time Events for k=1 Tests", fn: testTimeEventsForK1 }
+            { name: "Time Events for k=1 Tests", fn: testTimeEventsForK1 },
+            { name: "Notes In Seconds Tests", fn: testNotesInSeconds }
         ];
         
         for (group in testGroups) {
@@ -867,6 +868,55 @@ class TestGoldenPond {
             ],
             "Second chord should start at next chord boundary (384 ticks)"
         );
+    }
+
+    static function testNotesInSeconds() {
+        trace("Starting testNotesInSeconds...");
+        
+        var tm = new TimeManipulator();
+        tm.setPPQ(96).setChordDuration(4).setBPM(120);
+        
+        var prog = new ChordProgression(60, Mode.getMajorMode(), "1,4,5");
+        var line = new ChordLine(tm, prog, 1, 4, 0.8, 1.0);
+        
+        var tickNotes = line.generateNotes(0, 0, 100);
+        var secondNotes = line.notesInSeconds(0, 0, 100);
+        
+        trace('Generated ${tickNotes.length} notes');
+        
+        // Test length match
+        testit("Notes count", tickNotes.length, secondNotes.length, "Should have same number of notes");
+        
+        // At 120 BPM, one tick = 60/(120*96) seconds
+        var secondsPerTick = 60.0 / (120.0 * 96.0);
+        
+        for (i in 0...tickNotes.length) {
+            var tickNote = tickNotes[i];
+            var secondNote = secondNotes[i];
+            
+            // Test each property individually
+            testit('Note ${i} pitch', tickNote.note, secondNote.note, "Note pitch should match");
+            testit('Note ${i} channel', tickNote.chan, secondNote.chan, "Channel should match");
+            testit('Note ${i} velocity', tickNote.velocity, secondNote.velocity, "Velocity should match");
+            
+            // Test time values with explicit float comparison
+            var expectedStartTime = tickNote.startTime * secondsPerTick;
+            var expectedLength = tickNote.length * secondsPerTick;
+            
+            testit('Note ${i} start time', 
+                floatEqual(expectedStartTime, secondNote.startTime), 
+                true,
+                'Start time should be ${expectedStartTime}'
+            );
+            
+            testit('Note ${i} length', 
+                floatEqual(expectedLength, secondNote.length), 
+                true,
+                'Length should be ${expectedLength}'
+            );
+        }
+        
+        trace("testNotesInSeconds completed.");
     }
 }
 
