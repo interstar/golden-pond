@@ -1,5 +1,13 @@
 -cp src/goldenpond
 
-GoldenPond
+# Main modules
+TimedSequence
+ChordParser
+Mode
+ScoreUtilities
 
 -js out/js/goldenpond.js
+-D js-classic
+-D shallow-expose
+--dce no
+
