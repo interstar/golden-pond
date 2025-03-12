@@ -21,8 +21,9 @@ To understand the GNU Affero General Public License see <https://www.gnu.org/lic
 import Math;
 import Mode;
 import ChordParser;
-
 import ScoreUtilities;
+import RhythmGenerator;  // This will give us access to SimpleRhythmGenerator too
+
 
  
 @:expose
@@ -58,11 +59,6 @@ enum RhythmicDensity {
     ONE;
 }
 
-interface IRhythmGenerator {
-    public function hasNext():Bool;
-    public function next():Int;
-}
-
 
  
 interface ILineGenerator {
@@ -72,41 +68,6 @@ interface ILineGenerator {
 }
 
 
-class SilentIterator implements IRhythmGenerator {
-    public function new() {}
-
-    public function hasNext():Bool {
-        return true;
-    }
-
-    public function next():Int {
-        return 0;
-    }
-}
-
-class RhythmGenerator implements IRhythmGenerator {
-    private var rhythm:Array<Int>;
-    private var index:Int;
-
-    public function new(k:Int, n:Int) {
-        this.rhythm = TimeManipulator.distributePulsesEvenly(k, n);
-        this.index = 0;
-    }
-
-    public function restart() {
-        this.index = 0;
-    }
-
-    public function hasNext():Bool {
-        return true;
-    }
-
-    public function next():Int {
-        var beat = this.rhythm[this.index];
-        this.index = (this.index + 1) % this.rhythm.length;
-        return beat;
-    }
-}
 
 class ArpIterator   {
     private var chord:Array<Int>;
@@ -240,19 +201,6 @@ class TimeManipulator {
         return 60 / this.bpm;
     }
 
-    // Static utility method for rhythm generation
-    public static function distributePulsesEvenly(k:Int, n:Int):Array<Int> {
-        var rhythm = new Array<Int>();
-        for (i in 0...n) rhythm.push(0);
-        var stepSize = n / k;
-        var currentStep = 0.0;
-        for (i in 0...k) {
-            rhythm[Math.round(currentStep)] = 1;
-            currentStep += stepSize;
-        }
-        return rhythm;
-    }
-
     public function getBPM():Float {
         return this.bpm;
     }
@@ -263,72 +211,136 @@ class TimeManipulator {
 }
 
  
-class AbstractLineGenerator implements ILineGenerator {
+@:expose
+class LineGenerator implements ILineGenerator {
     private var timeManipulator: TimeManipulator;
     private var seq: ChordProgression;
-    private var k: Int;
-    private var n: Int;
+    private var rhythmGenerator: IRhythmGenerator;
     private var gateLength: Float;
     private var rhythmicDensity: Float;
-    private var transposition: Int;  // Add transposition property
+    private var transposition: Int;
     private var cachedNotes: Array<Note>;
+    private var lastNote: Int;  // Track last note for Ascending/Descending/Repeat
 
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float, rhythmicDensity: Float) {
         this.timeManipulator = timeManipulator;
         this.seq = seq;
-        this.k = k;
-        this.n = n;
+        this.rhythmGenerator = rhythmGenerator;
         this.gateLength = gateLength;
         this.rhythmicDensity = rhythmicDensity;
-        this.transposition = 0;  // Initialize to 0
+        this.transposition = 0;
         this.cachedNotes = null;
+        this.lastNote = -1;
     }
 
-    // Add transpose method
-    public function transpose(offset: Int): AbstractLineGenerator {
-        this.transposition = offset;
-        this.cachedNotes = null;  // Clear cache to force regeneration
-        return this;
+    /**
+     * Creates a LineGenerator with the specified rhythm generator.
+     * This is the preferred way to create a LineGenerator with a custom rhythm pattern.
+     */
+    public static function create(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float, rhythmicDensity: Float): LineGenerator {
+        return new LineGenerator(timeManipulator, seq, rhythmGenerator, gateLength, rhythmicDensity);
     }
 
-    @:protected function generateCachedNotes(): Array<Note> {
+    /**
+     * Creates a LineGenerator with a rhythm pattern specified as a string.
+     * This is a convenience method that parses the pattern string and creates the appropriate rhythm generator.
+     * 
+     * @throws String Exception if the pattern cannot be parsed
+     */
+    public static function createFromPattern(timeManipulator: TimeManipulator, seq: ChordProgression, pattern: String, gateLength: Float, rhythmicDensity: Float): LineGenerator {
+        var rhythmGenerator = RhythmLanguage.makeRhythmGenerator(pattern);
+        if (rhythmGenerator.parseFailed()) {
+            throw 'Invalid rhythm pattern: "${pattern}"';
+        }
+        return create(timeManipulator, seq, rhythmGenerator, gateLength, rhythmicDensity);
+    }
+
+    private function selectNotesFromChord(selector:SelectorType, chord:Array<Int>):Array<Int> {
+        return switch(selector) {
+            case Ascending:
+                var index = (lastNote == -1) ? 0 : (chord.indexOf(lastNote) + 1) % chord.length;
+                lastNote = chord[index];
+                [lastNote];
+                
+            case Descending:
+                var index = (lastNote == -1) ? chord.length - 1 : 
+                    (chord.indexOf(lastNote) - 1 + chord.length) % chord.length;
+                lastNote = chord[index];
+                [lastNote];
+                
+            case Repeat:
+                if (lastNote == -1) {
+                    lastNote = chord[0];
+                }
+                [lastNote];
+                
+            case FullChord:
+                chord;
+                
+            case Random:
+                var index = Math.floor(Math.random() * chord.length);
+                lastNote = chord[index];
+                [lastNote];
+                
+            case SpecificNote(n):
+                [(n - 1 < chord.length) ? chord[n - 1] : chord[0]];
+                
+            case TopNote:
+                [chord[chord.length - 1]];
+                
+            case Rest:
+                [];
+        }
+    }
+
+    private function generateCachedNotes(): Array<Note> {
         var notes = new Array<Note>();
         var currentTime = 0.0;
         
+        var patternLength = rhythmGenerator.getPatternLength();
         var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
-        var stepSize = patternDuration / n;
-        var noteLength = stepSize * gateLength;  // Always use stepSize * gateLength
+        var stepSize = patternDuration / patternLength;
+        var noteLength = stepSize * gateLength;
         var patternsPerChord = Math.floor(1 / rhythmicDensity);
+        
+        // Add diagnostic traces
+        trace('Generating notes with:');
+        trace('  rhythmicDensity: ${rhythmicDensity}');
+        trace('  patternDuration: ${patternDuration}');
+        trace('  stepSize: ${stepSize}');
+        trace('  patternsPerChord: ${patternsPerChord}');
+        trace('  chordTicks: ${timeManipulator.chordTicks}');
+        trace('  patternLength: ${patternLength}');
 
         for (c in seq.toNotes()) {
-            var rGen = new RhythmGenerator(this.k, this.n);
+            // Reset note selection state for each chord
+            lastNote = -1;
+            
+            // Reset the rhythm generator for each chord
+            rhythmGenerator.reset();
             
             // For each pattern that fits in this chord
             for (pattern in 0...patternsPerChord) {
-                // Play through the n steps of this pattern
-                for (step in 0...n) {
-                    var beat = rGen.next();
-                    if (beat == 1) {
-                        var notesToAdd = pickNotesFromChord(c);
-                        for (note in notesToAdd) {
-                            notes.push(new Note(
-                                0,
-                                note,
-                                100,
-                                currentTime,
-                                noteLength  // Use calculated note length
-                            ));
-                        }
+                // Play through the steps of this pattern
+                for (step in 0...patternLength) {
+                    var selector = rhythmGenerator.next();
+                    var notesToAdd = selectNotesFromChord(selector, c);
+                    for (note in notesToAdd) {
+                        notes.push(new Note(
+                            0,
+                            note,
+                            100,
+                            currentTime,
+                            noteLength
+                        ));
                     }
-                    currentTime += stepSize;  // Always advance by step size
+                    currentTime += stepSize;
                 }
             }
         }
+        
+        trace('Generated ${notes.length} notes');
         return notes;
-    }
-
-    @:protected function pickNotesFromChord(chord:Array<Int>):Array<Int> {
-        throw new haxe.exceptions.NotImplementedException();
     }
 
     public function getPitches(): Array<Int> {
@@ -455,108 +467,11 @@ class AbstractLineGenerator implements ILineGenerator {
             n.length * secondsPerTick
         )];
     }
-}
 
-
-
-@:expose
-class ChordLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
-    }
-
-    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
-        return chord;  // Return all notes from the chord
-    }
-}
-
-
-@:expose
-class BassLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
-    }
-
-    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
-        return [chord[0] - 12];  // First note, octave down
-    }
-}
-
-
-
-@:expose
-class TopLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
-    }
-
-    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
-        return [chord[chord.length - 1] + 12];  // Last note, octave up
-    }
-}
-
-
-@:expose
-class ArpLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
-    }
-
-
-    override function generateCachedNotes(): Array<Note> {
-        var notes = new Array<Note>();
-        var currentTime = 0.0;
-        
-        var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
-        var euclideanStepSize = patternDuration / n;
-        var patternsPerChord = Math.floor(1 / rhythmicDensity);
-
-        for (c in seq.toNotes()) {
-            var arpIter = new ArpIterator(c);  // New iterator for each chord
-            
-            // For each pattern that fits in this chord
-            for (pattern in 0...patternsPerChord) {
-                var rGen = new RhythmGenerator(this.k, this.n);
-                // Play through the n steps of this pattern
-                for (step in 0...n) {
-                    var beat = rGen.next();
-                    if (beat == 1) {
-                        notes.push(new Note(
-                            0,
-                            arpIter.next(),  // Use arpIter for note selection
-                            100,
-                            currentTime,
-                            euclideanStepSize * gateLength
-                        ));
-                    }
-                    currentTime += euclideanStepSize;
-                }
-            }
-        }
-        return notes;
-    }
-}
-
-@:expose
-class SilentLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, 1, 1, gateLength, rhythmicDensity);
-    }
-
-    override function generateCachedNotes(): Array<Note> {
-        return []; // Generates no notes
-    }
-}
-
-@:expose
-class RandomLine extends AbstractLineGenerator {
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, k: Int, n: Int, gateLength: Float, rhythmicDensity: Float) {
-        super(timeManipulator, seq, k, n, gateLength, rhythmicDensity);
-    }
-
-    override function pickNotesFromChord(chord: Array<Int>): Array<Int> {
-        var randomIndex = Math.floor(Math.random() * chord.length);
-        return [chord[randomIndex]];
+    public function transpose(offset: Int): LineGenerator {
+        this.transposition = offset;
+        this.cachedNotes = null;  // Clear cache to force regeneration
+        return this;
     }
 }
 

@@ -43,7 +43,11 @@ class Note {
   }
     
   public function equals(other:Note):Bool {
-    return this.note == other.note && this.velocity == other.velocity && this.startTime == other.startTime && this.length == other.length;
+    return this.chan == other.chan &&
+           this.note == other.note && 
+           this.velocity == other.velocity && 
+           this.startTime == other.startTime && 
+           this.length == other.length;
   }
 
   @:expose
