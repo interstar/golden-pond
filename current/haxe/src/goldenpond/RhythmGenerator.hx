@@ -25,7 +25,8 @@ interface IRhythmGenerator {
     function hasNext():Bool;
     function next():SelectorType;
     function reset():Void;
-    function getPatternLength():Int;  // New method to get the pattern length
+    function getPatternLength():Int;  // Original pattern length
+    function getTotalSteps():Int;     // Total steps including density
     function parseFailed():Bool;      // New method to check if parsing failed
 }
 
@@ -34,10 +35,14 @@ interface IRhythmGenerator {
 class ExplicitRhythmGenerator implements IRhythmGenerator {
     private var steps:Array<SelectorType>;
     private var index:Int;
+    private var density:Int;
+    private var totalSteps:Int;
 
-    public function new(steps:Array<SelectorType>) {
+    public function new(steps:Array<SelectorType>, density:Int) {
         this.steps = steps;
         this.index = 0;
+        this.density = density;
+        this.totalSteps = steps.length * density;
     }
 
     public function hasNext():Bool {
@@ -45,8 +50,8 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
     }
 
     public function next():SelectorType {
-        var selector = steps[index];
-        index = (index + 1) % steps.length;
+        var selector = steps[index % steps.length];
+        index = (index + 1) % totalSteps;
         return selector;
     }
 
@@ -58,6 +63,10 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
         return steps.length;
     }
     
+    public function getTotalSteps():Int {
+        return totalSteps;
+    }
+    
     public function parseFailed():Bool {
         return false;  // Normal generators never fail
     }
@@ -66,7 +75,7 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
 // Simple distribution algorithm
 @:expose
 class SimpleRhythmGenerator extends ExplicitRhythmGenerator {
-    public function new(k:Int, n:Int, selector:SelectorType, offset:Int = 0) {
+    public function new(k:Int, n:Int, selector:SelectorType, density:Int, offset:Int = 0) {
         var steps = [];
         for (i in 0...n) steps.push(Rest);
         
@@ -98,14 +107,14 @@ class SimpleRhythmGenerator extends ExplicitRhythmGenerator {
             }
         }
         
-        super(steps);
+        super(steps, density);
     }
 }
 
 // Bjorklund's algorithm implementation
 @:expose
 class BjorklundRhythmGenerator extends ExplicitRhythmGenerator {
-    public function new(k:Int, n:Int, selector:SelectorType, offset:Int = 0) {
+    public function new(k:Int, n:Int, selector:SelectorType, density:Int, offset:Int = 0) {
         // Ensure k and n are valid
         k = Std.int(Math.max(0, Math.min(k, n)));
         n = Std.int(Math.max(1, n));
@@ -144,7 +153,7 @@ class BjorklundRhythmGenerator extends ExplicitRhythmGenerator {
             });
         }
         
-        super(pattern);
+        super(pattern, density);
     }
     
     // Implementation of Bjorklund's algorithm for traditional rhythms
@@ -263,6 +272,10 @@ class ParseFailedRhythmGenerator implements IRhythmGenerator {
         return patternLength;
     }
     
+    public function getTotalSteps():Int {
+        return patternLength;  // For failed patterns, total steps equals pattern length
+    }
+    
     public function parseFailed():Bool {
         return true;  // This generator always indicates parsing failed
     }
@@ -313,14 +326,14 @@ class RhythmLanguage {
         var offsetStr = regex.matched(5);  // This will be null if no offset was specified
         var offset = offsetStr != null ? Std.parseInt(offsetStr) : 0;
         var selector = parseSelectorType(regex.matched(6));
-        var density = Std.parseInt(regex.matched(7));  // We still parse density but don't pass it to generator
+        var density = Std.parseInt(regex.matched(7));  // Parse density as an integer
         
         if (k == null || n == null || selector == null || density == null) return new ParseFailedRhythmGenerator();
-        if (k <= 0 || n <= 0) return new ParseFailedRhythmGenerator();  // Validate k and n are positive
+        if (k <= 0 || n <= 0 || density <= 0) return new ParseFailedRhythmGenerator();  // Validate k, n, and density are positive
         
         return separator == "%" 
-            ? new BjorklundRhythmGenerator(k, n, selector, offset)
-            : new SimpleRhythmGenerator(k, n, selector, offset);
+            ? new BjorklundRhythmGenerator(k, n, selector, density, offset)
+            : new SimpleRhythmGenerator(k, n, selector, density, offset);
     }
     
     private static function parseExplicit(input:String):IRhythmGenerator {
@@ -329,8 +342,8 @@ class RhythmLanguage {
         if (parts.length != 2) return new ParseFailedRhythmGenerator();
         
         var stepsStr = parts[0];
-        var density = Std.parseInt(parts[1]);  // We still parse density but don't pass it to generator
-        if (density == null) return new ParseFailedRhythmGenerator();
+        var density = Std.parseInt(parts[1]);  // Parse density as an integer
+        if (density == null || density <= 0) return new ParseFailedRhythmGenerator();
         
         var steps = new Array<SelectorType>();
         for (i in 0...stepsStr.length) {
@@ -344,7 +357,7 @@ class RhythmLanguage {
             }
         }
         
-        return new ExplicitRhythmGenerator(steps);
+        return new ExplicitRhythmGenerator(steps, density);
     }
     
     private static function parseSelectorType(input:String):Null<SelectorType> {

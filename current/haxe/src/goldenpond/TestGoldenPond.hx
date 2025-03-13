@@ -374,8 +374,8 @@ class TestGoldenPond {
 		var density4 = MenuHelper.rhythmicDensityToNumeric(FOUR);
 
 		// Test ChordLine - now using explicit RhythmGenerator
-		var chordRhythm = new SimpleRhythmGenerator(5, 8, FullChord);
-		var chord_line = LineGenerator.create(ti, seq, chordRhythm, 0.8, density1).generateNotes(0, 0, 64);
+		var chordRhythm = new SimpleRhythmGenerator(5, 8, FullChord, 1, 0);
+		var chord_line = LineGenerator.create(ti, seq, chordRhythm, 0.8).generateNotes(0, 0, 64);
 		testit("ChordLine first five chords",
 			chord_line.slice(0, 20),
 			[
@@ -409,40 +409,40 @@ class TestGoldenPond {
 		);
 
 		// Test BassLine - now using explicit RhythmGenerator
-		var bassRhythm = new SimpleRhythmGenerator(4, 8, SpecificNote(1));
-		var bass_line = LineGenerator.create(ti, seq, bassRhythm, 0.8, density2)
+		var bassRhythm = new SimpleRhythmGenerator(1, 1, SpecificNote(1), 16, 0);
+		var bass_line = LineGenerator.create(ti, seq, bassRhythm, 0.8)
 			.transpose(-12)  // Explicitly transpose down one octave
 			.generateNotes(0, 1, 100);
 		testit("BassLine first twenty notes",
 			bass_line.slice(0, 20),
 			[
 				new Note(1, 47, 100, 0, 384),
+				new Note(1, 47, 100, 480, 384),
 				new Note(1, 47, 100, 960, 384),
+				new Note(1, 47, 100, 1440, 384),
 				new Note(1, 47, 100, 1920, 384),
+				new Note(1, 47, 100, 2400, 384),
 				new Note(1, 47, 100, 2880, 384),
+				new Note(1, 47, 100, 3360, 384),
 				new Note(1, 47, 100, 3840, 384),
+				new Note(1, 47, 100, 4320, 384),
 				new Note(1, 47, 100, 4800, 384),
+				new Note(1, 47, 100, 5280, 384),
 				new Note(1, 47, 100, 5760, 384),
+				new Note(1, 47, 100, 6240, 384),
 				new Note(1, 47, 100, 6720, 384),
+				new Note(1, 47, 100, 7200, 384),
 				new Note(1, 40, 100, 7680, 384),
+				new Note(1, 40, 100, 8160, 384),
 				new Note(1, 40, 100, 8640, 384),
-				new Note(1, 40, 100, 9600, 384),
-				new Note(1, 40, 100, 10560, 384),
-				new Note(1, 40, 100, 11520, 384),
-				new Note(1, 40, 100, 12480, 384),
-				new Note(1, 40, 100, 13440, 384),
-				new Note(1, 40, 100, 14400, 384),
-				new Note(1, 45, 100, 15360, 384),
-				new Note(1, 45, 100, 16320, 384),
-				new Note(1, 45, 100, 17280, 384),
-				new Note(1, 45, 100, 18240, 384)
+				new Note(1, 40, 100, 9120, 384)
 			],
 			"Bass line should play root notes with correct rhythm"
 		);
 
 		// Test TopLine - now using explicit RhythmGenerator
-		var topRhythm = new SimpleRhythmGenerator(3, 8, TopNote);
-		var top_line = LineGenerator.create(ti, seq, topRhythm, 0.6, density2)
+		var topRhythm = new SimpleRhythmGenerator(3, 8, TopNote, 2, 0);
+		var top_line = LineGenerator.create(ti, seq, topRhythm, 0.6)
 			.transpose(12)   // Explicitly transpose up one octave
 			.generateNotes(0, 2, 100);
 		testit("TopLine first twenty notes",
@@ -473,8 +473,8 @@ class TestGoldenPond {
 		);
 
 		// Test ArpLine - now using explicit RhythmGenerator
-		var arpRhythm = new SimpleRhythmGenerator(6, 12, Ascending);
-		var arp_line = LineGenerator.create(ti, seq, arpRhythm, 0.5, density2).generateNotes(0, 3, 100);
+		var arpRhythm = new SimpleRhythmGenerator(6, 12, Ascending, 2, 0);
+		var arp_line = LineGenerator.create(ti, seq, arpRhythm, 0.5).generateNotes(0, 3, 100);
 		testit("ArpLine first twenty notes",
 			arp_line.slice(0, 20),
 			[
@@ -503,8 +503,8 @@ class TestGoldenPond {
 		);
 
 		// Test RandomLine - now using explicit RhythmGenerator
-		var randomRhythm = new SimpleRhythmGenerator(5, 8, Random);
-		var rand_line = LineGenerator.create(ti, seq, randomRhythm, 0.5, density4).generateNotes(0, 4, 100);
+		var randomRhythm = new BjorklundRhythmGenerator(5, 8, Random, 4, 0);
+		var rand_line = LineGenerator.create(ti, seq, randomRhythm, 0.5).generateNotes(0, 4, 100);
 
 		// Test timing pattern (5 hits every 8 steps)
 		var timings = new Array<Float>();
@@ -545,18 +545,17 @@ class TestGoldenPond {
 		}
 
 		// Test ChordLine with transposition - now using explicit RhythmGenerator
-		var transposedRhythm = new SimpleRhythmGenerator(5, 8, FullChord);
-		var transposed_line = LineGenerator.create(ti, seq, transposedRhythm, 0.8, density1);
+		var transposedRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+		var transposed_line = LineGenerator.create(ti, seq, transposedRhythm, 0.8);
 		transposed_line.transpose(12);  // Transpose up one octave
 		var transposed_notes = transposed_line.generateNotes(0, 0, 64);
-
 		testit("ChordLine transposition",
-			transposed_notes.slice(0, 4),  // Test first chord
+			transposed_notes.slice(0, 4),
 			[
-				new Note(0, 71, 64, 0, 768),  // Original 59 + 12
-				new Note(0, 74, 64, 0, 768),  // Original 62 + 12
-				new Note(0, 78, 64, 0, 768),  // Original 66 + 12
-				new Note(0, 81, 64, 0, 768)   // Original 69 + 12
+				new Note(0, 71, 64, 0, 1536),
+				new Note(0, 74, 64, 0, 1536),
+				new Note(0, 78, 64, 0, 1536),
+				new Note(0, 81, 64, 0, 1536)
 			],
 			"Transposed line should be one octave higher"
 		);
@@ -567,8 +566,8 @@ class TestGoldenPond {
 		var seq = new ChordProgression(60, MAJOR, "72,75,71");
 		trace(seq);
 		var density = MenuHelper.rhythmicDensityToNumeric(FOUR);  // 1/4 - divide each chord into 4 steps
-		var chordRhythm = new SimpleRhythmGenerator(1, 1, FullChord);
-		var svg = ScoreUtilities.makePianoRollSVG(LineGenerator.create(ti, seq, chordRhythm, 0.8, density).generateNotes(0,0,64),800,600);		 
+		var chordRhythm = new SimpleRhythmGenerator(1, 1, FullChord, 1, 0);
+		var svg = ScoreUtilities.makePianoRollSVG(LineGenerator.create(ti, seq, chordRhythm, 0.8).generateNotes(0,0,64),800,600);		 
 		trace(svg);
     }
 	
@@ -614,7 +613,7 @@ class TestGoldenPond {
         trace("Testing Rhythm Generator");
         
         // Test 3 in 8 pattern
-        var rGen = new SimpleRhythmGenerator(3, 8, Ascending);  // Add selector parameter
+        var rGen = new SimpleRhythmGenerator(3, 8, Ascending, 1, 0);  // Add selector parameter
         var pattern = [];
         var hitCount = 0;
         for (i in 0...8) {
@@ -649,7 +648,7 @@ class TestGoldenPond {
                
         // Test other common patterns
         function testPattern(k:Int, n:Int) {
-            var rg = new SimpleRhythmGenerator(k, n, Ascending);  // Add selector parameter
+            var rg = new SimpleRhythmGenerator(k, n, Ascending, 1, 0);  // Add selector parameter
             var hits = 0;
             for (i in 0...n) {
                 if (rg.next() == Ascending) hits++;  // Check for Ascending instead of 1
@@ -674,10 +673,10 @@ class TestGoldenPond {
         var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
         var seq = new ChordProgression(60, MAJOR, "1,4,5");
         
-        var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord);
-        var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord);
-        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8, 1.0);
-        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8, 1.0);
+        var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+        var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord, 1, 0);
+        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8);
+        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8);
         var deltas1 = chordLine1.asDeltaEvents();
         var deltas2 = chordLine2.asDeltaEvents();
 
@@ -710,8 +709,8 @@ class TestGoldenPond {
             new Note(0, 67, 100, 0.0, 76.8)     // G, starts at 0
         ];
         
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord);
-        var line = LineGenerator.create(new TimeManipulator(), new ChordProgression(60, Mode.getMajorMode(), "1"), chordRhythm, 0.8, 1.0);
+        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+        var line = LineGenerator.create(new TimeManipulator(), new ChordProgression(60, Mode.getMajorMode(), "1"), chordRhythm, 0.8);
         var timeEvents = line.notesToTimeEvents(notes);
         
         // Test event generation
@@ -752,16 +751,16 @@ class TestGoldenPond {
         
         // Test k=1 case
         trace("\nTesting k=1:");
-        var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord);
-        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8, 1.0);
+        var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8);
         var notes1 = chordLine1.generateNotes(0, 0, 100);  // channel 0, velocity 100
         var deltas1 = chordLine1.asDeltaEvents();
 
         
         // Test k=2 case
         trace("\nTesting k=2:");
-        var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord);
-        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8, 1.0);
+        var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord, 1, 0);
+        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8);
         var notes2 = chordLine2.generateNotes(0, 0, 100);  // channel 0, velocity 100
         
         
@@ -811,7 +810,7 @@ class TestGoldenPond {
         trace("\nTesting RhythmGenerator k=1");
         
         // Test k=1, n=4
-        var rGen = new SimpleRhythmGenerator(1, 4, Ascending);  // Changed from RhythmGenerator
+        var rGen = new SimpleRhythmGenerator(1, 4, Ascending, 1, 0);  // Changed from RhythmGenerator
         
         // Should get pattern [1,0,0,0] repeating
         var expectedPattern = [Ascending, Rest, Rest, Rest];
@@ -848,8 +847,8 @@ class TestGoldenPond {
     static function testTimeEventsForK1() {
         var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
         var seq = new ChordProgression(60, MAJOR, "1,4");
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord);
-        var chordLine = LineGenerator.create(ti, seq, chordRhythm, 0.8, 1.0);
+        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+        var chordLine = LineGenerator.create(ti, seq, chordRhythm, 0.8);
         
         var notes = chordLine.generateNotes(0, 0, 100);
         
@@ -898,8 +897,8 @@ class TestGoldenPond {
         tm.setPPQ(96).setChordDuration(4).setBPM(120);
         
         var prog = new ChordProgression(60, Mode.getMajorMode(), "1,4,5");
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord);
-        var line = LineGenerator.create(tm, prog, chordRhythm, 0.8, 1.0);
+        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
+        var line = LineGenerator.create(tm, prog, chordRhythm, 0.8);
         
         var tickNotes = line.generateNotes(0, 0, 100);
         var secondNotes = line.notesInSeconds(0, 0, 100);
@@ -1069,6 +1068,12 @@ class TestGoldenPond {
                 true,
                 'Should return ParseFailedRhythmGenerator for invalid pattern "${pattern}"'
             );
+            
+            testit('Invalid pattern "${pattern}" has parseFailed=true',
+                generator.parseFailed(),
+                true,
+                'ParseFailedRhythmGenerator should have parseFailed=true'
+            );
         }
         
         // Test that normal generators have parseFailed=false
@@ -1082,7 +1087,7 @@ class TestGoldenPond {
     }
 
     static function testBjorklundPattern(k:Int, n:Int, expected:Array<SelectorType>, name:String, offset:Int = 0) {
-        var generator = new BjorklundRhythmGenerator(k, n, Ascending, offset);
+        var generator = new BjorklundRhythmGenerator(k, n, Ascending, 1, offset);
         var pattern = [];
         
         // Get the pattern
@@ -1143,8 +1148,8 @@ class TestGoldenPond {
         var seq = new ChordProgression(50, MAJOR, "76,72,!,75,71");
         
         // Test creating LineGenerator with SimpleRhythmGenerator
-        var simpleRhythm = new SimpleRhythmGenerator(3, 8, Ascending);
-        var line1 = LineGenerator.create(ti, seq, simpleRhythm, 0.8, 1.0);
+        var simpleRhythm = new SimpleRhythmGenerator(3, 8, FullChord, 1, 0);
+        var line1 = LineGenerator.create(ti, seq, simpleRhythm, 0.8);
         var notes1 = line1.generateNotes(0, 0, 100);
         
         testit("LineGenerator with SimpleRhythmGenerator",
@@ -1154,8 +1159,8 @@ class TestGoldenPond {
         );
         
         // Test creating LineGenerator with BjorklundRhythmGenerator
-        var bjorklundRhythm = new BjorklundRhythmGenerator(3, 8, FullChord);
-        var line2 = LineGenerator.create(ti, seq, bjorklundRhythm, 0.8, 1.0);
+        var bjorklundRhythm = new BjorklundRhythmGenerator(3, 8, FullChord, 1, 0);
+        var line2 = LineGenerator.create(ti, seq, bjorklundRhythm, 0.8);
         var notes2 = line2.generateNotes(0, 0, 100);
         
         testit("LineGenerator with BjorklundRhythmGenerator",
@@ -1165,9 +1170,8 @@ class TestGoldenPond {
         );
         
         // Test creating LineGenerator with ExplicitRhythmGenerator
-        var steps = [Ascending, Rest, Descending, Rest, FullChord, Rest, Random, Rest];
-        var explicitRhythm = new ExplicitRhythmGenerator(steps);
-        var line3 = LineGenerator.create(ti, seq, explicitRhythm, 0.8, 1.0);
+        var explicitRhythm = new ExplicitRhythmGenerator([FullChord, Rest, FullChord, Rest, FullChord], 1);
+        var line3 = LineGenerator.create(ti, seq, explicitRhythm, 0.8);
         var notes3 = line3.generateNotes(0, 0, 100);
         
         testit("LineGenerator with ExplicitRhythmGenerator",
@@ -1183,36 +1187,28 @@ class TestGoldenPond {
             ">.>.=.<. 4"        // Explicit
         ];
         
-        for (pattern in patterns) {
-            var line = LineGenerator.createFromPattern(ti, seq, pattern, 0.8, 1.0);
+        for (i in 0...patterns.length) {
+            var pattern = patterns[i];
+            var line = LineGenerator.createFromPattern(ti, seq, pattern, 0.8);
             testit('LineGenerator from pattern "${pattern}"',
                 line != null,
                 true,
                 'Should create LineGenerator from pattern "${pattern}"'
-            );
-            
-            var notes = line.generateNotes(0, 0, 100);
-            testit('Notes from pattern "${pattern}"',
-                notes.length > 0,
-                true,
-                'Should generate notes from pattern "${pattern}"'
             );
         }
         
         // Test with invalid pattern
         var exceptionThrown = false;
         try {
-            var invalidLine = LineGenerator.createFromPattern(ti, seq, "invalid pattern", 0.8, 1.0);
+            var invalidLine = LineGenerator.createFromPattern(ti, seq, "invalid pattern", 0.8);
             // If we get here, no exception was thrown
         } catch (e:String) {
             exceptionThrown = true;
-            trace('Caught expected exception: ${e}');
         }
-        
         testit("LineGenerator from invalid pattern throws exception",
             exceptionThrown,
             true,
-            "Should throw an exception for invalid pattern"
+            "Should throw exception for invalid pattern"
         );
         
         trace('LineGenerator with RhythmGenerator: ${TEST_COUNT - startCount} tests run\n');

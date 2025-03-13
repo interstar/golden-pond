@@ -217,17 +217,15 @@ class LineGenerator implements ILineGenerator {
     private var seq: ChordProgression;
     private var rhythmGenerator: IRhythmGenerator;
     private var gateLength: Float;
-    private var rhythmicDensity: Float;
     private var transposition: Int;
     private var cachedNotes: Array<Note>;
     private var lastNote: Int;  // Track last note for Ascending/Descending/Repeat
 
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float, rhythmicDensity: Float) {
+    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float) {
         this.timeManipulator = timeManipulator;
         this.seq = seq;
         this.rhythmGenerator = rhythmGenerator;
         this.gateLength = gateLength;
-        this.rhythmicDensity = rhythmicDensity;
         this.transposition = 0;
         this.cachedNotes = null;
         this.lastNote = -1;
@@ -237,8 +235,8 @@ class LineGenerator implements ILineGenerator {
      * Creates a LineGenerator with the specified rhythm generator.
      * This is the preferred way to create a LineGenerator with a custom rhythm pattern.
      */
-    public static function create(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float, rhythmicDensity: Float): LineGenerator {
-        return new LineGenerator(timeManipulator, seq, rhythmGenerator, gateLength, rhythmicDensity);
+    public static function create(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float): LineGenerator {
+        return new LineGenerator(timeManipulator, seq, rhythmGenerator, gateLength);
     }
 
     /**
@@ -247,12 +245,12 @@ class LineGenerator implements ILineGenerator {
      * 
      * @throws String Exception if the pattern cannot be parsed
      */
-    public static function createFromPattern(timeManipulator: TimeManipulator, seq: ChordProgression, pattern: String, gateLength: Float, rhythmicDensity: Float): LineGenerator {
+    public static function createFromPattern(timeManipulator: TimeManipulator, seq: ChordProgression, pattern: String, gateLength: Float): LineGenerator {
         var rhythmGenerator = RhythmLanguage.makeRhythmGenerator(pattern);
         if (rhythmGenerator.parseFailed()) {
             throw 'Invalid rhythm pattern: "${pattern}"';
         }
-        return create(timeManipulator, seq, rhythmGenerator, gateLength, rhythmicDensity);
+        return create(timeManipulator, seq, rhythmGenerator, gateLength);
     }
 
     private function selectNotesFromChord(selector:SelectorType, chord:Array<Int>):Array<Int> {
@@ -297,20 +295,19 @@ class LineGenerator implements ILineGenerator {
         var notes = new Array<Note>();
         var currentTime = 0.0;
         
+        var totalSteps = rhythmGenerator.getTotalSteps();
         var patternLength = rhythmGenerator.getPatternLength();
-        var patternDuration = timeManipulator.chordTicks * rhythmicDensity;
-        var stepSize = patternDuration / patternLength;
+        
+        // Calculate step size based on the pattern length and total steps
+        var stepSize = timeManipulator.chordTicks / totalSteps;
         var noteLength = stepSize * gateLength;
-        var patternsPerChord = Math.floor(1 / rhythmicDensity);
         
         // Add diagnostic traces
         trace('Generating notes with:');
-        trace('  rhythmicDensity: ${rhythmicDensity}');
-        trace('  patternDuration: ${patternDuration}');
-        trace('  stepSize: ${stepSize}');
-        trace('  patternsPerChord: ${patternsPerChord}');
-        trace('  chordTicks: ${timeManipulator.chordTicks}');
+        trace('  totalSteps: ${totalSteps}');
         trace('  patternLength: ${patternLength}');
+        trace('  stepSize: ${stepSize}');
+        trace('  chordTicks: ${timeManipulator.chordTicks}');
 
         for (c in seq.toNotes()) {
             // Reset note selection state for each chord
@@ -319,11 +316,12 @@ class LineGenerator implements ILineGenerator {
             // Reset the rhythm generator for each chord
             rhythmGenerator.reset();
             
-            // For each pattern that fits in this chord
-            for (pattern in 0...patternsPerChord) {
-                // Play through the steps of this pattern
-                for (step in 0...patternLength) {
-                    var selector = rhythmGenerator.next();
+            // Single loop through all steps for this chord
+            for (step in 0...totalSteps) {
+                var selector = rhythmGenerator.next();
+                
+                // Only add notes for non-Rest selectors
+                if (selector != Rest) {
                     var notesToAdd = selectNotesFromChord(selector, c);
                     for (note in notesToAdd) {
                         notes.push(new Note(
@@ -334,8 +332,9 @@ class LineGenerator implements ILineGenerator {
                             noteLength
                         ));
                     }
-                    currentTime += stepSize;
                 }
+                
+                currentTime += stepSize;
             }
         }
         
