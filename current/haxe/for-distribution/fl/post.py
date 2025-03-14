@@ -63,31 +63,32 @@ def createDialog():
     form = flp.ScriptDialog("GoldenPond",
     'GoldenPond is language for defining chord progressions.\r\nThis is the FL Studio version which also lets you create rhythmic patterns for arpeggios and melodies.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
     
-    form.AddInputKnobInt('Root',65,32,96)
+    form.AddInputKnobInt('Root',60,32,96)
     form.AddInputCombo('Mode',["major","minor"],0)
-    form.AddInputText('ChordSeq', "1,4,5,1")
+    form.AddInputText('ChordSeq', "1,6,4,5")
     
     form.AddInputCheckbox('Chords',False)
-    form.AddInputCheckbox('Arp',False)
     form.AddInputCheckbox('Bass',False)
+    
+    form.AddInputCheckbox('Arp ↑',False)
+    form.AddInputCheckbox('Arp ↓',False)
+    
     form.AddInputCheckbox('Top',False)
     form.AddInputCheckbox('Random',False)
-    form.AddInputCheckbox('Scale',False)    
+ 
     
     form.AddInputKnobInt('Rhythm k',4,1,24)
     form.AddInputKnobInt('Rhythm n',8,1,24)
     
     densityItems = MenuHelper.getRhythmicDensityNames()
 
-    form.AddInputCombo('Density',densityItems,4)
+    form.AddInputKnobInt('Density',4,1,8)
     form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
     form.AddInputKnobInt('Chord Duration',4,1,16)
     
     form.AddInputKnobInt("Stutter",0,0,16)
     form.AddInputCheckbox("Silent",False)
     
-
-    #form.AddInputCombo('Generate',['Chords','Arp','Bass','C+E','E+B','C+B','All','All E+12','Top'],0)
 
     return form
 
@@ -109,6 +110,10 @@ def transpose_all(all_notes, n):
     return transposed
  
 
+def makeALine(tm,seq,k,n,selectorType,density,note_prop,chan,all_notes) : 
+    rgen = SimpleRhythmGenerator(k,n,selectorType,density)
+    line = LineGenerator(tm, seq, rgen, note_prop)
+    all_notes.extend(line.generateNotes(0, chan, 100))
 
         
 def apply(form):
@@ -118,11 +123,13 @@ def apply(form):
     
     seqtypes = set([])
     if form.GetInputValue("Chords")==1: seqtypes.add(SeqTypes.CHORDS)
-    if form.GetInputValue("Arp")==1: seqtypes.add(SeqTypes.EUCLIDEAN)
+    if form.GetInputValue("Arp ↑")==1: seqtypes.add(SeqTypes.ARPUP)
+    if form.GetInputValue("Arp ↓")==1: seqtypes.add(SeqTypes.ARPDOWN)
+    
     if form.GetInputValue("Bass")==1: seqtypes.add(SeqTypes.BASS)
     if form.GetInputValue("Top")==1: seqtypes.add(SeqTypes.TOP)
     if form.GetInputValue("Random")==1: seqtypes.add(SeqTypes.RANDOM)
-    if form.GetInputValue("Scale")==1: seqtypes.add(SeqTypes.SCALE)
+ 
 
     note_prop = form.GetInputValue('Note Proportion')
     chord_len = form.GetInputValue('Chord Duration')
@@ -149,31 +156,27 @@ def apply(form):
         all_notes = []
         
         # Get rhythmic density value
-        density = MenuHelper.rhythmicDensityToNumeric(
-            MenuHelper.getRhythmicDensityFor(form.GetInputValue('Density'))
-        )
+        density = form.GetInputValue('Density')
 
         # Generate notes for each selected line type
         if SeqTypes.CHORDS in seqtypes:
-            chord_line = ChordLine(timingInfo, seq, k, n, note_prop, density)
-            all_notes.extend(chord_line.generateNotes(0, 0, 100))
+            makeALine(timingInfo,seq,1,2,SelectorType.FullChord,density,note_prop,0,all_notes)
             
-        if SeqTypes.EUCLIDEAN in seqtypes:
-            arp_line = ArpLine(timingInfo, seq, k, n, note_prop, density)
-            all_notes.extend(arp_line.generateNotes(0, 1, 100))
+        if SeqTypes.ARPUP in seqtypes:
+            makeALine(timingInfo,seq,k,n,SelectorType.Ascending,density,note_prop,1,all_notes)
+            
+        if SeqTypes.ARPDOWN in seqtypes:
+            makeALine(timingInfo,seq,k,n,SelectorType.Descending,density,note_prop,2,all_notes)            
             
         if SeqTypes.BASS in seqtypes:
-            bass_line = BassLine(timingInfo, seq, k, n, note_prop, density)
-            all_notes.extend(bass_line.generateNotes(0, 2, 100))
+            makeALine(timingInfo,seq,k,n,SelectorType.SpecificNote(1),density,3,note_prop,all_notes)
             
         if SeqTypes.TOP in seqtypes:
-            top_line = TopLine(timingInfo, seq, k, n, note_prop, density)
-            all_notes.extend(top_line.generateNotes(0, 3, 100))
-            
+            makeALine(timingInfo,seq,k,n,SelectorType.TopNote,density,note_prop,4,all_notes)
+                        
         if SeqTypes.RANDOM in seqtypes:
-            random_line = RandomLine(timingInfo, seq, k, n, note_prop, density)
-            all_notes.extend(random_line.generateNotes(0, 4, 100))
-            
+            makeALine(timingInfo,seq,k,n,SelectorType.Random,density,note_prop,5,all_notes)
+                        
 
         post_notes_to_score(all_notes)
         
