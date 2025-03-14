@@ -239,7 +239,42 @@ class ChordProgression {
   
   @:expose
   public function toNotes():Array<Array<Int>> {
-    return ChordFactory.chordProgression(this.chordThings);
+    var chords = [];
+    var prev_chord:Array<Int> = null;
+
+    for (ct in this.chordThings) {
+      var chord = ct.generateChordNotes();
+      if (prev_chord != null && ct.modifiers.indexOf(Modifier.VOICE_LEADING) != -1) {
+        chord = voice_lead(prev_chord, chord);
+      }
+      chords.push(chord);
+      prev_chord = chord;
+    }
+
+    return chords;
+  }
+  
+  /**
+   * Apply voice leading between chords
+   * @param prevChord The previous chord
+   * @param nextChord The next chord
+   * @return The voice-led chord
+   */
+  private function voice_lead(prevChord:Array<Int>, nextChord:Array<Int>):Array<Int> {
+    return nextChord;  // Dummy implementation for now
+  }
+  
+  /**
+   * Returns an array of conventional chord names for this progression
+   * @return Array of chord names
+   */
+  @:expose
+  public function getChordNames():Array<String> {
+    var names = [];
+    for (ct in this.chordThings) {
+      names.push(ct.getChordName());
+    }
+    return names;
   }
 }
 

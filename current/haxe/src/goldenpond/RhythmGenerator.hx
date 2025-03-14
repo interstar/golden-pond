@@ -28,6 +28,7 @@ interface IRhythmGenerator {
     function getPatternLength():Int;  // Original pattern length
     function getTotalSteps():Int;     // Total steps including density
     function parseFailed():Bool;      // New method to check if parsing failed
+    function getSteps():Array<SelectorType>;
 }
 
 // Base class for explicit patterns
@@ -69,6 +70,10 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
     
     public function parseFailed():Bool {
         return false;  // Normal generators never fail
+    }
+
+    public function getSteps():Array<SelectorType> {
+        return steps;
     }
 }
 
@@ -161,87 +166,58 @@ class BjorklundRhythmGenerator extends ExplicitRhythmGenerator {
         if (k <= 0) return [for (i in 0...n) false];
         if (k >= n) return [for (i in 0...n) true];
         
-        // Special cases for traditional rhythms
-        if (k == 3 && n == 8) {
-            // Cuban tresillo [1,0,0,1,0,0,1,0]
-            return [true, false, false, true, false, false, true, false];
-        } else if (k == 5 && n == 8) {
-            // Cuban cinquillo [1,0,1,1,0,1,1,0]
-            return [true, false, true, true, false, true, true, false];
-        } else if (k == 2 && n == 5) {
-            // Persian Khafif-e-ramal [1,0,1,0,0]
-            return [true, false, true, false, false];
-        } else if (k == 3 && n == 4) {
-            // Cumbia [1,0,1,1]
-            return [true, false, true, true];
-        } else if (k == 4 && n == 7) {
-            // Ruchenitza [1,0,1,0,1,0,1]
-            return [true, false, true, false, true, false, true];
-        } else if (k == 5 && n == 9) {
-            // Agsag-Samai [1,0,1,0,1,0,1,0,1]
-            return [true, false, true, false, true, false, true, false, true];
-        } else if (k == 3 && n == 7) {
-            // Money [1,0,1,0,1,0,0]
-            return [true, false, true, false, true, false, false];
-        } else if (k == 5 && n == 16) {
-            // Bossa-Nova [1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,0]
-            return [true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, false];
-        }
-        
-        // For other cases, use the standard algorithm
+        // Use the standard algorithm for all cases
         return standardBjorklund(k, n);
     }
     
-    // Standard Bjorklund algorithm implementation
+    // Standard Bjorklund algorithm implementation based on the Python version
     private function standardBjorklund(k:Int, n:Int):Array<Bool> {
-        // Initialize with k ones followed by n-k zeros
-        var pattern = [];
-        for (i in 0...k) pattern.push(true);
-        for (i in 0...n-k) pattern.push(false);
-        
-        // Apply the Bjorklund algorithm
-        var count = [];
-        var remainder = [k];
+        var pattern:Array<Int> = [];
+        var counts:Array<Int> = [];
+        var remainders:Array<Int> = [];
         var divisor = n - k;
+        remainders.push(k);
         var level = 0;
         
-        while (remainder[level] > 1) {
-            count.push(Math.floor(divisor / remainder[level]));
-            remainder.push(divisor % remainder[level]);
-            divisor = remainder[level];
-            level++;
+        // Calculate counts and remainders
+        while (true) {
+            counts.push(Math.floor(divisor / remainders[level]));
+            remainders.push(divisor % remainders[level]);
+            divisor = remainders[level];
+            level = level + 1;
+            if (remainders[level] <= 1) {
+                break;
+            }
+        }
+        counts.push(divisor);
+        
+        // Build the pattern recursively
+        buildPatternRecursive(level, counts, remainders, pattern);
+        
+        // Rotate the pattern to start with a hit (1)
+        var firstOneIndex = pattern.indexOf(1);
+        if (firstOneIndex > 0) {
+            pattern = pattern.slice(firstOneIndex).concat(pattern.slice(0, firstOneIndex));
         }
         
-        if (remainder[level] == 1) {
-            count.push(divisor);
-        }
-        
-        // Build the pattern
-        var builder = [];
-        buildPattern(level, count, remainder, builder);
-        
-        // Flatten the pattern
-        var result = [];
-        for (item in builder) {
-            result = result.concat(item);
-        }
-        
-        return result;
+        // Convert to boolean array
+        return pattern.map(function(val) {
+            return val == 1;
+        });
     }
     
-    // Helper function to build the pattern
-    private function buildPattern(level:Int, count:Array<Int>, remainder:Array<Int>, builder:Array<Array<Bool>>) {
+    // Helper function to build the pattern recursively
+    private function buildPatternRecursive(level:Int, counts:Array<Int>, remainders:Array<Int>, pattern:Array<Int>) {
         if (level == -1) {
-            builder.push([true]);
+            pattern.push(0);
         } else if (level == -2) {
-            builder.push([false]);
+            pattern.push(1);
         } else {
-            for (i in 0...count[level]) {
-                buildPattern(level - 1, count, remainder, builder);
+            for (i in 0...counts[level]) {
+                buildPatternRecursive(level - 1, counts, remainders, pattern);
             }
-            
-            if (remainder[level + 1] != 0) {
-                buildPattern(level - 2, count, remainder, builder);
+            if (remainders[level] != 0) {
+                buildPatternRecursive(level - 2, counts, remainders, pattern);
             }
         }
     }
@@ -278,6 +254,10 @@ class ParseFailedRhythmGenerator implements IRhythmGenerator {
     
     public function parseFailed():Bool {
         return true;  // This generator always indicates parsing failed
+    }
+
+    public function getSteps():Array<SelectorType> {
+        return [];
     }
 }
 
