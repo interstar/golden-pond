@@ -176,7 +176,7 @@ def apply(form):
 
         post_notes_to_score(all_notes)
         
-        CURRENT_DATA.update(root,mode,chord_len,chordSeq,[])
+        CURRENT_DATA.update(root,mode,chord_len,chordSeq,lines)
         if CURRENT_DATA.changed:
             Utils.log("Changed\n%s" % CURRENT_DATA)
             
