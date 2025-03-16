@@ -73,6 +73,15 @@
             border-radius: 3px;
         }
 
+        .pattern-input {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
         .slider-group {
             margin: 10px 0;
         }
@@ -119,6 +128,42 @@
         .root-control span#rootNoteName {
             font-size: 1em;
         }
+
+        .chord-names-section {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        
+        .chord-names-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .chord-names-section p {
+            margin: 0;
+            font-family: monospace;
+        }
+
+        .strudel-code-section {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        
+        .strudel-code-section pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .strudel-code-section code {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
     </style>
     <link rel="stylesheet" href="styles.css">
     
@@ -138,6 +183,7 @@
       <button onclick="play()">Play</button>
       <button onclick="stop()">Stop</button>
       <button onclick="downloadMidi()">Download MIDI</button>
+      <button onclick="downloadSummary()">Download Summary</button>
     </div>
   </div>
   <div class="container">
@@ -147,8 +193,8 @@
     <div class="control-section root-mode-section">
         <div class="root-mode-container">
             <div class="control-group root-control">
-                <label for="root">Root: <span id="rootNoteName">65 (F4)</span></label> 
-                <input type="range" id="root" name="root" min="32" max="96" value="65" style="width: 200px;">
+                <label for="root">Root: <span id="rootNoteName">60 (C4)</span></label> 
+                <input type="range" id="root" name="root" min="32" max="96" value="60" style="width: 200px;">
                 
             </div>
             <div class="control-group mode-control">
@@ -160,8 +206,8 @@
             </div>
 
             <div class="control-group">
-                <label for="chordLength">Chord Duration (in quarter-notes): <span id="chordLengthValue">4</span></label>
-                <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="4">
+                <label for="chordLength">Chord Duration <span id="chordLengthValue">8</span></label>
+                <input type="range" id="chordLength" name="chordLength" min="1" max="16" value="8">
                 
             </div>
 
@@ -177,19 +223,34 @@
     <!-- Chord Sequence -->
     <div class="control-section">
         <label for="chordSequence">Chord Sequence:</label><br>
-        <textarea id="chordSequence" rows="4" cols="50">71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75</textarea>
+        <textarea id="chordSequence" rows="4" cols="50">1,4,5,1</textarea>
+        <div class="help-text" style="margin-top: 5px; font-size: 0.9em; color: #666;">
+            <p>Example progressions:</p>
+            <ul style="margin-top: 5px; padding-left: 20px;">
+                <li>Basic Major : <code>1,4,5,1</code></li>
+                <li>Extended pop progression : <code>1,5,-6,4,5</code></li>
+                <li>Jazz sevenths ii-V-I-vi <code>72,75,71,76</code></li>
+                
+                <li>Key Transpositions : <code>71,>1,72,75,<1,71,>3,72,75,71</code></li>
+                <li>Longer progression with switching between major and minor :<code>76,72,75,71,!,76,72,75,71,>2,!,76,72,75,71,!,76,72,75,71</code> </li>
+                <li>Complex progression with secondary dominants : <code>71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,</code></li>
+            </ul>
+        </div>
+        <div id="chordNames" class="chord-names-section"></div>
     </div>
-
-
-    <!-- Add BPM control and play buttons -->
-    <div class="control-section">
-    </div>
-
 
     <!-- Generate Types Section -->
     <div class="control-section">
         <h3>Generate Types:</h3>
         <div id="line-controls"></div>
+    </div>
+
+    <!-- Strudel Code Section -->
+    <div class="control-section" style="display: none;">
+        <h3>Strudel Code:</h3>
+        <div id="strudelCode" class="strudel-code-section">
+            <pre><code></code></pre>
+        </div>
     </div>
 
     <br>
@@ -240,12 +301,24 @@
         Object.entries(config.lines).forEach(([lineId, settings]) => {
             const lineType = {
                 id: lineId,
-                name: lineId.charAt(0).toUpperCase() + lineId.slice(1),
+                name: getInstrumentName(lineId),  // Get instrument name instead of just capitalizing
                 ...settings  // This spreads all settings including gateLength
             };
             const controls = createLineControls(lineType);
             container.appendChild(controls);
         });
+    }
+
+    // Helper function to get instrument name
+    function getInstrumentName(lineId) {
+        const instrumentNames = {
+            'chords': 'Piano',
+            'arpeggio': 'Harp',
+            'bass': 'Bass',
+            'top': 'Flute',
+            'random': 'Tuba'
+        };
+        return instrumentNames[lineId] || lineId.charAt(0).toUpperCase() + lineId.slice(1);
     }
 
     // Add this function before createAllLineControls
@@ -257,7 +330,7 @@
         const controlsColumn = document.createElement('div');
         controlsColumn.className = 'controls-column';
 
-        // Active checkbox
+        // Active checkbox with instrument name
         const activeLabel = document.createElement('label');
         const activeCheckbox = document.createElement('input');
         activeCheckbox.type = 'checkbox';
@@ -267,48 +340,50 @@
         activeLabel.appendChild(document.createTextNode(` ${lineType.name}`));
         controlsColumn.appendChild(activeLabel);
 
-        // Density dropdown
-        const densityLabel = document.createElement('label');
-        densityLabel.textContent = 'Density:';
-        const densitySelect = document.createElement('select');
-        densitySelect.id = `${lineType.id}-density`;
-        MenuHelper.getRhythmicDensityNames().forEach((name, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.text = name;
-            densitySelect.appendChild(option);
-        });
-        densitySelect.value = "4"; // Default to quarter notes
-        controlsColumn.appendChild(densityLabel);
-        controlsColumn.appendChild(densitySelect);
+        // Pattern text input
+        const patternLabel = document.createElement('label');
+        patternLabel.textContent = 'Pattern:';
+        patternLabel.htmlFor = `${lineType.id}-pattern`;
+        controlsColumn.appendChild(patternLabel);
+        
+        const patternInput = document.createElement('input');
+        patternInput.type = 'text';
+        patternInput.id = `${lineType.id}-pattern`;
+        patternInput.className = 'pattern-input';
+        
+        // Set default pattern based on line type
+        let defaultPattern = '';
+        switch(lineType.id) {
+            case 'chords':
+                defaultPattern = `${lineType.defaultK}/${lineType.defaultN} c 4`;
+                break;
+            case 'arpeggio':
+                defaultPattern = `${lineType.defaultK}/${lineType.defaultN} > 4`;
+                break;
+            case 'bass':
+                defaultPattern = `${lineType.defaultK}/${lineType.defaultN} 1 4`;
+                break;
+            case 'top':
+                defaultPattern = `${lineType.defaultK}/${lineType.defaultN} t 4`;
+                break;
+            case 'random':
+                defaultPattern = `${lineType.defaultK}%${lineType.defaultN} r 4`;
+                break;
+        }
+        patternInput.value = defaultPattern;
+        patternInput.addEventListener('change', updateControls);
+        controlsColumn.appendChild(patternInput);
 
-        // K and N sliders
-        ['k', 'n'].forEach(param => {
-            const sliderContainer = document.createElement('div');
-            sliderContainer.className = 'slider-group';
-            
-            const sliderLabel = document.createElement('div');
-            sliderLabel.className = 'slider-label';
-            sliderLabel.innerHTML = `${param.toUpperCase()}: <span id="${lineType.id}-${param}-value">${lineType[`default${param.toUpperCase()}`]}</span>`;
-            
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.id = `${lineType.id}-${param}`;
-            slider.min = '1';
-            slider.max = '24';
-            slider.value = lineType[`default${param.toUpperCase()}`];
-            
-            slider.oninput = () => {
-                document.getElementById(`${lineType.id}-${param}-value`).textContent = slider.value;
-                updateControls();
-            };
-            
-            sliderContainer.appendChild(sliderLabel);
-            sliderContainer.appendChild(slider);
-            controlsColumn.appendChild(sliderContainer);
-        });
+        // Add a small help text for pattern syntax
+        const helpText = document.createElement('div');
+        helpText.className = 'help-text';
+        helpText.innerHTML = 'Examples: "3/8 c 4", "5%8 > 4", ">.>.=.<. 4"';
+        helpText.style.fontSize = '0.8em';
+        helpText.style.color = '#666';
+        helpText.style.marginTop = '2px';
+        controlsColumn.appendChild(helpText);
 
-        // Add octave transpose slider after K and N sliders
+        // Add octave transpose slider
         const octaveContainer = document.createElement('div');
         octaveContainer.className = 'slider-group';
         
@@ -375,7 +450,6 @@
 
         // Add event listeners
         activeCheckbox.addEventListener('change', updateControls);
-        densitySelect.addEventListener('change', updateControls);
 
         // Combine columns
         section.appendChild(controlsColumn);
@@ -392,14 +466,14 @@
             Soundfont.instrument(audioContext, 'orchestral_harp'),
             Soundfont.instrument(audioContext, 'acoustic_bass'),
             Soundfont.instrument(audioContext, 'flute'),
-            Soundfont.instrument(audioContext, 'marimba')
-        ]).then(([piano, harp, bass, flute, marimba]) => {
+            Soundfont.instrument(audioContext, 'tuba')
+        ]).then(([piano, harp, bass, flute, tuba]) => {
             instruments = {
                 'chords': piano,
                 'arpeggio': harp,
                 'bass': bass,
                 'top': flute,
-                'random': marimba
+                'random': tuba
             };
             instrumentsLoaded = true;
             showLoading(false);
@@ -459,29 +533,18 @@
         Object.entries(currentConfig.lines).forEach(([lineId, settings]) => {
             const values = getLineValues(lineId);
             if (values.active) {
-                let line;
-                switch(lineId) {
-                    case 'chords':
-                        line = new ChordLine(currentTimeManipulator, currentProgression, 
-                            values.k, values.n, values.gateLength, values.density);
-                        break;
-                    case 'arpeggio':
-                        line = new ArpLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
-                        break;
-                    case 'bass':
-                        line = new BassLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
-                        break;
-                    case 'top':
-                        line = new TopLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
-                        break;
-                    case 'random':
-                        line = new RandomLine(currentTimeManipulator, currentProgression, values.k, values.n, values.gateLength, values.density);
-                        break;
-                }
+                // Create line using the pattern directly from the input field
+                const line = LineGenerator.createFromPattern(
+                    currentTimeManipulator, 
+                    currentProgression, 
+                    values.pattern, 
+                    values.gateLength
+                );
+                
                 if (line) {
                     line.transpose(values.octave * 12);
                     currentLines.push({
-                        type: { id: lineId, name: lineId.charAt(0).toUpperCase() + lineId.slice(1) },
+                        type: { id: lineId, name: getInstrumentName(lineId) },
                         line: line,
                         notes: line.generateNotes(0, 0, 100)
                     });
@@ -491,6 +554,9 @@
 
         // Update previews
         updatePreviews();
+        
+        // Update Strudel code
+        updateStrudelCode();
     }
 
     // Modify updateControls to use the global state
@@ -589,6 +655,46 @@
         window.URL.revokeObjectURL(url);
     }
 
+    // Function to generate and download a text summary of the current state
+    function downloadSummary() {
+        // Get basic settings
+        const root = parseInt(document.getElementById('root').value);
+        const rootName = getMidiNoteName(root).split(' ')[1].replace('(', '').replace(')', '');
+        const mode = document.getElementById('mode').value == "0" ? "Major" : "Minor";
+        const chordDuration = parseInt(document.getElementById('chordLength').value);
+        const chordSequence = document.getElementById('chordSequence').value;
+        
+        // Start building the summary text
+        let summaryText = `Root ${root} (${rootName}), ${mode}, Chord Duration ${chordDuration}\n\n`;
+        
+        // Add chord sequence
+        summaryText += `${chordSequence}\n\n`;
+        
+        // Add instrument settings
+        Object.entries(currentConfig.lines).forEach(([lineId, settings]) => {
+            const active = document.getElementById(`${lineId}-active`).checked;
+            if (active) {
+                const instrumentName = getInstrumentName(lineId);
+                const pattern = document.getElementById(`${lineId}-pattern`).value;
+                const octave = document.getElementById(`${lineId}-octave`).value;
+                const gateLength = document.getElementById(`${lineId}-gateLength`).value;
+                
+                summaryText += `${instrumentName} : ${pattern}, Oct: ${octave}, Gate: ${gateLength}\n`;
+            }
+        });
+        
+        // Create and download the text file
+        const blob = new Blob([summaryText], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'goldenpond_summary.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
     // Modify the DOMContentLoaded handler
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM loaded');
@@ -608,6 +714,9 @@
                 }
                 element.addEventListener('input', function() {
                     updateDisplayValue(id, `${id}Value`);
+                    if (id === 'root') {
+                        updateChordNames();
+                    }
                 });
             });
             
@@ -621,8 +730,17 @@
                 element.addEventListener('change', function() {
                     updateTimeAndProgression();
                     updateControls();
+                    if (id === 'root' || id === 'mode' || id === 'chordSequence') {
+                        updateChordNames();
+                    }
                 });
             });
+
+            // Add input event listener for chord sequence changes
+            document.getElementById('chordSequence').addEventListener('input', updateChordNames);
+            
+            // Add change event listener for mode changes
+            document.getElementById('mode').addEventListener('change', updateChordNames);
 
             console.log('All event listeners attached successfully');
         } catch (error) {
@@ -634,17 +752,16 @@
             initAudio();
             document.body.removeEventListener('click', initOnClick);
         });
+        
+        // Initial update
+        updateChordNames();
     });
 
     // Get values for a line type
     function getLineValues(lineId) {
         const values = {
             active: document.getElementById(`${lineId}-active`).checked,
-            density: MenuHelper.rhythmicDensityToNumeric(
-                MenuHelper.getRhythmicDensityFor(document.getElementById(`${lineId}-density`).value)
-            ),
-            k: parseInt(document.getElementById(`${lineId}-k`).value),
-            n: parseInt(document.getElementById(`${lineId}-n`).value),
+            pattern: document.getElementById(`${lineId}-pattern`).value,
             octave: parseInt(document.getElementById(`${lineId}-octave`).value),
             gateLength: parseFloat(document.getElementById(`${lineId}-gateLength`).value)
         };
@@ -739,18 +856,17 @@
         updateDisplayValue('chordLength', 'chordLengthValue');
         document.getElementById('rootNoteName').textContent = getMidiNoteName(config.root);
         
+        // Update chord names display
+        updateChordNames();
+        
         // Set line controls
         Object.entries(config.lines).forEach(([lineId, settings]) => {
             document.getElementById(`${lineId}-active`).checked = settings.active;
-            document.getElementById(`${lineId}-k`).value = settings.k;
-            document.getElementById(`${lineId}-n`).value = settings.n;
-            document.getElementById(`${lineId}-density`).value = settings.density;
+            document.getElementById(`${lineId}-pattern`).value = settings.pattern;
             document.getElementById(`${lineId}-octave`).value = settings.octave;
             document.getElementById(`${lineId}-gateLength`).value = settings.gateLength;
             
             // Update displays
-            document.getElementById(`${lineId}-k-value`).textContent = settings.k;
-            document.getElementById(`${lineId}-n-value`).textContent = settings.n;
             document.getElementById(`${lineId}-octave-value`).textContent = settings.octave;
             document.getElementById(`${lineId}-gateLength-value`).textContent = settings.gateLength.toFixed(2);
         });
@@ -765,49 +881,49 @@
             root: 60,
             mode: 0,
             bpm: 120,
-            chordLength: 4,
+            chordLength: 8,
             noteProportion: 0.8,
             chordSequence: "1,4,5,1",
             lines: {
                 chords: { 
                     active: true, 
-                    k: 1, 
-                    n: 4, 
-                    density: 7,
+                    pattern: "1/4 c 4",
                     octave: 0,
-                    gateLength: 0.8
+                    gateLength: 0.8,
+                    defaultK: 1,
+                    defaultN: 4
                 },
                 arpeggio: { 
                     active: true, 
-                    k: 3, 
-                    n: 4, 
-                    density: 6,
+                    pattern: "3/4 > 4",
                     octave: 0,
-                    gateLength: 0.5
+                    gateLength: 0.5,
+                    defaultK: 3,
+                    defaultN: 4
                 },
                 bass: { 
                     active: true, 
-                    k: 1, 
-                    n: 2, 
-                    density: 6,
+                    pattern: "1/2 1 4",
                     octave: -1,
-                    gateLength: 0.8
+                    gateLength: 0.8,
+                    defaultK: 1,
+                    defaultN: 2
                 },
                 top: { 
                     active: false, 
-                    k: 3, 
-                    n: 8, 
-                    density: 6,
+                    pattern: "3/8 t 4",
                     octave: 1,
-                    gateLength: 0.6
+                    gateLength: 0.6,
+                    defaultK: 3,
+                    defaultN: 8
                 },
                 random: { 
                     active: false, 
-                    k: 4, 
-                    n: 12, 
-                    density: 6,
+                    pattern: "4%12 r 4",
                     octave: 0,
-                    gateLength: 0.4
+                    gateLength: 0.4,
+                    defaultK: 4,
+                    defaultN: 12
                 }
             }
         },
@@ -821,43 +937,43 @@
             lines: {
                 chords: { 
                     active: true, 
-                    k: 1, 
-                    n: 3, 
-                    density: 6,
+                    pattern: "1/3 c 4",
                     octave: 0,
-                    gateLength: 0.9
+                    gateLength: 0.9,
+                    defaultK: 1,
+                    defaultN: 3
                 },
                 arpeggio: { 
                     active: true, 
-                    k: 2, 
-                    n: 3, 
-                    density: 2,
+                    pattern: "2/3 > 4",
                     octave: 1,
-                    gateLength: 0.4
+                    gateLength: 0.4,
+                    defaultK: 2,
+                    defaultN: 3
                 },
                 bass: { 
                     active: true, 
-                    k: 1, 
-                    n: 3, 
-                    density: 4,
+                    pattern: "1/3 1 4",
                     octave: -1,
-                    gateLength: 0.7
+                    gateLength: 0.7,
+                    defaultK: 1,
+                    defaultN: 3
                 },
                 top: { 
                     active: true, 
-                    k: 2, 
-                    n: 6, 
-                    density: 4,
+                    pattern: "2/6 t 4",
                     octave: 1,
-                    gateLength: 0.6
+                    gateLength: 0.6,
+                    defaultK: 2,
+                    defaultN: 6
                 },
                 random: { 
                     active: false, 
-                    k: 3, 
-                    n: 6, 
-                    density: 2,
+                    pattern: "3%6 r 4",
                     octave: 0,
-                    gateLength: 0.3
+                    gateLength: 0.3,
+                    defaultK: 3,
+                    defaultN: 6
                 }
             }
         }
@@ -868,6 +984,109 @@
         createAllLineControls(pieces.simpleMajor);
         loadPieceConfig(pieces.simpleMajor);
     });
+
+    // Add MIDI note to note name conversion
+    function midiToNoteName(midiNote) {
+        const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const note = notes[midiNote % 12];
+        const octave = Math.floor(midiNote / 12) - 1;
+        return note + octave;
+    }
+
+    // Add function to update chord names display
+    function updateChordNames() {
+        const chordSequence = document.getElementById('chordSequence').value;
+        const chordNamesDiv = document.getElementById('chordNames');
+        
+        try {
+            const progression = new ChordProgression(
+                parseInt(document.getElementById('root').value),
+                document.getElementById('mode').value == "0" ? Mode.getMajorMode() : Mode.getMinorMode(),
+                chordSequence
+            );
+            
+            // Use the ChordProgression's getChordNames method directly
+            const chordNames = progression.getChordNames();
+            
+            chordNamesDiv.innerHTML = "<h3>Chord Names:</h3><p>" + chordNames.join(" → ") + "</p>";
+        } catch (error) {
+            chordNamesDiv.innerHTML = "<p style='color: red;'>Error parsing chord sequence: " + error.message + "</p>";
+        }
+    }
+
+    // Add function to convert notes to Strudel pattern
+    function notesToStrudelPattern(notes, lineType) {
+        if (!notes || notes.length === 0) return '';
+        
+        // Get the pattern
+        const pattern = document.getElementById(`${lineType.id}-pattern`).value;
+        const chordDuration = parseInt(document.getElementById('chordLength').value);
+        
+        // Create the base pattern using the rhythm pattern
+        let strudelPattern = `note(\`<`;
+        
+        // Add the pattern
+        strudelPattern += `[${notes[0].note}](${pattern})`;
+        
+        // Add rests to fill the chord duration
+        strudelPattern += ` [~@${chordDuration - 1}]`;
+        
+        strudelPattern += `>\`)`;
+        
+        // Add sound based on line type
+        const soundMap = {
+            'chords': 'piano',
+            'arpeggio': 'harp',
+            'bass': 'bass',
+            'top': 'flute',
+            'random': 'tuba'
+        };
+        strudelPattern += `.sound("${soundMap[lineType.id] || 'piano'}")`;
+        
+        // Add gain based on velocity if available
+        if (notes[0].velocity !== undefined) {
+            const avgVelocity = notes.reduce((sum, note) => sum + note.velocity, 0) / notes.length;
+            strudelPattern += `.gain(${avgVelocity / 127})`;
+        }
+
+        // Add pattern to sequence notes
+        strudelPattern += `.seq()`;
+        
+        return strudelPattern;
+    }
+
+    // Add function to update Strudel code display
+    function updateStrudelCode() {
+        const strudelCodeDiv = document.getElementById('strudelCode');
+        if (!currentLines || currentLines.length === 0) {
+            strudelCodeDiv.querySelector('code').textContent = '// No lines active';
+            return;
+        }
+
+        let code = '';
+        
+        // Convert BPM to CPM (1 cycle = 1 beat)
+        const bpm = parseInt(document.getElementById('bpm').value);
+        code += `var cpm = ${bpm};\n\n`;
+        
+        // Add each line's pattern
+        currentLines.forEach(({type, notes}) => {
+            if (notes && notes.length > 0) {
+                code += `// ${type.name} line\n`;
+                code += `const ${type.id}Pattern = ${notesToStrudelPattern(notes, type)};\n\n`;
+            }
+        });
+        
+        // Add the final pattern combination using stack()
+        code += 'stack(\n';
+        code += currentLines
+            .filter(({notes}) => notes && notes.length > 0)
+            .map(({type}) => `  ${type.id}Pattern`)
+            .join(',\n');
+        code += '\n).cpm(cpm);\n';
+        
+        strudelCodeDiv.querySelector('code').textContent = code;
+    }
 </script>
 
 </body>
