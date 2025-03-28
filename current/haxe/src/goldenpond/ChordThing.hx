@@ -79,26 +79,20 @@ class ChordThing {
     }
 
     public function swap_mode():ChordThing {
-        if (this.mode == MAJOR) {
-            this.mode = MINOR;
+        if (this.mode.equals(Mode.getMajorMode())) {
+            this.mode = Mode.getMinorMode();
         } else {
-            this.mode = MAJOR;
+            this.mode = Mode.getMajorMode();
         }
         return this;
-    }
-
-    public function modal_interchange():ChordThing {
-        this.modifiers.push(Modifier.MODAL_INTERCHANGE);
-        return this;
-    }
-
-    public function has_modal_interchange():Bool {
-        return this.modifiers.indexOf(Modifier.MODAL_INTERCHANGE) != -1;
     }
 
     public function seventh():ChordThing {
         if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
             this.modifiers.splice(this.modifiers.indexOf(Modifier.NINTH), 1);
+        }
+        if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
+            this.modifiers.splice(this.modifiers.indexOf(Modifier.SIXTH), 1);
         }
         this.modifiers.push(Modifier.SEVENTH);
         return this;
@@ -108,7 +102,21 @@ class ChordThing {
         if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
             this.modifiers.splice(this.modifiers.indexOf(Modifier.SEVENTH), 1);
         }
+        if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
+            this.modifiers.splice(this.modifiers.indexOf(Modifier.SIXTH), 1);
+        }
         this.modifiers.push(Modifier.NINTH);
+        return this;
+    }
+
+    public function sixth():ChordThing {
+        if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
+            this.modifiers.splice(this.modifiers.indexOf(Modifier.SEVENTH), 1);
+        }
+        if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
+            this.modifiers.splice(this.modifiers.indexOf(Modifier.NINTH), 1);
+        }
+        this.modifiers.push(Modifier.SIXTH);
         return this;
     }
 
@@ -123,7 +131,7 @@ class ChordThing {
     }
 
     public function toString():String {
-        var modeStr = (this.mode == MAJOR) ? "MAJOR" : "MINOR";
+        var modeStr = (this.mode.equals(Mode.getMajorMode())) ? "MAJOR" : "MINOR";
         var degree_repr = if (this.modifiers.indexOf(Modifier.SECONDARY) != -1)
             "(" + this.secondary_degree + "/" + this.degree + ")"
         else
@@ -145,11 +153,7 @@ class ChordThing {
     }
 
     public function get_mode():Mode {
-        if (this.has_modal_interchange()) {
-            return (this.mode == MINOR) ? MAJOR : MINOR;
-        } else {
-            return this.mode;
-        }
+        return this.mode;
     }
     
     /**
@@ -157,7 +161,7 @@ class ChordThing {
      * @return A new ChordThing representing the secondary chord
      */
     public function calculateAsSecondaryChord():ChordThing {
-        var new_tonic = this.get_mode().nth_from(this.key, this.degree);
+        var new_tonic = this.mode.nth_from(this.key, this.degree);
         var ct = new ChordThing(new_tonic, Mode.getMajorMode(), this.secondary_degree, this.length);
 
         if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) ct.seventh();
@@ -175,15 +179,16 @@ class ChordThing {
             return this.calculateAsSecondaryChord().generateChordNotes();
         }
         
-        var mode = this.get_mode();
         var chord:Array<Int>;
         
         if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
-            chord = mode.make_ninth(this.key, this.degree);
+            chord = this.mode.make_ninth(this.key, this.degree);
         } else if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
-            chord = mode.make_seventh(this.key, this.degree);
+            chord = this.mode.make_seventh(this.key, this.degree);
+        } else if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
+            chord = this.mode.make_sixth(this.key, this.degree);
         } else {
-            chord = mode.make_triad(this.key, this.degree);
+            chord = this.mode.make_triad(this.key, this.degree);
         }
 
         // Apply inversions
@@ -218,7 +223,7 @@ class ChordThing {
      */
     private function calculateRootNote():Int {
         // Get the appropriate scale intervals based on the mode
-        var intervals = (this.mode == MAJOR) ? 
+        var intervals = (this.mode.equals(Mode.getMajorMode())) ? 
             [0, 2, 4, 5, 7, 9, 11] :  // Major scale intervals
             [0, 2, 3, 5, 7, 8, 10];   // Minor scale intervals
         
@@ -350,6 +355,10 @@ class ChordThing {
         }
         
         return chordName;
+    }
+
+    public function set_mode(newMode:Mode) {
+        this.mode = newMode;
     }
 }
 

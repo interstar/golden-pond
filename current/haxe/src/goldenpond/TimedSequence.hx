@@ -29,7 +29,8 @@ import RhythmGenerator;  // This will give us access to SimpleRhythmGenerator to
 @:expose
 enum SeqTypes {
     CHORDS;
-    EUCLIDEAN;
+    ARPUP;
+    ARPDOWN;
     BASS;
     TOP;
     RANDOM;

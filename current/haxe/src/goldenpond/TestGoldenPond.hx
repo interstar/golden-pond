@@ -63,7 +63,7 @@ class TestGoldenPond {
         }
 
         // Objects with custom equals methods
-        if (Std.isOfType(a, Note) || Std.isOfType(a, ChordThing)) {
+        if (Std.isOfType(a, Note) || Std.isOfType(a, ChordThing) || Std.isOfType(a, Mode)) {
             return a.equals(b);
         }
 
@@ -129,11 +129,32 @@ class TestGoldenPond {
         testit("modes14", Mode.constructNthMajorMode(1).intervals, [2, 2, 1, 2, 2, 2, 1], "Modes 14 : Other modes ionian");
         testit("modes15", Mode.constructNthMajorMode(2).intervals, [2, 1, 2, 2, 2, 1, 2], "Modes 15 : Dorian");
         testit("modes16", Mode.constructNthMajorMode(3).intervals, [1, 2, 2, 2, 1, 2, 2], "Modes 16 : Phrygian");
-        testit("modes17", Mode.constructNthMajorMode(3).intervals, Mode.phrygian().intervals, "Modes 17 : Phrygian as name");
-        testit("modes18", Mode.lydian().intervals, [2, 2, 2, 1, 2, 2, 1], "Modes 18 : Lydian");
-        testit("modes19", Mode.mixolydian().intervals, [2, 2, 1, 2, 2, 1, 2], "Modes 19 : Mixolydian");
-        testit("modes20", Mode.aeolian().intervals, [2, 1, 2, 2, 1, 2, 2], "Modes 20 : Aeolian");
-        testit("modes21", Mode.locrian().intervals, [1, 2, 2, 1, 2, 2, 2], "Modes 21 : Locrian");
+        testit("modes17", Mode.constructNthMajorMode(3).intervals, Mode.getPhrygianMode().intervals, "Modes 17 : Phrygian as name");
+        testit("modes18", Mode.getLydianMode().intervals, [2, 2, 2, 1, 2, 2, 1], "Modes 18 : Lydian");
+        testit("modes19", Mode.getMixolydianMode().intervals, [2, 2, 1, 2, 2, 1, 2], "Modes 19 : Mixolydian");
+        testit("modes20", Mode.getAeolianMode().intervals, [2, 1, 2, 2, 1, 2, 2], "Modes 20 : Aeolian");
+        testit("modes21", Mode.getLocrianMode().intervals, [1, 2, 2, 1, 2, 2, 2], "Modes 21 : Locrian");
+
+        // Test Harmonic Minor Mode
+        var HARMONIC_MINOR = Mode.getHarmonicMinorMode();
+        var harmonic_minor_2 = Mode.getHarmonicMinorMode();
+        testit("modes22", HARMONIC_MINOR == harmonic_minor_2, true, "Harmonic Minor Mode not singleton");
+        testit("modes23", HARMONIC_MINOR.intervals, [2, 1, 2, 2, 1, 3, 1], "Harmonic Minor intervals");
+        testit("modes24", HARMONIC_MINOR.nth_from(60, 7), 71, "Harmonic Minor 7th degree (raised 7th)");
+        testit("modes25", HARMONIC_MINOR.make_triad(60, 1), [60, 63, 67], "Harmonic Minor triad");
+        testit("modes26", HARMONIC_MINOR.make_seventh(60, 1), [60, 63, 67, 71], "Harmonic Minor seventh");
+
+        // Test Melodic Minor Mode
+        testit("modes27", Mode.getMelodicMinorMode() == Mode.getMelodicMinorMode(), true, "Melodic Minor Mode not singleton");
+        testit("modes28", Mode.getMelodicMinorMode().intervals, [2, 1, 2, 2, 2, 2, 1], "Melodic Minor intervals");
+        testit("modes29", Mode.getMelodicMinorMode().nth_from(60, 6), 69, "Melodic Minor 6th degree (raised 6th)");
+        testit("modes30", Mode.getMelodicMinorMode().nth_from(60, 7), 71, "Melodic Minor 7th degree (raised 7th)");
+        testit("modes31", Mode.getMelodicMinorMode().make_triad(60, 1), [60, 63, 67], "Melodic Minor triad");
+        testit("modes32", Mode.getMelodicMinorMode().make_seventh(60, 1), [60, 63, 67, 71], "Melodic Minor seventh");
+
+        // Test mode construction for new modes
+        testit("modes33", Mode.constructNthHarmonicMinorMode(1).intervals, [2, 1, 2, 2, 1, 3, 1], "Harmonic Minor mode construction");
+        testit("modes34", Mode.constructNthMelodicMinorMode(1).intervals, [2, 1, 2, 2, 2, 2, 1], "Melodic Minor mode construction");
     }	
 
     static function testChordThing() {
@@ -148,15 +169,11 @@ class TestGoldenPond {
             true,
             "ChordThing expected to have extensions with ninth.");
 
-        testit("ChordThing modal interchange",
-            Std.string(new ChordThing(60, Mode.getMajorMode(), 3).modal_interchange()),
-            "ChordThing(60,MAJOR,3,0,1) + [MODAL_INTERCHANGE]",
-            "ChordThing modal interchange failed.");
 
-        testit("ChordThing has modal interchange",
-            new ChordThing(60, Mode.getMajorMode(), 3).modal_interchange().has_modal_interchange(),
-            true,
-            "ChordThing expected to have modal interchange.");
+        testit("ChordThing with length",
+            Std.string(new ChordThing(60, Mode.getMinorMode(), 3, 2)),
+            "ChordThing(60,MINOR,3,0,2) + []",
+            "ChordThing with length failed.");
 
         testit("ChordThing swap mode to MINOR",
             new ChordThing(60, Mode.getMajorMode(), 3).swap_mode().mode,
@@ -176,60 +193,99 @@ class TestGoldenPond {
 
         testit("ChordThing ninths override sevenths", Std.string(new ChordThing(60, Mode.getMajorMode(), 3, 2).seventh().ninth()), "ChordThing(60,MAJOR,3,0,2) + [NINTH]", "ChordThings");
         testit("ChordThing sevenths override ninths", Std.string(new ChordThing(60, Mode.getMajorMode(), 3, 2).ninth().seventh()), "ChordThing(60,MAJOR,3,0,2) + [SEVENTH]", "ChordThings");
-        testit("ChordThing modal interchange", Std.string(new ChordThing(60, Mode.getMajorMode(), 3, 2).modal_interchange()), "ChordThing(60,MAJOR,3,0,2) + [MODAL_INTERCHANGE]", "ChordThings");
-        testit("ChordThing has modal interchange", new ChordThing(60, Mode.getMajorMode(), 3, 2).modal_interchange().has_modal_interchange(), true, "ChordThings");
-        testit("ChordThing swap mode", new ChordThing(60, Mode.getMajorMode(), 3, 2).swap_mode().mode, Mode.getMinorMode(), "ChordThings");
-        testit("ChordThing swap mode", new ChordThing(60, Mode.getMinorMode(), 3, 2).swap_mode().mode, Mode.getMajorMode(), "ChordThings");
-
+        testit("ChordThing mode switching", Std.string(new ChordThing(60, Mode.getMinorMode(), 3, 2)), "ChordThing(60,MINOR,3,0,2) + []", "ChordThings");
         testit("ChordThing get mode", new ChordThing(60, Mode.getMinorMode(), 3, 2).get_mode(), Mode.getMinorMode(), "ChordThing.getMode");
-        testit("ChordThing get mode2", new ChordThing(60, Mode.getMinorMode(), 3, 2).modal_interchange().get_mode(), Mode.getMajorMode(), "ChordThing.getMode");
-        testit("ChordThing get mode3", new ChordThing(24, Mode.getMajorMode(), 3, 2).modal_interchange().get_mode(), Mode.getMinorMode(), "ChordThing.getMode");
+        testit("ChordThing get mode after swap", new ChordThing(60, Mode.getMinorMode(), 3, 2).swap_mode().get_mode(), Mode.getMajorMode(), "ChordThing.getMode after swap");
+
+        // Test ChordThing basic functionality
+        testit("ChordThing basic", Std.string(new ChordThing(60, Mode.getMajorMode(), 3)), "ChordThing(60,MAJOR,3,0,1) + []", "ChordThings");
+        testit("ChordThing with length", Std.string(new ChordThing(60, Mode.getMajorMode(), 3, 2)), "ChordThing(60,MAJOR,3,0,2) + []", "ChordThings");
+        testit("ChordThing with inversion", Std.string(new ChordThing(60, Mode.getMajorMode(), 3, 2).set_inversion(1)), "ChordThing(60,MAJOR,3,1,2) + []", "ChordThings");
+        testit("ChordThing with seventh", Std.string(new ChordThing(60, Mode.getMajorMode(), 3).seventh()), "ChordThing(60,MAJOR,3,0,1) + [SEVENTH]", "ChordThings");
+        testit("ChordThing with ninth", Std.string(new ChordThing(60, Mode.getMajorMode(), 3).ninth()), "ChordThing(60,MAJOR,3,0,1) + [NINTH]", "ChordThings");
+        testit("ChordThing mode switching", Std.string(new ChordThing(60, Mode.getMajorMode(), 3).swap_mode()), "ChordThing(60,MINOR,3,0,1) + []", "ChordThings");
+
+        // Test ChordThing mode handling
+        testit("ChordThing major mode", new ChordThing(60, Mode.getMajorMode(), 3).get_mode(), Mode.getMajorMode(), "ChordThing.getMode");
+        testit("ChordThing minor mode", new ChordThing(60, Mode.getMinorMode(), 3).get_mode(), Mode.getMinorMode(), "ChordThing.getMode");
+        testit("ChordThing harmonic minor mode", new ChordThing(60, Mode.getHarmonicMinorMode(), 3).get_mode(), Mode.getHarmonicMinorMode(), "ChordThing.getMode");
+        testit("ChordThing melodic minor mode", new ChordThing(60, Mode.getMelodicMinorMode(), 3).get_mode(), Mode.getMelodicMinorMode(), "ChordThing.getMode");
     }
 	
     static function testChordFactory() {
         trace("Testing ChordFactory");
+        var cp = new ChordParser(60, Mode.getMajorMode());
+        testit("ChordFactory basic", cp.parse("1")[0], new ChordThing(60, Mode.getMajorMode(), 1), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("2")[0], new ChordThing(60, Mode.getMajorMode(), 2), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("3")[0], new ChordThing(60, Mode.getMajorMode(), 3), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("4")[0], new ChordThing(60, Mode.getMajorMode(), 4), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("5")[0], new ChordThing(60, Mode.getMajorMode(), 5), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("6")[0], new ChordThing(60, Mode.getMajorMode(), 6), "ChordFactory basic");
+        testit("ChordFactory basic", cp.parse("7")[0], new ChordThing(60, Mode.getMajorMode(), 7), "ChordFactory basic");
 
-        var MAJOR = Mode.getMajorMode();
-        var MINOR = Mode.getMinorMode();
+        testit("ChordFactory sevenths", cp.parse("71")[0], new ChordThing(60, Mode.getMajorMode(), 1).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("72")[0], new ChordThing(60, Mode.getMajorMode(), 2).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("73")[0], new ChordThing(60, Mode.getMajorMode(), 3).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("74")[0], new ChordThing(60, Mode.getMajorMode(), 4).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("75")[0], new ChordThing(60, Mode.getMajorMode(), 5).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("76")[0], new ChordThing(60, Mode.getMajorMode(), 6).seventh(), "ChordFactory sevenths");
+        testit("ChordFactory sevenths", cp.parse("77")[0], new ChordThing(60, Mode.getMajorMode(), 7).seventh(), "ChordFactory sevenths");
 
-        // Test Major Triad
-        testit("Major Triad C",
-            new ChordThing(60, MAJOR, 1).generateChordNotes(),
-            [60, 64, 67],
-            "Major triad C not correctly generated.");
+        testit("ChordFactory ninths", cp.parse("91")[0], new ChordThing(60, Mode.getMajorMode(), 1).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("92")[0], new ChordThing(60, Mode.getMajorMode(), 2).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("93")[0], new ChordThing(60, Mode.getMajorMode(), 3).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("94")[0], new ChordThing(60, Mode.getMajorMode(), 4).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("95")[0], new ChordThing(60, Mode.getMajorMode(), 5).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("96")[0], new ChordThing(60, Mode.getMajorMode(), 6).ninth(), "ChordFactory ninths");
+        testit("ChordFactory ninths", cp.parse("97")[0], new ChordThing(60, Mode.getMajorMode(), 7).ninth(), "ChordFactory ninths");
+
+        // Test sixth chords
+        testit("ChordFactory sixths", cp.parse("61")[0], new ChordThing(60, Mode.getMajorMode(), 1).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("62")[0], new ChordThing(60, Mode.getMajorMode(), 2).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("63")[0], new ChordThing(60, Mode.getMajorMode(), 3).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("64")[0], new ChordThing(60, Mode.getMajorMode(), 4).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("65")[0], new ChordThing(60, Mode.getMajorMode(), 5).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("66")[0], new ChordThing(60, Mode.getMajorMode(), 6).sixth(), "ChordFactory sixths");
+        testit("ChordFactory sixths", cp.parse("67")[0], new ChordThing(60, Mode.getMajorMode(), 7).sixth(), "ChordFactory sixths");
+
+        // Test mutual exclusivity in ChordFactory
+        testit("ChordFactory sixth overrides seventh", cp.parse("71")[0].sixth(), cp.parse("61")[0], "ChordFactory sixth should override seventh");
+        testit("ChordFactory sixth overrides ninth", cp.parse("91")[0].sixth(), cp.parse("61")[0], "ChordFactory sixth should override ninth");
+        testit("ChordFactory seventh overrides sixth", cp.parse("61")[0].seventh(), cp.parse("71")[0], "ChordFactory seventh should override sixth");
+        testit("ChordFactory ninth overrides sixth", cp.parse("61")[0].ninth(), cp.parse("91")[0], "ChordFactory ninth should override sixth");
 
         // Test Minor Triad
         testit("Minor Triad A",
-            new ChordThing(57, MINOR, 1).generateChordNotes(),
+            new ChordThing(57, Mode.getMinorMode(), 1).generateChordNotes(),
             [57, 60, 64],
             "Minor triad A not correctly generated.");
 
         // Test Major Seventh Chord
         testit("Major Seventh C",
-            new ChordThing(60, MAJOR, 1).seventh().generateChordNotes(),
+            new ChordThing(60, Mode.getMajorMode(), 1).seventh().generateChordNotes(),
             [60, 64, 67, 71],
             "Major seventh C not correctly generated.");
 
         // Test Minor Seventh Chord
         testit("Minor Seventh A",
-            new ChordThing(57, MINOR, 1).seventh().generateChordNotes(),
+            new ChordThing(57, Mode.getMinorMode(), 1).seventh().generateChordNotes(),
             [57, 60, 64, 67],
             "Minor seventh A not correctly generated.");
 
         testit("Minor Ninth A",
-            new ChordThing(57, MINOR, 1).ninth().generateChordNotes(),
+            new ChordThing(57, Mode.getMinorMode(), 1).ninth().generateChordNotes(),
             [57, 60, 64, 67, 71],
             "Minor ninth A not correctly generated.");
 
         testit("Secondary Dominant of iii chord in C",
-            new ChordThing(60, MAJOR, 3).set_as_secondary(5).seventh().generateChordNotes(),
+            new ChordThing(60, Mode.getMajorMode(), 3).set_as_secondary(5).seventh().generateChordNotes(),
             [71, 75, 78, 81],
             "Secondary dominant of iii in C not correctly generated.");
         
 
         trace("Testing chord progressions");
 
-        var progression = new ChordProgression(60, MAJOR, "1,4,6,5");
+        var progression = new ChordProgression(60, Mode.getMajorMode(), "1,4,6,5");
         testit("A chord progression",
             progression.toNotes(),
             [[60, 64, 67], [65, 69, 72], [69, 72, 76], [67, 71, 74]],
@@ -245,9 +301,51 @@ class TestGoldenPond {
             [new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 4), new ChordThing(60, MAJOR, 6), new ChordThing(60, MAJOR, 5)],
             "ChordParsing simple chords");
 
-        testit("Extended chords", cp.parse("71,-94,6ii,-5"),
-            [new ChordThing(60, MAJOR, 1).seventh(), new ChordThing(60, MAJOR, 4).ninth().modal_interchange(), new ChordThing(60, MAJOR, 6).set_inversion(2), new ChordThing(60, MAJOR, 5).modal_interchange()],
+        testit("Extended chords", cp.parse("71,94,6ii,5"),
+            [new ChordThing(60, MAJOR, 1).seventh(),
+             new ChordThing(60, MAJOR, 4).ninth(),
+             new ChordThing(60, MAJOR, 6).set_inversion(2),
+             new ChordThing(60, MAJOR, 5)],
             "ChordParsing extended chords");
+
+        testit("Mode specifiers", cp.parse("1,!m,4,!mm,6,!hm,5,!M,1"),
+            [new ChordThing(60, Mode.getMajorMode(), 1),
+             new ChordThing(60, Mode.getMinorMode(), 4),
+             new ChordThing(60, Mode.getMelodicMinorMode(), 6),
+             new ChordThing(60, Mode.getHarmonicMinorMode(), 5),
+             new ChordThing(60, Mode.getMajorMode(), 1)],
+            "ChordParsing mode specifiers");
+
+        // Test bracket mode selection
+        testit("Bracket mode selection in major", cp.parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getMajorMode(), 1),
+             new ChordThing(60, Mode.constructNthMajorMode(2), 3),
+             new ChordThing(60, Mode.constructNthMajorMode(3), 5),
+             new ChordThing(60, Mode.constructNthMajorMode(4), 7)],
+            "Bracket mode selection in major");
+
+        testit("Bracket mode selection with extensions", cp.parse("1,7(3!2),9(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getMajorMode(), 1),
+             new ChordThing(60, Mode.constructNthMajorMode(2), 3).seventh(),
+             new ChordThing(60, Mode.constructNthMajorMode(3), 5).ninth(),
+             new ChordThing(60, Mode.constructNthMajorMode(4), 7)],
+            "Bracket mode selection with extensions");
+
+        testit("Bracket mode selection in harmonic minor", new ChordParser(60, Mode.getHarmonicMinorMode()).parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getHarmonicMinorMode(), 1),
+             new ChordThing(60, Mode.constructNthHarmonicMinorMode(2), 3),
+             new ChordThing(60, Mode.constructNthHarmonicMinorMode(3), 5),
+             new ChordThing(60, Mode.constructNthHarmonicMinorMode(4), 7)],
+            "Bracket mode selection in harmonic minor");
+
+        testit("Bracket mode selection in melodic minor", new ChordParser(60, Mode.getMelodicMinorMode()).parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getMelodicMinorMode(), 1),
+             new ChordThing(60, Mode.constructNthMelodicMinorMode(2), 3),
+             new ChordThing(60, Mode.constructNthMelodicMinorMode(3), 5),
+             new ChordThing(60, Mode.constructNthMelodicMinorMode(4), 7)],
+            "Bracket mode selection in melodic minor");
+
+
 
         testit("Major Triads", new ChordProgression(60, MAJOR, "1|4|5|6").toNotes(),
             [[60, 64, 67], [65, 69, 72], [67, 71, 74], [69, 72, 76]],
@@ -278,7 +376,7 @@ class TestGoldenPond {
             [[60, 64, 67], [65, 69, 72], [62, 66, 69], [67, 71, 74], [61, 65, 68], [66, 70, 73]],
             "Modulating basic triads by 2");
 
-        testit("Modulate to new mode", new ChordProgression(60, MAJOR, "1|4|5|7|!|1|4|5|7").toNotes(),
+        testit("Modulate to new mode", new ChordProgression(60, MAJOR, "1|4|5|7|!m|1|4|5|7").toNotes(),
             new ChordProgression(60, MAJOR, "1|4|5|7|-1|-4|-5|-7").toNotes(),
             "Modulating mode");
 
@@ -367,7 +465,7 @@ class TestGoldenPond {
 		  .setBPM(120);
 
 		// Create chord progression
-		var seq = new ChordProgression(50, MAJOR, "76,72,!,75,71");
+		var seq = new ChordProgression(50, MAJOR, "76,72,!m,75,71");
 
 		// Get rhythmic density values
 		var density1 = MenuHelper.rhythmicDensityToNumeric(ONE);
@@ -1174,7 +1272,7 @@ class TestGoldenPond {
         var ti = new TimeManipulator();
         ti.setPPQ(960).setChordDuration(8).setBPM(120);
         
-        var seq = new ChordProgression(50, MAJOR, "76,72,!,75,71");
+        var seq = new ChordProgression(50, MAJOR, "76,72,!m,75,71");
         
         // Test creating LineGenerator with SimpleRhythmGenerator
         var simpleRhythm = new SimpleRhythmGenerator(3, 8, FullChord, 1, 0);
@@ -1252,8 +1350,8 @@ class TestGoldenPond {
         testit("A Minor chord name", aMinor.getChordName(), "Am", "A Minor chord should be named 'Am'");
         
         // Test with modal interchange
-        var cMinor = new ChordThing(60, Mode.getMajorMode(), 1).modal_interchange();
-        testit("C Minor (modal interchange) chord name", cMinor.getChordName(), "Cm", "C Minor chord should be named 'Cm'");
+        var cMinor = new ChordThing(60, Mode.getMinorMode(), 1);
+        testit("C Minor chord name", cMinor.getChordName(), "Cm", "C Minor chord should be named 'Cm'");
         
         // Test with extensions
         var g7 = new ChordThing(60, Mode.getMajorMode(), 5).seventh();

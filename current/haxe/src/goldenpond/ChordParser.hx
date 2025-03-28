@@ -98,6 +98,65 @@ class ChordParser {
         return count;
     }
 
+    private function parseBracket(itemString:String):ChordThing {
+        var extension = null;
+        var parts = itemString.split('(');
+        if (parts[0].length > 0) {
+            extension = Std.parseInt(parts[0]);
+        }
+        
+        // Check if this is a mode selection (degree!mode) or secondary chord (degree/degree)
+        var bracketContent = parts[1].substr(0, parts[1].length - 1);
+        if (bracketContent.indexOf('!') != -1) {
+            // Handle mode selection: (degree!mode)
+            var modeParts = bracketContent.split('!');
+            var degree = Std.parseInt(modeParts[0]);
+            var modeNumber = Std.parseInt(modeParts[1]);
+
+            
+            var chord = new ChordThing(this.key, this.mode, degree);
+            
+            // Set the mode based on the current mode and mode number
+            var newMode:Mode;
+            if (this.mode == Mode.getMajorMode()) {
+                newMode = Mode.constructNthMajorMode(modeNumber);
+            } else if (this.mode == Mode.getHarmonicMinorMode()) {
+                newMode = Mode.constructNthHarmonicMinorMode(modeNumber);
+            } else if (this.mode == Mode.getMelodicMinorMode()) {
+                newMode = Mode.constructNthMelodicMinorMode(modeNumber);
+            } else if (this.mode == Mode.getMinorMode()) {
+                newMode = Mode.constructNthMinorMode(modeNumber);
+            } else {
+                throw "Cannot get nth mode of unknown scale";
+            }
+            chord.set_mode(newMode);
+            
+            if (extension != null) {
+                if (extension == 7) {
+                    chord.seventh();
+                } else if (extension == 9) {
+                    chord.ninth();
+                }
+            }
+            return chord;
+        } else {
+            // Handle secondary chord: (degree/degree)
+            var secondaryParts = bracketContent.split('/');
+            var secondaryDegree = Std.parseInt(secondaryParts[0]);
+            var degree = Std.parseInt(secondaryParts[1]);
+            var chord = new ChordThing(this.key, this.mode, degree);
+            chord.set_as_secondary(secondaryDegree);
+            if (extension != null) {
+                if (extension == 7) {
+                    chord.seventh();
+                } else if (extension == 9) {
+                    chord.ninth();
+                }
+            }
+            return chord;
+        }
+    }
+
     private function interpretItem(itemString:String):ChordThing {
         var isModalInterchange = false;
         if (itemString.charAt(0) == '-') {
@@ -112,42 +171,27 @@ class ChordParser {
         }
 
         if (itemString.indexOf('(') != -1 && itemString.indexOf(')') != -1) {
-            var extension = null;
-            var parts = itemString.split('(');
-            if (parts[0].length > 0) {
-                extension = Std.parseInt(parts[0]);
-            }
-            var secondaryParts = parts[1].substr(0, parts[1].length - 1).split('/');
-            var secondaryDegree = Std.parseInt(secondaryParts[0]);
-            var degree = Std.parseInt(secondaryParts[1]);
-            var chord = new ChordThing(this.key, this.mode, degree);
-            chord.set_as_secondary(secondaryDegree);
+            var chord = parseBracket(itemString);
             chord.set_inversion(inversion);
-            if (extension != null) {
-                if (extension == 7) {
-                    chord.seventh();
-                } else if (extension == 9) {
-                    chord.ninth();
-                }
-            }
             return chord;
         }
 
         var itemValue = Std.parseInt(itemString);
+        var modeToUse = isModalInterchange ? 
+            ((this.mode == Mode.getMajorMode()) ? Mode.getMinorMode() : Mode.getMajorMode()) : 
+            this.mode;
 
         var chord:ChordThing;
         if (1 <= itemValue && itemValue <= 7) {
-            chord = new ChordThing(this.key, this.mode, itemValue);
+            chord = new ChordThing(this.key, modeToUse, itemValue);
+        } else if (61 <= itemValue && itemValue <= 67) {
+            chord = new ChordThing(this.key, modeToUse, itemValue - 60).sixth();
         } else if (71 <= itemValue && itemValue <= 77) {
-            chord = new ChordThing(this.key, this.mode, itemValue - 70).seventh();
+            chord = new ChordThing(this.key, modeToUse, itemValue - 70).seventh();
         } else if (91 <= itemValue && itemValue <= 97) {
-            chord = new ChordThing(this.key, this.mode, itemValue - 90).ninth();
+            chord = new ChordThing(this.key, modeToUse, itemValue - 90).ninth();
         } else {
             throw "Unexpected item value: " + itemString;
-        }
-
-        if (isModalInterchange) {
-            chord.modal_interchange();
         }
 
         chord.set_inversion(inversion);
@@ -155,14 +199,51 @@ class ChordParser {
         return chord;
     }
 
+    private function parseMode(inputString:String):String {
+        var modeChars = new StringBuf();
+        while (inputString.length > 0 && [',', '|'].indexOf(inputString.charAt(0)) == -1) {
+            modeChars.add(inputString.charAt(0));
+            inputString = inputString.substr(1);
+        }
+        var modeString = StringTools.trim(modeChars.toString());
+        
+        // Check if there's a mode specifier after the !
+        if (modeString.length < 2) {
+            throw "Expected mode specifier after '!'. Use !M, !m, !hm, or !mm";
+        }
+        
+        var modeSpec = modeString.charAt(1);
+        switch (modeSpec) {
+            case 'M':
+                this.mode = Mode.getMajorMode();
+            case 'm':
+                if (modeString.length >= 3 && modeString.charAt(2) == 'm') {
+                    this.mode = Mode.getMelodicMinorMode();
+                } else {
+                    this.mode = Mode.getMinorMode();
+                }
+            case 'h':
+                if (modeString.length < 3 || modeString.charAt(2) != 'm') {
+                    throw "Expected 'hm' for harmonic minor mode";
+                }
+                this.mode = Mode.getHarmonicMinorMode();
+            default:
+                throw "Invalid mode specifier: " + modeSpec + ". Use !M, !m, !hm, or !mm";
+        }
+        
+        return inputString;
+    }
+
     public function parse(inputString:String):Array<ChordThing> {
         var chords:Array<ChordThing> = [];
         var voiceLeadNext = false;
 
         while (inputString.length > 0) {
+            trace("Current input string: " + inputString);
             var sepResult = parseSeparator(inputString);
             var separator = sepResult._0;
             inputString = sepResult._1;
+            trace("After separator parse: " + inputString);
 
             if (separator == '&') {
                 voiceLeadNext = true;
@@ -170,14 +251,14 @@ class ChordParser {
 
             if (inputString.length > 0) {
                 if (inputString.charAt(0) == '!') {
-                    this.mode = (this.mode == Mode.getMajorMode()) ? Mode.getMinorMode() : Mode.getMajorMode();
-                    inputString = inputString.substr(1);
+                    inputString = parseMode(inputString);
                 } else if (inputString.charAt(0) == '>' || inputString.charAt(0) == '<') {
                     inputString = parseTranspose(inputString);
                 } else {
                     var itemResult = parseItem(inputString);
                     var itemString = itemResult._0;
                     inputString = itemResult._1;
+                   
                     var chord = interpretItem(itemString);
                     if (voiceLeadNext) {
                         chord.set_voice_leading();
