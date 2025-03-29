@@ -184,6 +184,7 @@
       <button onclick="stop()">Stop</button>
       <button onclick="downloadMidi()">Download MIDI</button>
       <button onclick="downloadSummary()">Download Summary</button>
+      <button onclick="downloadProjectJSON()">Download Project JSON</button>
     </div>
   </div>
   <div class="container">
@@ -272,6 +273,21 @@
     let currentProgression = null;
     let instruments = {};
     let currentConfig = null;
+    let projectData = null;  // Will be created when needed
+
+    // Function to ensure projectData exists
+    function ensureProjectData() {
+        if (!projectData) {
+            projectData = new GoldenData();
+            // Initialize with current DOM values
+            projectData.root = parseInt(document.getElementById('root').value);
+            projectData.mode = parseInt(document.getElementById('mode').value);
+            projectData.chordSequence = document.getElementById('chordSequence').value;
+            projectData.bpm = parseInt(document.getElementById('bpm').value);
+            projectData.chordDuration = parseInt(document.getElementById('chordLength').value);
+        }
+        return projectData;
+    }
 
     // Function to initialize audio after user gesture
     function initAudio() {
@@ -541,8 +557,23 @@
 
     // Function to update all music state
     function updateMusicState() {
+        ensureProjectData();  // Create projectData if needed
+        
         const bpm = parseInt(document.getElementById('bpm').value);
         const beatsPerChord = parseInt(document.getElementById('chordLength').value);
+        const root = parseInt(document.getElementById('root').value);
+        const modeValue = parseInt(document.getElementById('mode').value);
+        const chordSequence = document.getElementById('chordSequence').value;
+        
+        // Update project data
+        projectData.root = root;
+        projectData.mode = modeValue;
+        projectData.chordSequence = chordSequence;
+        projectData.bpm = bpm;
+        projectData.chordDuration = beatsPerChord;
+        
+        // Clear existing lines
+        projectData.lines = [];
         
         // Update time manipulator
         currentTimeManipulator = new TimeManipulator();
@@ -550,61 +581,39 @@
             .setChordDuration(beatsPerChord)
             .setBPM(bpm);
 
-        // Update progression with the correct mode
-        const modeValue = document.getElementById('mode').value;
-        let mode;
-        switch(modeValue) {
-            case "0":
-                mode = Mode.getMajorMode();
-                break;
-            case "1":
-                mode = Mode.getMinorMode();
-                break;
-            case "2":
-                mode = Mode.getHarmonicMinorMode();
-                break;
-            case "3":
-                mode = Mode.getMelodicMinorMode();
-                break;
-            default:
-                mode = Mode.getMajorMode();
-        }
-        
-        currentProgression = new ChordProgression(
-            parseInt(document.getElementById('root').value),
-            mode,
-            document.getElementById('chordSequence').value
-        );
-
         // Update all lines
         currentLines = [];
-        Object.entries(currentConfig.lines).forEach(([lineId, settings]) => {
+        Object.entries(currentConfig.lines).forEach(([lineId, settings], index) => {
             const values = getLineValues(lineId);
             if (values.active) {
-                // Create line using the pattern directly from the input field
-                const line = LineGenerator.createFromPattern(
-                    currentTimeManipulator, 
-                    currentProgression, 
+                // Add line to project data with gate length
+                projectData.addLine(
                     values.pattern, 
-                    values.gateLength
+                    values.volume, 
+                    values.octave,
+                    index,  // Use the index as the channel number
+                    values.gateLength  // Pass the gate length
                 );
-                
-                if (line) {
-                    line.transpose(values.octave * 12);
-                    currentLines.push({
-                        type: { id: lineId, name: getInstrumentName(lineId) },
-                        line: line,
-                        notes: line.generateNotes(0, 0, 100)
-                    });
-                }
             }
         });
+
+        // Create line generators from project data
+        currentLines = projectData.createLineGenerators(currentTimeManipulator).map((generator, index) => ({
+            type: { id: Object.keys(currentConfig.lines)[index], name: getInstrumentName(Object.keys(currentConfig.lines)[index]) },
+            line: generator,
+            notes: generator.generateNotes(0, index, 100)
+        }));
 
         // Update previews
         updatePreviews();
         
         // Update Strudel code
         updateStrudelCode();
+        
+        // Log if project data has changed
+        if (projectData.hasChanged()) {
+            console.log("Project updated:", projectData.toString());
+        }
     }
 
     // Modify updateControls to use the global state
@@ -613,7 +622,7 @@
         // Rest of updateControls remains the same
     }
 
-    // Modify play() to use the global state
+    // Modify play() to ensure projectData exists
     function play() {
         if (!audioContext) initAudio();
         
@@ -621,6 +630,8 @@
             console.warn('Instruments not loaded yet');
             return;
         }
+        
+        ensureProjectData();  // Create projectData if needed
         
         const bpm = parseInt(document.getElementById('bpm').value);
         const secondsPerBeat = 60.0 / bpm;
@@ -703,106 +714,83 @@
         window.URL.revokeObjectURL(url);
     }
 
-    // Function to generate and download a text summary of the current state
+    // Modify download functions to ensure projectData exists
     function downloadSummary() {
-        // Get basic settings
-        const root = parseInt(document.getElementById('root').value);
-        const rootName = getMidiNoteName(root).split(' ')[1].replace('(', '').replace(')', '');
-        const mode = document.getElementById('mode').value == "0" ? "Major" : "Minor";
-        const chordDuration = parseInt(document.getElementById('chordLength').value);
-        const chordSequence = document.getElementById('chordSequence').value;
-        
-        // Start building the summary text
-        let summaryText = `Root ${root} (${rootName}), ${mode}, Chord Duration ${chordDuration}\n\n`;
-        
-        // Add chord sequence
-        summaryText += `${chordSequence}\n\n`;
-        
-        // Add instrument settings
-        Object.entries(currentConfig.lines).forEach(([lineId, settings]) => {
-            const active = document.getElementById(`${lineId}-active`).checked;
-            if (active) {
-                const instrumentName = getInstrumentName(lineId);
-                const pattern = document.getElementById(`${lineId}-pattern`).value;
-                const octave = document.getElementById(`${lineId}-octave`).value;
-                const gateLength = document.getElementById(`${lineId}-gateLength`).value;
-                
-                summaryText += `${instrumentName} : ${pattern}, Oct: ${octave}, Gate: ${gateLength}\n`;
-            }
-        });
-        
-        // Create and download the text file
-        const blob = new Blob([summaryText], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
+        ensureProjectData();  // Create projectData if needed
+        const blob = new Blob([projectData.toString()], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'goldenpond_summary.txt';
+        a.download = 'goldenpond-project.txt';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
     }
 
-    // Modify the DOMContentLoaded handler
+    function downloadProjectJSON() {
+        ensureProjectData();  // Create projectData if needed
+        const blob = new Blob([projectData.toJSON()], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'goldenpond-project.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Load a default piece when the page loads
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded');
-        domLoaded = true;
+        // First create all the controls
+        createAllLineControls(pieces.simpleMajor);
+        console.log('Line controls created successfully');
         
-        try {
-            // First create all the controls
-            createAllLineControls(pieces.simpleMajor);
-            console.log('Line controls created successfully');
-            
-            // Add event listeners for global controls
-            ['root', 'chordLength', 'bpm'].forEach(id => {
-                const element = document.getElementById(id);
-                if (!element) {
-                    console.warn(`Could not find element with id: ${id}`);
-                    return;
+        // Add event listeners for global controls
+        ['root', 'chordLength', 'bpm'].forEach(id => {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Could not find element with id: ${id}`);
+                return;
+            }
+            element.addEventListener('input', function() {
+                updateDisplayValue(id, `${id}Value`);
+                if (id === 'root') {
+                    updateChordNames();
                 }
-                element.addEventListener('input', function() {
-                    updateDisplayValue(id, `${id}Value`);
-                    if (id === 'root') {
-                        updateChordNames();
-                    }
-                });
             });
-            
-            // Add handlers for time and progression updates
-            ['bpm', 'chordLength', 'root', 'mode', 'chordSequence'].forEach(id => {
-                const element = document.getElementById(id);
-                if (!element) {
-                    console.warn(`Could not find element with id: ${id}`);
-                    return;
-                }
-                element.addEventListener('change', function() {
-                    updateTimeAndProgression();
-                    updateControls();
-                    if (id === 'root' || id === 'mode' || id === 'chordSequence') {
-                        updateChordNames();
-                    }
-                });
-            });
-
-            // Add input event listener for chord sequence changes
-            document.getElementById('chordSequence').addEventListener('input', updateChordNames);
-            
-            // Add change event listener for mode changes
-            document.getElementById('mode').addEventListener('change', updateChordNames);
-
-            console.log('All event listeners attached successfully');
-        } catch (error) {
-            console.error('Error during initialization:', error);
-        }
-
-        // Initialize audio on first user interaction
-        document.body.addEventListener('click', function initOnClick() {
-            initAudio();
-            document.body.removeEventListener('click', initOnClick);
         });
         
-        // Initial update
-        updateChordNames();
+        // Add handlers for time and progression updates
+        ['bpm', 'chordLength', 'root', 'mode', 'chordSequence'].forEach(id => {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Could not find element with id: ${id}`);
+                return;
+            }
+            element.addEventListener('change', function() {
+                updateTimeAndProgression();
+                updateControls();
+                if (id === 'root' || id === 'mode' || id === 'chordSequence') {
+                    updateChordNames();
+                }
+            });
+        });
+
+        // Add input event listener for chord sequence changes
+        document.getElementById('chordSequence').addEventListener('input', updateChordNames);
+        
+        // Add change event listener for mode changes
+        document.getElementById('mode').addEventListener('change', updateChordNames);
+
+        console.log('All event listeners attached successfully');
+
+        // Now that all DOM elements and event listeners are set up,
+        // we can safely load the piece config
+        setTimeout(() => {
+            loadPieceConfig(pieces.simpleMajor);
+        }, 0);
     });
 
     // Get values for a line type
@@ -810,6 +798,7 @@
         const values = {
             active: document.getElementById(`${lineId}-active`).checked,
             pattern: document.getElementById(`${lineId}-pattern`).value,
+            volume: 0.8,  // Default volume
             octave: parseInt(document.getElementById(`${lineId}-octave`).value),
             gateLength: parseFloat(document.getElementById(`${lineId}-gateLength`).value)
         };
@@ -1026,12 +1015,6 @@
             }
         }
     };
-
-    // Load a default piece when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        createAllLineControls(pieces.simpleMajor);
-        loadPieceConfig(pieces.simpleMajor);
-    });
 
     // Add MIDI note to note name conversion
     function midiToNoteName(midiNote) {
