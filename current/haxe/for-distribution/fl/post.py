@@ -63,8 +63,8 @@ def createDialog():
     form = flp.ScriptDialog("GoldenPond",
     'GoldenPond is language for defining chord progressions.\r\nThis is the FL Studio version which also lets you create rhythmic patterns for arpeggios and melodies.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
     
-    form.AddInputKnobInt('Root',60,32,96)
-    form.AddInputCombo('Mode',["major","minor"],0)
+    form.AddInputKnobInt('Root',65,32,96)
+    form.AddInputCombo('Mode',["major","minor","harmonic minor","melodic minor"],0)
     form.AddInputText('ChordSeq', "1,6,4,5")
     
     form.AddInputCheckbox('Chords',False)
@@ -136,7 +136,7 @@ def apply(form):
     
     k = form.GetInputValue('Rhythm k')
     n = form.GetInputValue('Rhythm n')
-    stutter = form.GetInputValue("Stutter")
+    stutter = int(form.GetInputValue("Stutter"))
 
     # Configure TimeManipulator
     timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
@@ -149,9 +149,19 @@ def apply(form):
 
     try:
         # Create chord progression
-        theMode = Mode.getMajorMode() if mode == 0 else Mode.getMinorMode()
-        seq = ChordProgression(root, theMode, chordSeq)
-        seq.setStutter(stutter)
+        if mode == 0:
+            theMode = Mode.getMajorMode()
+        elif mode == 1:
+            theMode = Mode.getMinorMode()
+        elif mode == 2:
+            theMode = Mode.getHarmonicMinorMode()
+        elif mode == 3:
+            theMode = Mode.getMelodicMinorMode()
+        else:
+            theMode = Mode.getMajorMode()  # Default fallback
+            
+        baseSeq = ChordProgression(root, theMode, chordSeq)
+        seq = StutteredChordProgression(baseSeq, stutter) if stutter > 0 else baseSeq
 
         all_notes = []
         

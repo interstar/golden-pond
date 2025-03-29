@@ -65,7 +65,7 @@ def createDialog():
 See http://gilbertlisterresearch.com/ for documentation.""")
     
     form.AddInputKnobInt('Root',65,32,96)
-    form.AddInputCombo('Mode',["major","minor"],0)
+    form.AddInputCombo('Mode',["major","minor","harmonic minor","melodic minor"],0)
     form.AddInputText('ChordSeq', "1,4,5,1")
 
     # Add 6 channels with volume and octave controls
@@ -144,7 +144,7 @@ def apply(form):
 
     note_prop = form.GetInputValue('Note Proportion')
     chord_len = form.GetInputValue('Chord Duration')
-    stutter = form.GetInputValue("Stutter")
+    stutter = int(form.GetInputValue("Stutter"))
     
 
     # Configure TimeManipulator
@@ -158,9 +158,19 @@ def apply(form):
     lines = []
     try : 
         # Create chord progression
-        theMode = Mode.getMajorMode() if mode == 0 else Mode.getMinorMode()
-        seq = ChordProgression(root, theMode, chordSeq)
-        seq.setStutter(stutter)
+        if mode == 0:
+            theMode = Mode.getMajorMode()
+        elif mode == 1:
+            theMode = Mode.getMinorMode()
+        elif mode == 2:
+            theMode = Mode.getHarmonicMinorMode()
+        elif mode == 3:
+            theMode = Mode.getMelodicMinorMode()
+        else:
+            theMode = Mode.getMajorMode()  # Default fallback
+            
+        baseSeq = ChordProgression(root, theMode, chordSeq)
+        seq = StutteredChordProgression(baseSeq, stutter) if stutter > 0 else baseSeq
  
         all_notes = []
 
