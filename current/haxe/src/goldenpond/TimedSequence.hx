@@ -23,6 +23,7 @@ import Mode;
 import ChordParser;
 import ScoreUtilities;
 import RhythmGenerator;  // This will give us access to SimpleRhythmGenerator too
+import RhythmGenerator.SelectorType;  // Import SelectorType from RhythmGenerator
 
 
  
@@ -256,14 +257,16 @@ class LineGenerator implements ILineGenerator {
         return create(timeManipulator, seq, rhythmGenerator, gateLength);
     }
 
-    private function selectNotesFromChord(selector:SelectorType, chord:Array<Int>):Array<Int> {
+    private function selectNotesFromChord(selector:SelectorType, chordThing:ChordThing):Array<Int> {
         return switch(selector) {
             case Ascending:
+                var chord = chordThing.generateChordNotes();
                 lastNoteIndex = (lastNoteIndex == -1) ? 0 : (lastNoteIndex + 1) % chord.length;
                 lastNoteValue = chord[lastNoteIndex];
                 [lastNoteValue];
                 
             case Descending:
+                var chord = chordThing.generateChordNotes();
                 lastNoteIndex = (lastNoteIndex == -1) ? chord.length - 1 : 
                     (lastNoteIndex - 1 + chord.length) % chord.length;
                 lastNoteValue = chord[lastNoteIndex];
@@ -271,25 +274,44 @@ class LineGenerator implements ILineGenerator {
                 
             case Repeat:
                 if (lastNoteValue == -1) {
+                    var chord = chordThing.generateChordNotes();
                     lastNoteIndex = 0;
                     lastNoteValue = chord[0];
                 }
                 [lastNoteValue];
                 
             case FullChord:
-                chord;
+                chordThing.generateChordNotes();
                 
             case Random:
-                lastNoteIndex = Std.int(Math.floor(Math.random() * chord.length)    );
+                var chord = chordThing.generateChordNotes();
+                lastNoteIndex = Std.int(Math.floor(Math.random() * chord.length));
                 lastNoteValue = chord[lastNoteIndex];
                 [lastNoteValue];
                 
             case SpecificNote(n):
+                var chord = chordThing.generateChordNotes();
                 lastNoteIndex = Std.int(Math.min(n - 1, chord.length - 1));
                 lastNoteValue = chord[lastNoteIndex];
                 [lastNoteValue];
                 
+            case ScaleDegree(n):
+                if (n < 1 || n > 7) {
+                    [];  // Invalid scale degree
+                } else {
+                    var mode = chordThing.get_mode();
+                    lastNoteValue = mode.nth_from(chordThing.key, n);
+                    [lastNoteValue];
+                }
+                
+            case RandomFromScale:
+                var mode = chordThing.get_mode();
+                var degree = Std.int(Math.floor(Math.random() * 7) + 1);
+                lastNoteValue = mode.nth_from(chordThing.key, degree);
+                [lastNoteValue];
+                
             case TopNote:
+                var chord = chordThing.generateChordNotes();
                 lastNoteIndex = chord.length - 1;
                 lastNoteValue = chord[lastNoteIndex];
                 [lastNoteValue];
@@ -302,36 +324,20 @@ class LineGenerator implements ILineGenerator {
     private function generateCachedNotes(): Array<Note> {
         var notes = new Array<Note>();
         var currentTime = 0.0;
-        
         var totalSteps = rhythmGenerator.getTotalSteps();
         var patternLength = rhythmGenerator.getPatternLength();
-        
-        // Calculate step size based on the pattern length and total steps
         var stepSize = timeManipulator.chordTicks / totalSteps;
         var noteLength = stepSize * gateLength;
-        
-        // Add diagnostic traces
-        trace('Generating notes with:');
-        trace('  totalSteps: ${totalSteps}');
-        trace('  patternLength: ${patternLength}');
-        trace('  stepSize: ${stepSize}');
-        trace('  chordTicks: ${timeManipulator.chordTicks}');
 
-        for (c in seq.toNotes()) {
-            // Reset both indices for each chord
+        for (ct in seq.toChordThings()) {
             lastNoteIndex = -1;
             lastNoteValue = -1;
-            
-            // Reset the rhythm generator for each chord
             rhythmGenerator.reset();
             
-            // Single loop through all steps for this chord
             for (step in 0...totalSteps) {
                 var selector = rhythmGenerator.next();
-                
-                // Only add notes for non-Rest selectors
                 if (selector != Rest) {
-                    var notesToAdd = selectNotesFromChord(selector, c);
+                    var notesToAdd = selectNotesFromChord(selector, ct);
                     for (note in notesToAdd) {
                         notes.push(new Note(
                             0,
@@ -342,12 +348,9 @@ class LineGenerator implements ILineGenerator {
                         ));
                     }
                 }
-                
                 currentTime += stepSize;
             }
         }
-        
-        trace('Generated ${notes.length} notes');
         return notes;
     }
 

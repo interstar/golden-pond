@@ -9,15 +9,18 @@ License, or (at your option) any later version.
 */
 
 // Core type for note selection
+@:expose
 enum SelectorType {
     Ascending;         
     Descending;       
     Repeat;           
     FullChord;        
     Random;           
+    RandomFromScale;   // New selector for random scale degree
     SpecificNote(n:Int);
     Rest;
     TopNote;
+    ScaleDegree(n:Int);  // For selecting from scale (1-7)
 }
 
 // Interface that Line classes use
@@ -297,7 +300,7 @@ class RhythmLanguage {
     
     private static function parseEuclidean(input:String):IRhythmGenerator {
         // Match patterns like "3/8 > 4" or "3%8 > 4" or "3/8+1 > 4" or "3%8+1 > 4"
-        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rc=t]|[0-9])\\s+([0-9]+)$", "");
+        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rc=tR]|[0-9])\\s+([0-9]+)$", "");
         if (!regex.match(input)) return new ParseFailedRhythmGenerator();
         
         var k = Std.parseInt(regex.matched(1));
@@ -347,6 +350,7 @@ class RhythmLanguage {
             case "=": Repeat;
             case "c": FullChord;
             case "r": Random;
+            case "R": RandomFromScale;  // New selector for random scale degree
             case "t": TopNote;
             case n if (~/^[1-9]$/.match(n)): SpecificNote(Std.parseInt(n));
             default: null;

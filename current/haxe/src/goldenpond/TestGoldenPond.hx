@@ -403,15 +403,28 @@ class TestGoldenPond {
             "Parsing & separator for voice leading");
 
 	trace("Testing Stutter");
-	var prog1 = new ChordProgression(60,MAJOR,"1,4,6,5");
-	prog1.setStutter(2);
-	var prog2 = new ChordProgression(60,MAJOR,"1,4,1,4");
+	// Create a base progression
+	var baseProg1 = new ChordProgression(60, MAJOR, "1,4,6,5");
+	// Create a stuttered version with stutter count 2
+	var stutteredProg = new StutteredChordProgression(baseProg1, 2);
+	// Create a progression with the expected result pattern
+	var prog2 = new ChordProgression(60, MAJOR, "1,4,1,4");
+	var prog3 = new ChordProgression(60, MAJOR, "1,1,1,1");
+
 	testit("Stutter",
-	       prog1.toNotes(),
+	       stutteredProg.toNotes(),
 	       prog2.toNotes(),
 	       "stuttering");
-	}
+
+	// Test with stutter count of 1
+	var stutteredProg1 = new StutteredChordProgression(baseProg1, 1);
 	
+	testit("Stutter 2",
+	    stutteredProg1.toChordThings(),
+	    prog3.toChordThings(),
+	    "stuttering 2");
+    }
+
     static function testMenuHelper() {
 	  trace("Testing Menu Helper");
 	  testit("Division names",
@@ -715,7 +728,8 @@ class TestGoldenPond {
             { name: "LineGenerator with RhythmGenerator Tests", fn: testLineGeneratorWithRhythmGenerator },
             { name: "Bjorklund Patterns Tests", fn: testBjorklundPatterns },
             { name: "Chord Naming Tests", fn: testChordNaming },
-            { name: "Chord Progression Naming Tests", fn: testChordProgressionNaming }
+            { name: "Chord Progression Naming Tests", fn: testChordProgressionNaming },
+            { name: "Scale-Based Note Selection Tests", fn: testScaleBasedNoteSelection }
         ];
         
         for (group in testGroups) {
@@ -1404,6 +1418,28 @@ class TestGoldenPond {
         var jazzProg = new ChordProgression(60, Mode.getMajorMode(), "1,-4,(5/2),1");
         var expectedJazzNames = ["C", "Fm", "A", "C"];
         testit("Jazz progression names", jazzProg.getChordNames(), expectedJazzNames, "Jazz progression should have correct names");
+    }
+
+    static function testScaleBasedNoteSelection() {
+        trace("\n=== Testing Scale-Based Note Selection ===");
+        var startCount = TEST_COUNT;
+        
+        var ti = new TimeManipulator();
+        ti.setPPQ(960).setChordDuration(8).setBPM(120);
+        
+        // Create a simple chord progression in C major
+        var seq = new ChordProgression(60, MAJOR, "1,4,5,1");
+        
+        // Test RandomFromScale selector
+        var randomScaleRhythm = new SimpleRhythmGenerator(1, 4, RandomFromScale, 1, 0);
+        var randomScaleLine = LineGenerator.create(ti, seq, randomScaleRhythm, 0.8);
+        var randomScaleNotes = randomScaleLine.generateNotes(0, 0, 100);
+        
+        testit("RandomFromScale selector note in scale",
+            randomScaleNotes[0].note >= 60 && randomScaleNotes[0].note <= 71,
+            true,
+            "Random scale note should be within C major scale"
+        );
     }
 }
 

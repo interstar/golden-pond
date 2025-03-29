@@ -277,7 +277,7 @@ class ChordProgression {
   public var key:Int;
   public var mode:Mode;
   public var scoreString:String;
-  private var stutter:Int;
+
   private var chordThings:Array<ChordThing>;
 
   @:expose
@@ -285,7 +285,7 @@ class ChordProgression {
     this.key = key;
     this.mode = mode;
     this.scoreString = scoreString;
-    this.stutter = 0;
+
     this.recalc();
   }
 
@@ -293,25 +293,7 @@ class ChordProgression {
     this.chordThings = this.toChordThings();
   } 
   
-  @:expose
-  public function setStutter(x:Int) {
-    this.stutter=x;
-    this.recalc();
 
-    if (stutter > 0) {
-      var lenseq = chordThings.length;
-      var frag = chordThings.slice(0, stutter);
-      var repeatedFrag:Array<ChordThing> = [];
-      
-      // Repeat frag to reach at least the length of lenseq
-      while (repeatedFrag.length < lenseq) {
-	repeatedFrag = repeatedFrag.concat(frag);
-      }
-      
-      this.chordThings = repeatedFrag.slice(0, lenseq);
-    }  
-  }
-  
   
   @:expose
   public function toChordThings():Array<ChordThing> {
@@ -356,6 +338,81 @@ class ChordProgression {
       names.push(ct.getChordName());
     }
     return names;
+  }
+}
+
+@:expose
+class StutteredChordProgression {
+  private var progression:ChordProgression;
+  private var stutterCount:Int;
+  
+  @:expose
+  public function new(progression:ChordProgression, stutterCount:Int) {
+    this.progression = progression;
+    this.stutterCount = stutterCount;
+  }
+  
+  @:expose
+  public function getKey():Int {
+    return progression.key;
+  }
+  
+  @:expose
+  public function getMode():Mode {
+    return progression.mode;
+  }
+  
+  @:expose
+  public function getScoreString():String {
+    return progression.scoreString;
+  }
+  
+  @:expose
+  public function setStutterCount(count:Int):StutteredChordProgression {
+    this.stutterCount = count;
+    return this;
+  }
+  
+  @:expose
+  public function getStutterCount():Int {
+    return this.stutterCount;
+  }
+  
+  private function stutterArray<T>(items:Array<T>):Array<T> {
+    if (stutterCount <= 0 || items.length <= 0) {
+      return items;
+    }
+    
+    // Take the first stutterCount items (or all if there are fewer)
+    var count:Int = Std.int(Math.min(stutterCount, items.length));
+    var fragment = items.slice(0, count);
+    var result:Array<T> = [];
+    
+    // Repeat the fragment to match the original length
+    while (result.length < items.length) {
+      result = result.concat(fragment);
+    }
+    
+    // Trim to the original length
+    return result.slice(0, items.length);
+  }
+  
+  @:expose
+  public function toChordThings():Array<ChordThing> {
+    var originalChords = progression.toChordThings();
+    return stutterArray(originalChords);
+  }
+  
+  @:expose
+  public function toNotes():Array<Array<Int>> {
+    var originalNotes = progression.toNotes();
+    return stutterArray(originalNotes);
+  }
+  
+  @:expose
+  public function getChordNames():Array<String> {
+    var originalNames = progression.getChordNames();
+    return stutterArray(originalNames);
   }
 }
 
