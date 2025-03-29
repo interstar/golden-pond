@@ -239,11 +239,9 @@ class ChordParser {
         var voiceLeadNext = false;
 
         while (inputString.length > 0) {
-            trace("Current input string: " + inputString);
             var sepResult = parseSeparator(inputString);
             var separator = sepResult._0;
             inputString = sepResult._1;
-            trace("After separator parse: " + inputString);
 
             if (separator == '&') {
                 voiceLeadNext = true;

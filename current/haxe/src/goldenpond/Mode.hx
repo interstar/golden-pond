@@ -99,7 +99,6 @@ class Mode {
         if (modeNumber < 1 || modeNumber > 7) {
             throw "Mode number must be between 1 and 7";
         }
-        trace('Getting mode ${modeNumber} of ${baseScale}');
         return modeMap.get(baseScale)[modeNumber - 1];
     }
 
