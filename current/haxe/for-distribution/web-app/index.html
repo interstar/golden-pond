@@ -202,6 +202,8 @@
                 <select id="mode" style="width: 100px;">
                     <option value="0">Major</option>
                     <option value="1">Minor</option>
+                    <option value="2">Harmonic Minor</option>
+                    <option value="3">Melodic Minor</option>
                 </select>
             </div>
 
@@ -241,7 +243,7 @@
 
     <!-- Generate Types Section -->
     <div class="control-section">
-        <h3>Generate Types:</h3>
+        <h3>Patterns:</h3>
         <div id="line-controls"></div>
     </div>
 
@@ -490,9 +492,26 @@
         const bpm = parseInt(document.getElementById('bpm').value);
         const beatsPerChord = parseInt(document.getElementById('chordLength').value);
         const root = parseInt(document.getElementById('root').value);
-        const mode = document.getElementById('mode').value == "0" ? 
-            Mode.getMajorMode() : 
-            Mode.getMinorMode();
+        const modeValue = document.getElementById('mode').value;
+        
+        let mode;
+        switch(modeValue) {
+            case "0":
+                mode = Mode.getMajorMode();
+                break;
+            case "1":
+                mode = Mode.getMinorMode();
+                break;
+            case "2":
+                mode = Mode.getHarmonicMinorMode();
+                break;
+            case "3":
+                mode = Mode.getMelodicMinorMode();
+                break;
+            default:
+                mode = Mode.getMajorMode();
+        }
+        
         const chordSequence = document.getElementById('chordSequence').value;
         
         // Update TimeManipulator
@@ -500,12 +519,22 @@
           .setChordDuration(beatsPerChord)
           .setBPM(bpm);
         
-        // Update ChordProgression
-        prog = new ChordProgression(root, mode, chordSequence);
+        // Update progression
+        const baseProgression = new ChordProgression(
+            parseInt(document.getElementById('root').value),
+            mode,
+            document.getElementById('chordSequence').value
+        );
+
+        // Apply stutter if needed
+        const stutterValue = parseInt(document.getElementById('stutter').value || '0');
+        currentProgression = stutterValue > 0 ? 
+            new StutteredChordProgression(baseProgression, stutterValue) : 
+            baseProgression;
         
         console.log('Updated settings:', {
             bpm, beatsPerChord, root, 
-            mode: mode == Mode.getMajorMode() ? 'major' : 'minor',
+            mode: modeValue,
             chordSequence
         });
     }
@@ -521,10 +550,29 @@
             .setChordDuration(beatsPerChord)
             .setBPM(bpm);
 
-        // Update progression
+        // Update progression with the correct mode
+        const modeValue = document.getElementById('mode').value;
+        let mode;
+        switch(modeValue) {
+            case "0":
+                mode = Mode.getMajorMode();
+                break;
+            case "1":
+                mode = Mode.getMinorMode();
+                break;
+            case "2":
+                mode = Mode.getHarmonicMinorMode();
+                break;
+            case "3":
+                mode = Mode.getMelodicMinorMode();
+                break;
+            default:
+                mode = Mode.getMajorMode();
+        }
+        
         currentProgression = new ChordProgression(
             parseInt(document.getElementById('root').value),
-            document.getElementById('mode').value == "0" ? Mode.getMajorMode() : Mode.getMinorMode(),
+            mode,
             document.getElementById('chordSequence').value
         );
 
