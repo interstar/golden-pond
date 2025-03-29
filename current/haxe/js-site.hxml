@@ -5,6 +5,7 @@ TimedSequence
 ChordParser
 Mode
 ScoreUtilities
+GoldenData
 
 -js out/js/goldenpond.js
 -D js-classic
