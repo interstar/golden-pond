@@ -2,37 +2,30 @@
 
 import sys
 import os
-#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from goldenpond import (
+    Mode, ChordProgression, TimeManipulator, LineGenerator,
+    RhythmLanguage, MenuHelper, RhythmicDensity
+)
 
-from goldenpond import Mode, ChordProgression, TimeManipulator, ChordLine, ArpLine, BassLine
-
-# RhythmicDensity values:
-# SIXTEEN = 0  -> 16 patterns/chord (1/16) -> density = 1/16 = 0.0625
-# TWELVE  = 1  -> 12 patterns/chord (1/12) -> density = 1/12 = 0.0833
-# EIGHT   = 2  -> 8 patterns/chord  (1/8)  -> density = 1/8  = 0.125
-# SIX     = 3  -> 6 patterns/chord  (1/6)  -> density = 1/6  = 0.1667
-# FOUR    = 4  -> 4 patterns/chord  (1/4)  -> density = 1/4  = 0.25
-# THREE   = 5  -> 3 patterns/chord  (1/3)  -> density = 1/3  = 0.3333
-# TWO     = 6  -> 2 patterns/chord  (1/2)  -> density = 1/2  = 0.5
-# ONE     = 7  -> 1 pattern/chord   (1/1)  -> density = 1/1  = 1.0
-
+# Create a chord progression
 seq = ChordProgression(48, Mode.getMajorMode(), 
-    '71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3)
+    '71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,'*2)
 
 # TimeManipulator with PPQ, chord duration and BPM
 ti = TimeManipulator()
 ti.setPPQ(96).setChordDuration(4).setBPM(120)
 
-# Create lines with k, n, gateLength and rhythmicDensity parameters
-# Using EIGHT (index 2) -> 8 patterns/chord -> density = 1/8 = 0.125
-chord_line = ChordLine(ti, seq, 1, 4, 0.75, 1.0)  # k=1, n=4, 75% gate length, density=ONE
-arp_line = ArpLine(ti, seq, 7, 12, 0.5, 1)      # k=7, n=12, 50% gate length, density=ONE
-bass_line = BassLine(ti, seq, 2, 12, 0.75, 1)      # k=2, n=4, 50% gate length, density=TWO
+# Create lines using rhythm patterns
+chord_line = LineGenerator.createFromPattern(ti, seq, "1/4 c 1", 0.75)  # One note per beat, full chord
+arp_line = LineGenerator.createFromPattern(ti, seq, "8/12 > 1", 0.5)   # 7 notes in 12 steps, ascending
+bass_line = LineGenerator.createFromPattern(ti, seq,  "tt.<<.>. 1", 0.75).transpose(-12)  # 2 notes in 12 steps, single note
+flute_line = LineGenerator.createFromPattern(ti, seq, "3/8 r 1", 0.75).transpose(12)
 
 # Generate notes from each line (now in seconds)
 chords = chord_line.notesInSeconds(0, 0, 100)
 arps = arp_line.notesInSeconds(0, 1, 100)
 bass = bass_line.notesInSeconds(0, 2, 100)
+flute = flute_line.notesInSeconds(0, 3, 100)
 
 import pretty_midi
 
@@ -46,9 +39,9 @@ piano2 = pretty_midi.Instrument(program=5)
 pad = pretty_midi.Instrument(program=89)
 pad2 = pretty_midi.Instrument(program=54)
 bass_program = pretty_midi.Instrument(program=32)
+flute_program = pretty_midi.Instrument(program=76)
 
-
-# Then modify the MIDI note creation
+# Add notes to instruments
 for n in chords:
     note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)
     pad.notes.append(note)
@@ -63,14 +56,20 @@ for n in arps:
 for n in bass:
     note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)    
     bass_program.notes.append(note)
-    
+
+for n in flute:
+    note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)    
+    flute_program.notes.append(note)
+
 # Add the instruments to the PrettyMIDI object
 midi_data.instruments.append(piano)
 midi_data.instruments.append(pad)
 midi_data.instruments.append(piano2)
 midi_data.instruments.append(pad2)
 midi_data.instruments.append(bass_program)
+midi_data.instruments.append(flute_program)
 
 # Save the MIDI file
 midi_data.write('./gp_example.mid')
 
+print("MIDI file saved as gp_example.mid")
