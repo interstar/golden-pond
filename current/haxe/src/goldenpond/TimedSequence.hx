@@ -1,4 +1,4 @@
-    package;
+package;
 
 /*
 GoldenPond FL Studio Script
@@ -216,7 +216,7 @@ class TimeManipulator {
 @:expose
 class LineGenerator implements ILineGenerator {
     private var timeManipulator: TimeManipulator;
-    private var seq: ChordProgression;
+    private var seq: IChordProgression;
     private var rhythmGenerator: IRhythmGenerator;
     private var gateLength: Float;
     private var transposition: Int;
@@ -224,7 +224,7 @@ class LineGenerator implements ILineGenerator {
     private var lastNoteIndex: Int;  // Track last index for Ascending/Descending
     private var lastNoteValue: Int;  // Track last actual note for Repeat
 
-    public function new(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float) {
+    public function new(timeManipulator: TimeManipulator, seq: IChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float) {
         this.timeManipulator = timeManipulator;
         this.seq = seq;
         this.rhythmGenerator = rhythmGenerator;
@@ -239,7 +239,7 @@ class LineGenerator implements ILineGenerator {
      * Creates a LineGenerator with the specified rhythm generator.
      * This is the preferred way to create a LineGenerator with a custom rhythm pattern.
      */
-    public static function create(timeManipulator: TimeManipulator, seq: ChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float): LineGenerator {
+    public static function create(timeManipulator: TimeManipulator, seq: IChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float): LineGenerator {
         return new LineGenerator(timeManipulator, seq, rhythmGenerator, gateLength);
     }
 
@@ -249,7 +249,7 @@ class LineGenerator implements ILineGenerator {
      * 
      * @throws String Exception if the pattern cannot be parsed
      */
-    public static function createFromPattern(timeManipulator: TimeManipulator, seq: ChordProgression, pattern: String, gateLength: Float): LineGenerator {
+    public static function createFromPattern(timeManipulator: TimeManipulator, seq: IChordProgression, pattern: String, gateLength: Float): LineGenerator {
         var rhythmGenerator = RhythmLanguage.makeRhythmGenerator(pattern);
         if (rhythmGenerator.parseFailed()) {
             throw 'Invalid rhythm pattern: "${pattern}"';

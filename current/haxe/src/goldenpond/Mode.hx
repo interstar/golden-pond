@@ -1,7 +1,5 @@
-package;
-
 /*
-GoldenPond FL Studio Script
+GoldenPond
 Copyright (C) 2024 Phil Jones
 
 This program is free software: you can redistribute it and/or modify
@@ -17,7 +15,9 @@ GNU Affero General Public License for more details.
 To understand the GNU Affero General Public License see <https://www.gnu.org/licenses/>.
 */
 
+package;
 
+ 
 @:expose
 enum Modifier {
     SEVENTH;

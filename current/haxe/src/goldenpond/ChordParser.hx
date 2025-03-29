@@ -273,11 +273,17 @@ class ChordParser {
 }
 
 @:expose
-class ChordProgression {
+interface IChordProgression {
+  public function toChordThings():Array<ChordThing>;
+  public function toNotes():Array<Array<Int>>;
+  public function getChordNames():Array<String>;
+}
+
+@:expose
+class ChordProgression implements IChordProgression {
   public var key:Int;
   public var mode:Mode;
   public var scoreString:String;
-
   private var chordThings:Array<ChordThing>;
 
   @:expose
@@ -285,15 +291,12 @@ class ChordProgression {
     this.key = key;
     this.mode = mode;
     this.scoreString = scoreString;
-
     this.recalc();
   }
 
   private function recalc() {
     this.chordThings = this.toChordThings();
-  } 
-  
-
+  }
   
   @:expose
   public function toChordThings():Array<ChordThing> {
@@ -317,20 +320,10 @@ class ChordProgression {
     return chords;
   }
   
-  /**
-   * Apply voice leading between chords
-   * @param prevChord The previous chord
-   * @param nextChord The next chord
-   * @return The voice-led chord
-   */
   private function voice_lead(prevChord:Array<Int>, nextChord:Array<Int>):Array<Int> {
     return nextChord;  // Dummy implementation for now
   }
   
-  /**
-   * Returns an array of conventional chord names for this progression
-   * @return Array of chord names
-   */
   @:expose
   public function getChordNames():Array<String> {
     var names = [];
@@ -342,7 +335,7 @@ class ChordProgression {
 }
 
 @:expose
-class StutteredChordProgression {
+class StutteredChordProgression implements IChordProgression {
   private var progression:ChordProgression;
   private var stutterCount:Int;
   
@@ -350,21 +343,6 @@ class StutteredChordProgression {
   public function new(progression:ChordProgression, stutterCount:Int) {
     this.progression = progression;
     this.stutterCount = stutterCount;
-  }
-  
-  @:expose
-  public function getKey():Int {
-    return progression.key;
-  }
-  
-  @:expose
-  public function getMode():Mode {
-    return progression.mode;
-  }
-  
-  @:expose
-  public function getScoreString():String {
-    return progression.scoreString;
   }
   
   @:expose
@@ -399,20 +377,17 @@ class StutteredChordProgression {
   
   @:expose
   public function toChordThings():Array<ChordThing> {
-    var originalChords = progression.toChordThings();
-    return stutterArray(originalChords);
+    return stutterArray(progression.toChordThings());
   }
   
   @:expose
   public function toNotes():Array<Array<Int>> {
-    var originalNotes = progression.toNotes();
-    return stutterArray(originalNotes);
+    return stutterArray(progression.toNotes());
   }
   
   @:expose
   public function getChordNames():Array<String> {
-    var originalNames = progression.getChordNames();
-    return stutterArray(originalNames);
+    return stutterArray(progression.getChordNames());
   }
 }
 
