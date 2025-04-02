@@ -6,18 +6,18 @@ from goldenpond import (
     TimeManipulator, ChordProgression, LineGenerator,
     MenuHelper, RhythmicDensity, Mode, RhythmLanguage,
     SimpleRhythmGenerator, BjorklundRhythmGenerator, SelectorType,
-    GoldenData
+    GoldenData, MidiInstrumentContext
 )
 import pretty_midi
 import json
 
-# Line definitions
+# Line definitions with their instrument contexts
 LINES = [
-    ("5/8 c 1", 0.8, 0, 0, 0.8),    # Chord line
-    ("1/1 1 16", 0.8, -1, 1, 0.8),  # Bass line (transposed down an octave)
-    ("4/8 R 4", 0.6, 2, 2, 0.6),    # Top line (transposed up two octaves)
-    ("6/12 > 2", 0.5, 0, 3, 0.5),   # Arp line
-    ("5%8 r 4", 0.5, 0, 4, 0.5)     # Random line
+    ("5/8 c 1", MidiInstrumentContext(0, 64, 0.8, 0)),    # Chord line
+    ("1/1 1 16", MidiInstrumentContext(1, 80, 0.8, -12)),  # Bass line (transposed down an octave)
+    ("4/8 R 4", MidiInstrumentContext(2, 72, 0.6, 24)),    # Top line (transposed up two octaves)
+    ("6/12 > 2", MidiInstrumentContext(3, 68, 0.5, 0)),   # Arp line
+    ("5%8 r 4", MidiInstrumentContext(4, 60, 0.5, 0))     # Random line
 ]
 
 # MIDI program numbers
@@ -39,9 +39,9 @@ def create_golden_data():
     data.bpm = 120
     data.chordDuration = 8
     
-    # Add lines
-    for pattern, gate, octave, channel, gate_length in LINES:
-        data.addLine(pattern, gate_length, octave, channel, gate)
+    # Add lines with their instrument contexts
+    for pattern, instrument_context in LINES:
+        data.addLine(pattern, instrument_context)
     
     # Generate and print the summary
     print("\nGoldenData Summary:")
@@ -61,48 +61,24 @@ def create_midi(data: GoldenData):
     # Create instrument programs
     programs = {name: pretty_midi.Instrument(program=num) for name, num in PROGRAMS.items()}
     
-    # Setup TimeManipulator
-    ti = TimeManipulator()
-    ti.setPPQ(960).setChordDuration(data.chordDuration).setBPM(data.bpm)
+    # Create line generators from GoldenData
+    generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
     
-    # Create chord progression
-    seq = data.createProgression()
-    
-    # Print density values
-    densities = {
-        'ONE': MenuHelper.rhythmicDensityToNumeric(RhythmicDensity.ONE),
-        'TWO': MenuHelper.rhythmicDensityToNumeric(RhythmicDensity.TWO),
-        'FOUR': MenuHelper.rhythmicDensityToNumeric(RhythmicDensity.FOUR),
-        'EIGHT': MenuHelper.rhythmicDensityToNumeric(RhythmicDensity.EIGHT),
-        'SIXTEEN': MenuHelper.rhythmicDensityToNumeric(RhythmicDensity.SIXTEEN)
-    }
-    print(f"Density values: {', '.join(f'{k}={v}' for k, v in densities.items())}")
-
-    # Generate lines
-    print("\nDemonstrating different ways to create LineGenerator:")
-    print("1. Using createFromPattern with rhythm language:")
-    
-    # Helper to convert ticks to seconds
-    def ticks_to_seconds(ticks):
-        return float(ticks) / ti.ppq * (60.0 / data.bpm)
-
-    # Generate and add notes to programs
-    for i, (pattern, gate, octave, channel, _) in enumerate(LINES):
-        line = LineGenerator.createFromPattern(ti, seq, pattern, gate)
-        if octave != 0:
-            line = line.transpose(octave * 12)
-        notes = line.generateNotes(0, channel, 100 if channel > 0 else 64)
+    # Generate notes from each line
+    for i, generator in enumerate(generators):
+        notes = generator.generateNotes(0)
         
-        print(f"  - {pattern}: {len(notes)} notes")
+        # Get the instrument context for this line
+        instrument_context = data.lines[i].instrumentContext
         
-        # Add notes to program
+        # Add notes to appropriate program
         program = programs[list(PROGRAMS.keys())[i]]
         for note in notes:
-            note_start = ticks_to_seconds(note.startTime)
-            note_end = note_start + ticks_to_seconds(note.length)
+            note_start = note.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+            note_end = note_start + note.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
             program.notes.append(pretty_midi.Note(
                 velocity=int(note.velocity),
-                pitch=int(note.note),
+                pitch=int(note.getMidiNoteValue()),
                 start=note_start,
                 end=note_end
             ))
