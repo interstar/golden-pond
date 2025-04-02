@@ -1,42 +1,7 @@
 
+# We need to leave a couple of blank lines at the top of this file
 
 
-class GoldenData :
-    def __init__(self) :
-        self.changed = True
-        self.current_str = ""
-        
-    def update(self,root,mode,chordDuration,chords,lines) :
-        self.root = root
-        self.mode = mode
-        self.chordDuration = chordDuration
-        self.chords = chords
-        self.lines = lines
-        
-        self.old_str = self.current_str
-        self.current_str = "%s"%self
-        if self.old_str != self.current_str :
-            self.changed = True
-        else :
-            self.changed = False
-        
-    def __str__(self) :
-        lines = "\r\n".join(self.lines)
-        return """\r\n
--------------------------------------------\r\n
-Root : %s\r\n
-Mode : %s\r\n
-Chord Duration: %s\r\n
-Chords : %s\r\n
-Lines : %s 
-...........................................
-     
-""" % (self.root, self.mode, self.chordDuration, self.chords, self.lines)
-
-CURRENT_DATA = GoldenData()         
-
-
-  
 def makeNote(num, time, length, color=0, velocity=0.7):
     """
     make a new Note object
@@ -54,30 +19,28 @@ def makeNote(num, time, length, color=0, velocity=0.7):
     note.velocity = velocity
     return note
       
-def addChan(form,name,vname,tname) :
-    form.AddInputText(name,"")  # Pattern input
-    form.AddInputKnob(vname,0.6,0,1)  # Volume
-    form.AddInputKnobInt(tname,0,-3,3)  # Transposition
+def addChan(form, name, vname, tname):
+    form.AddInputText(name, "")  # Pattern input
+    form.AddInputKnob(vname, 0.6, 0, 1)  # Volume
+    form.AddInputKnobInt(tname, 0, -3, 3)  # Transposition
     
 def createDialog():
     form = flp.ScriptDialog("GoldenPond",
     """GoldenPond is language for defining chord progressions and rhythm patterns.\r\n
 See http://gilbertlisterresearch.com/ for documentation.""")
     
-    form.AddInputKnobInt('Root',65,32,96)
-    form.AddInputCombo('Mode',["major","minor","harmonic minor","melodic minor"],0)
+    form.AddInputKnobInt('Root', 65, 32, 96)
+    form.AddInputCombo('Mode', ["major","minor","harmonic minor","melodic minor"], 0)
     form.AddInputText('ChordSeq', "1,4,5,1")
 
     # Add 6 channels with volume and octave controls
     for i in range(1, 7):
         addChan(form, f"Chan{i}", f"Vol{i}", f"Oct{i}")
 
-
-    form.AddInputKnob('Note Proportion',0.8,0.1,1.5)
-    form.AddInputKnobInt('Chord Duration',4,1,16)
-    
-    form.AddInputKnobInt("Stutter",0,0,16)
-    form.AddInputCheckbox("Silent",False)
+    form.AddInputKnob('Note Proportion', 0.8, 0.1, 1.5)
+    form.AddInputKnobInt('Chord Duration', 4, 1, 16)
+    form.AddInputKnobInt("Stutter", 0, 0, 16)
+    form.AddInputCheckbox("Silent", False)
     
     return form
 
@@ -85,110 +48,72 @@ See http://gilbertlisterresearch.com/ for documentation.""")
 def post_notes_to_score(notes_list):
     for note in notes_list:
         flp.score.addNote(makeNote(
-            note.note,
-            note.startTime,
-            note.length,
+            note.getMidiNoteValue(),
+            note.getStartTime(),
+            note.getLength(),
             color=note.chan,
             velocity=note.velocity/127.0
         ))
 
 
- 
- 
-def addVel(v,t,xs) :
-    def change(x) :
-        x.note=x.note+(12*t)
-        return [x,v]
-    return [change(x) for x in xs]
-    
-def channel(chan, pattern, velocity, transpose, seq, timingInfo, note_prop):
-    """
-    Create a line from a rhythm pattern string
-    Examples:
-        "c..." - chord followed by rests
-        "3/8 > 4" - euclidean pattern, ascending
-        "1.>.>.=. 4" - explicit pattern with ascending and repeat
-    """
-    try:
-        if not pattern or pattern.isspace():
-            return []
-
-        # Create rhythm generator from pattern
-        rhythmGenerator = RhythmLanguage.makeRhythmGenerator(pattern)
-        if rhythmGenerator.parseFailed():
-            Utils.log(f"Invalid pattern in channel {chan}: {pattern}")
-            return []
-            
-        # Create line generator
-        line = LineGenerator.create(timingInfo, seq, rhythmGenerator, note_prop)
-        
-        # Generate notes with velocity and transposition
-        notes = line.generateNotes(0, chan, int(velocity * 127))
-        
-        # Apply transposition if needed
-        if transpose != 0:
-            notes = [note.transpose(transpose * 12) for note in notes]
-            
-        return notes
-        
-    except Exception as e:        
-        return []
-
-
-
-        
 def apply(form):
-    root = form.GetInputValue('Root')
-    mode = form.GetInputValue('Mode')
-    chordSeq = form.GetInputValue('ChordSeq')
-
-    note_prop = form.GetInputValue('Note Proportion')
-    chord_len = form.GetInputValue('Chord Duration')
-    stutter = int(form.GetInputValue("Stutter"))
+    data = GoldenData()
     
+    # Set basic parameters
+    data.root = form.GetInputValue('Root')
+    data.mode = form.GetInputValue('Mode')
+    data.chordSequence = form.GetInputValue('ChordSeq')
+    data.stutter = form.GetInputValue("Stutter")
+    data.chordDuration = form.GetInputValue('Chord Duration')
+    data.bpm = 120  # FL Studio handles BPM separately
 
-    # Configure TimeManipulator
-    timingInfo = TimeManipulator().setPPQ(flp.score.PPQ)
-    timingInfo.setChordDuration(chord_len)
+    # Handle silent checkbox first
+    if form.GetInputValue("Silent")==1:
+        flp.score.clearNotes(False)
+        return
 
-    flp.score.clearNotes(False)
-
-    if form.GetInputValue("Silent")==1 : return
+    all_notes = []
     
-    lines = []
-    try : 
-        # Create chord progression
-        if mode == 0:
-            theMode = Mode.getMajorMode()
-        elif mode == 1:
-            theMode = Mode.getMinorMode()
-        elif mode == 2:
-            theMode = Mode.getHarmonicMinorMode()
-        elif mode == 3:
-            theMode = Mode.getMelodicMinorMode()
-        else:
-            theMode = Mode.getMajorMode()  # Default fallback
-            
-        baseSeq = ChordProgression(root, theMode, chordSeq)
-        seq = StutteredChordProgression(baseSeq, stutter) if stutter > 0 else baseSeq
- 
-        all_notes = []
-
-        for i in range(1,7):
+    # Process each channel separately so failures don't affect other channels
+    for i in range(1, 7):
+        try:
             pattern = form.GetInputValue(f"Chan{i}")
-            velocity = form.GetInputValue(f"Vol{i}")
-            transpose = form.GetInputValue(f"Oct{i}")
-            
-            notes = channel(i-1, pattern, velocity, transpose, seq, 
-                          timingInfo, note_prop)
-            all_notes.extend(notes)
-            lines.append("%s %s %s %s" % (pattern, velocity, transpose, note_prop))
+            if not pattern.strip():
+                continue
 
-        post_notes_to_score(all_notes)
-        
-        CURRENT_DATA.update(root,mode,chord_len,chordSeq,lines)
-        if CURRENT_DATA.changed:
-            Utils.log("Changed\n%s" % CURRENT_DATA)
+            volume = form.GetInputValue(f"Vol{i}")
+            octave = form.GetInputValue(f"Oct{i}")
+            gate_length = form.GetInputValue('Note Proportion')
             
-    except Exception as e:
-        Utils.log("Exception\n%s" % e)
+            # Create instrument context for this line
+            instrument_context = MidiInstrumentContext(
+                i-1,  # channel
+                int(volume * 127),  # velocity
+                gate_length,  # gate length
+                octave * 12  # transpose (convert octaves to semitones)
+            )
+            
+            # Add line to GoldenData
+            data.addLine(pattern, instrument_context)
+            
+            # Try to generate notes for this line
+            try:
+                generator = data.makeLineGenerator(len(data.lines) - 1)
+                notes = generator.generateNotes(0)
+                if notes:  # Only add if we got notes back
+                    all_notes.extend(notes)
+            except Exception as e:
+                Utils.log(f"Warning: Failed to generate notes for channel {i}: {e}")
+                continue
+                
+        except Exception as e:
+            Utils.log(f"Warning: Failed to process channel {i}: {e}")
+            continue
+
+    # Only clear and update if we successfully generated notes
+    if all_notes:
+        try:
+            flp.score.clearNotes(False)
+            post_notes_to_score(all_notes)
+        except Exception as e:
+            Utils.log(f"Error posting notes to score: {e}")
