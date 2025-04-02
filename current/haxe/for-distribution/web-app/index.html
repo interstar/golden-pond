@@ -233,10 +233,10 @@
                 <li>Basic Major : <code>1,4,5,1</code></li>
                 <li>Extended pop progression : <code>1,5,-6,4,5</code></li>
                 <li>Jazz sevenths ii-V-I-vi <code>72,75,71,76</code></li>
-                
                 <li>Key Transpositions : <code>71,>1,72,75,<1,71,>3,72,75,71</code></li>
-                <li>Longer progression with switching between major and minor :<code>76,72,75,71,!,76,72,75,71,>2,!,76,72,75,71,!,76,72,75,71</code> </li>
-                <li>Complex progression with secondary dominants : <code>71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,</code></li>
+                <li>Longer progression with mode switching : <code>76,72,75,71,!m,76,72,75,71,>2,!hm,76,72,75,71,!m,76,72,75,71</code></li>
+                <li>Complex progression with secondary dominants : <code>71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!hm,71</code></li>
+                <li>Modal harmony example : <code>7(6!4),7(2!4),7(5!4),7(1!4) </code> (this plays the 6-2-5-1 chord progression in the 4th mode (lydian) of the major scale</li>
             </ul>
         </div>
         <div id="chordNames" class="chord-names-section"></div>
@@ -508,45 +508,47 @@
         const bpm = parseInt(document.getElementById('bpm').value);
         const beatsPerChord = parseInt(document.getElementById('chordLength').value);
         const root = parseInt(document.getElementById('root').value);
-        const modeValue = document.getElementById('mode').value;
-        
-        let mode;
-        switch(modeValue) {
-            case "0":
-                mode = Mode.getMajorMode();
-                break;
-            case "1":
-                mode = Mode.getMinorMode();
-                break;
-            case "2":
-                mode = Mode.getHarmonicMinorMode();
-                break;
-            case "3":
-                mode = Mode.getMelodicMinorMode();
-                break;
-            default:
-                mode = Mode.getMajorMode();
-        }
-        
+        const modeValue = parseInt(document.getElementById('mode').value);
         const chordSequence = document.getElementById('chordSequence').value;
         
-        // Update TimeManipulator
-        tm.setPPQ(96)
-          .setChordDuration(beatsPerChord)
-          .setBPM(bpm);
+        // Update project data
+        ensureProjectData();
+        projectData.root = root;
+        projectData.mode = modeValue;
+        projectData.chordSequence = chordSequence;
+        projectData.bpm = bpm;
+        projectData.chordDuration = beatsPerChord;
         
-        // Update progression
-        const baseProgression = new ChordProgression(
-            parseInt(document.getElementById('root').value),
-            mode,
-            document.getElementById('chordSequence').value
-        );
-
-        // Apply stutter if needed
-        const stutterValue = parseInt(document.getElementById('stutter').value || '0');
-        currentProgression = stutterValue > 0 ? 
-            new StutteredChordProgression(baseProgression, stutterValue) : 
-            baseProgression;
+        // Update time manipulator
+        currentTimeManipulator = new TimeManipulator();
+        currentTimeManipulator.setPPQ(96)
+            .setChordDuration(beatsPerChord)
+            .setBPM(bpm);
+        
+        // Update all lines
+        currentLines = [];
+        Object.entries(currentConfig.lines).forEach(([lineId, settings], index) => {
+            const values = getLineValues(lineId);
+            if (values.active) {
+                // Create MidiInstrumentContext for this line
+                const instrumentContext = new MidiInstrumentContext(
+                    index,  // channel
+                    100,    // velocity
+                    values.gateLength,  // gate length
+                    values.octave * 12  // transpose (convert octaves to semitones)
+                );
+                
+                // Add line to project data with instrument context
+                projectData.addLine(values.pattern, instrumentContext);
+                
+                // Add to currentLines immediately
+                currentLines.push({
+                    type: { id: lineId, name: getInstrumentName(lineId) },
+                    line: projectData.makeLineGenerator(projectData.lines.length - 1),
+                    notes: projectData.makeLineGenerator(projectData.lines.length - 1).generateNotes(0)
+                });
+            }
+        });
         
         console.log('Updated settings:', {
             bpm, beatsPerChord, root, 
@@ -586,23 +588,25 @@
         Object.entries(currentConfig.lines).forEach(([lineId, settings], index) => {
             const values = getLineValues(lineId);
             if (values.active) {
-                // Add line to project data with gate length
-                projectData.addLine(
-                    values.pattern, 
-                    values.volume, 
-                    values.octave,
-                    index,  // Use the index as the channel number
-                    values.gateLength  // Pass the gate length
+                // Create MidiInstrumentContext for this line
+                const instrumentContext = new MidiInstrumentContext(
+                    index,  // channel
+                    100,    // velocity
+                    values.gateLength,  // gate length
+                    values.octave * 12  // transpose (convert octaves to semitones)
                 );
+                
+                // Add line to project data with instrument context
+                projectData.addLine(values.pattern, instrumentContext);
+                
+                // Add to currentLines immediately
+                currentLines.push({
+                    type: { id: lineId, name: getInstrumentName(lineId) },
+                    line: projectData.makeLineGenerator(projectData.lines.length - 1),
+                    notes: projectData.makeLineGenerator(projectData.lines.length - 1).generateNotes(0)
+                });
             }
         });
-
-        // Create line generators from project data
-        currentLines = projectData.createLineGenerators(currentTimeManipulator).map((generator, index) => ({
-            type: { id: Object.keys(currentConfig.lines)[index], name: getInstrumentName(Object.keys(currentConfig.lines)[index]) },
-            line: generator,
-            notes: generator.generateNotes(0, index, 100)
-        }));
 
         // Update previews
         updatePreviews();
@@ -622,7 +626,7 @@
         // Rest of updateControls remains the same
     }
 
-    // Modify play() to ensure projectData exists
+    // Modify play() to use the new note property access
     function play() {
         if (!audioContext) initAudio();
         
@@ -648,9 +652,9 @@
             if (instrument) {
                 console.log(`Playing ${type.name} with ${notes.length} notes`);
                 notes.forEach(note => {
-                    const startInSeconds = (note.startTime / currentTimeManipulator.ppq) * secondsPerBeat;
-                    const durationInSeconds = (note.length / currentTimeManipulator.ppq) * secondsPerBeat;
-                    instrument.play(note.note, baseTime + startInSeconds, { duration: durationInSeconds });
+                    const startInSeconds = (note.getStartTime() / currentTimeManipulator.ppq) * secondsPerBeat;
+                    const durationInSeconds = (note.getLength() / currentTimeManipulator.ppq) * secondsPerBeat;
+                    instrument.play(note.getMidiNoteValue(), baseTime + startInSeconds, { duration: durationInSeconds });
                 });
             } else {
                 console.warn(`No instrument found for ${type.name} (id: ${type.id})`);
@@ -688,14 +692,14 @@
             track.instrument.number = INSTRUMENT_PROGRAMS[type.id] || 0;
             
             // Get notes with absolute timing
-            const notes = line.generateNotes(0, index, 100);
+            const notes = line.generateNotes(0);
             
             // Add notes to track
             notes.forEach(note => {
                 track.addNote({
-                    midi: note.note,
-                    time: (note.startTime / currentTimeManipulator.ppq) * secondsPerBeat,
-                    duration: (note.length / currentTimeManipulator.ppq) * secondsPerBeat,
+                    midi: note.getMidiNoteValue(),
+                    time: (note.getStartTime() / currentTimeManipulator.ppq) * secondsPerBeat,
+                    duration: (note.getLength() / currentTimeManipulator.ppq) * secondsPerBeat,
                     velocity: note.velocity
                 });
             });
