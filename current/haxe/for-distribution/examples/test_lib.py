@@ -1,4 +1,4 @@
-from goldenpond import GoldenData, Mode, TimeManipulator
+from goldenpond import GoldenData, Mode, TimeManipulator, MidiInstrumentContext
 
 # Create a GoldenData instance
 data = GoldenData()
@@ -9,30 +9,29 @@ data.stutter = 0  # No stuttering
 data.bpm = 120
 data.chordDuration = 4
 
-# Add some lines with different patterns and channels
-data.addLine("5/8 c 1", 0.8, 3, 0)  # Chords on channel 0
-data.addLine("7/12 > 2", 0.5, 4, 1)  # Arpeggio on channel 1
-data.addLine("4/8 1 4", 0.8, 2, 2)   # Bass on channel 2
+# Add lines with their instrument contexts
+data.addLine("5/8 c 1", MidiInstrumentContext(0, 100, 0.8, 0))  # Chords on channel 0
+data.addLine("7/12 > 2", MidiInstrumentContext(1, 100, 0.5, 0))  # Arpeggio on channel 1
+data.addLine("4/8 1 4", MidiInstrumentContext(2, 100, 0.8, -12))   # Bass on channel 2
 
-# Create TimeManipulator and line generators
-tm = TimeManipulator().setPPQ(96).setChordDuration(data.chordDuration).setBPM(data.bpm)
-generators = data.createLineGenerators(tm)
+# Create line generators
+generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
 
 # Generate notes from each line
-chords = generators[0].generateNotes(0, 0, 100)  # First line (chords)
-arp = generators[1].generateNotes(0, 1, 100)     # Second line (arpeggio)
-bass = generators[2].generateNotes(0, 2, 100)    # Third line (bass)
+chords = generators[0].generateNotes(0)  # First line (chords)
+arp = generators[1].generateNotes(0)     # Second line (arpeggio)
+bass = generators[2].generateNotes(0)    # Third line (bass)
 
 # Print chord notes with formatted floats
 print("First 20 Chord notes:")
 for note in [n for n in chords][:20]:
-    print(f"Note[note: {note.note}, startTime: {note.startTime:.1f}, length: {note.length:.1f}]")
+    print(f"Note[note: {note.getMidiNoteValue()}, startTime: {note.getStartTime():.1f}, length: {note.getLength():.1f}]")
 
 # Print first arp note details with formatted floats
 first_note = arp[0]
 print("\nFirst Note from Arpeggio")
-print(f"Getting individual fields: note={first_note.note}, "
-      f"startTime={first_note.startTime:.1f}, length={first_note.length:.1f}")
+print(f"Getting individual fields: note={first_note.getMidiNoteValue()}, "
+      f"startTime={first_note.getStartTime():.1f}, length={first_note.getLength():.1f}")
 
 # Print a summary of the data
 print("\nGoldenData Summary:")

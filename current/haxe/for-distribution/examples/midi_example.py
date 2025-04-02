@@ -4,28 +4,33 @@ import sys
 import os
 from goldenpond import (
     Mode, ChordProgression, TimeManipulator, LineGenerator,
-    RhythmLanguage, MenuHelper, RhythmicDensity
+    RhythmLanguage, MenuHelper, RhythmicDensity,
+    GoldenData, MidiInstrumentContext
 )
 
-# Create a chord progression
-seq = ChordProgression(48, Mode.getMajorMode(), 
-    '71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,'*2)
+# Create a GoldenData instance
+data = GoldenData()
+data.root = 48  # C3
+data.mode = 0   # Major
+data.chordSequence = "71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,"*2
+data.stutter = 0
+data.bpm = 120
+data.chordDuration = 4
 
-# TimeManipulator with PPQ, chord duration and BPM
-ti = TimeManipulator()
-ti.setPPQ(96).setChordDuration(4).setBPM(120)
+# Add lines with their instrument contexts
+data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # One note per beat, full chord
+data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 7 notes in 12 steps, ascending
+data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # 2 notes in 12 steps, single note
+data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes
 
-# Create lines using rhythm patterns
-chord_line = LineGenerator.createFromPattern(ti, seq, "1/4 c 1", 0.75)  # One note per beat, full chord
-arp_line = LineGenerator.createFromPattern(ti, seq, "8/12 > 1", 0.5)   # 7 notes in 12 steps, ascending
-bass_line = LineGenerator.createFromPattern(ti, seq,  "tt.<<.>. 1", 0.75).transpose(-12)  # 2 notes in 12 steps, single note
-flute_line = LineGenerator.createFromPattern(ti, seq, "3/8 r 1", 0.75).transpose(12)
+# Create line generators
+generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
 
-# Generate notes from each line (now in seconds)
-chords = chord_line.notesInSeconds(0, 0, 100)
-arps = arp_line.notesInSeconds(0, 1, 100)
-bass = bass_line.notesInSeconds(0, 2, 100)
-flute = flute_line.notesInSeconds(0, 3, 100)
+# Generate notes from each line
+chords = generators[0].generateNotes(0)
+arps = generators[1].generateNotes(0)
+bass = generators[2].generateNotes(0)
+flute = generators[3].generateNotes(0)
 
 import pretty_midi
 
@@ -43,22 +48,52 @@ flute_program = pretty_midi.Instrument(program=76)
 
 # Add notes to instruments
 for n in chords:
-    note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
     pad.notes.append(note)
     pad2.notes.append(note)
     
 for n in arps:
-    note = pretty_midi.Note(velocity=64, pitch=n.note+24, start=n.startTime, end=n.startTime + n.length)
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
     piano.notes.append(note)
-    note = pretty_midi.Note(velocity=64, pitch=n.note+12, start=n.startTime, end=n.startTime + n.length)    
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue() + 12),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
     piano2.notes.append(note)
 
 for n in bass:
-    note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)    
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
     bass_program.notes.append(note)
 
 for n in flute:
-    note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.startTime, end=n.startTime + n.length)    
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
     flute_program.notes.append(note)
 
 # Add the instruments to the PrettyMIDI object
