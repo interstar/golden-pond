@@ -24,9 +24,22 @@ import ChordParser;
 import ScoreUtilities;
 import RhythmGenerator;  // This will give us access to SimpleRhythmGenerator too
 import RhythmGenerator.SelectorType;  // Import SelectorType from RhythmGenerator
+import GoldenData;  // This will give us access to LineData
 
+// Add these typedefs at the top of the file, after the imports
+typedef MidiInstrumentContextData = {
+    var chan: Int;
+    var velocity: Int;
+    var gateLength: Float;
+    var transpose: Int;
+}
 
- 
+typedef LineDataJson = {
+    var pattern: String;
+    var instrumentContextCode: String;
+    var instrumentContextData: String;
+}
+
 @:expose
 enum SeqTypes {
     CHORDS;
@@ -62,9 +75,10 @@ enum RhythmicDensity {
 }
 
 
- 
+
+
 interface ILineGenerator {
-    function generateNotes(startTime: Float, channel: Int, velocity: Int): Array<Note>;
+    function generateNotes(startTime: Float): Array<INote>;
     function getPitches(): Array<Int>;
     function getDurations(): Array<Float>;
 }
@@ -212,24 +226,98 @@ class TimeManipulator {
     }
 }
 
- 
+@:expose
+class MidiInstrumentContext implements IInstrumentContext {
+    private var chan: Int;
+    private var velocity: Int;
+    private var gateLength: Float;
+    private var transpose: Int;
+
+    public function new(chan: Int, velocity: Int, gateLength: Float, transpose: Int) {
+        this.chan = chan;
+        this.velocity = velocity;
+        this.gateLength = gateLength;
+        this.transpose = transpose;
+    }
+
+    public function getChannel(): Int {
+        return this.chan;
+    }
+
+    public function makeNote(note: Int, startTime: Float, length: Float): INote {
+        return new Note(
+            this.chan,
+            note + this.transpose,
+            this.velocity,
+            startTime,
+            length * this.gateLength
+        );
+    }
+
+    public function toString(): String {
+        return 'MidiInstrumentContext[chan: $chan, velocity: $velocity, gateLength: $gateLength, transpose: $transpose]';
+    }
+
+    public function toJSON(): String {
+        return haxe.Json.stringify({
+            chan: this.chan,
+            velocity: this.velocity,
+            gateLength: this.gateLength,
+            transpose: this.transpose
+        });
+    }
+
+    public function getCode(): String {
+        return 'MidiInstrumentContext';
+    }
+}
+
+@:expose
+class DeserializationHelper implements IDeserializationHelper {
+    public function new() {}
+    
+    public function helpMake(code: String, json: String): ISerializable {
+        switch (code) {
+            case 'LineData':
+                var lineData: LineDataJson = haxe.Json.parse(json);
+                // First create the instrument context from its data
+                var instrumentContext = helpMake(lineData.instrumentContextCode, lineData.instrumentContextData);
+                // Then create the line data with the instrument context
+                return new LineData(lineData.pattern, cast instrumentContext);
+                
+            case 'MidiInstrumentContext':
+                var contextData: MidiInstrumentContextData = haxe.Json.parse(json);
+                return new MidiInstrumentContext(
+                    contextData.chan,
+                    contextData.velocity,
+                    contextData.gateLength,
+                    contextData.transpose
+                );
+                
+            default:
+                throw 'Unknown code: $code';
+        }
+    }
+}
+
 @:expose
 class LineGenerator implements ILineGenerator {
     private var timeManipulator: TimeManipulator;
     private var seq: IChordProgression;
     private var rhythmGenerator: IRhythmGenerator;
-    private var gateLength: Float;
-    private var transposition: Int;
-    private var cachedNotes: Array<Note>;
+    private var instrumentContext: IInstrumentContext;
+    private var cachedNotes: Array<INote>;
     private var lastNoteIndex: Int;  // Track last index for Ascending/Descending
     private var lastNoteValue: Int;  // Track last actual note for Repeat
 
-    public function new(timeManipulator: TimeManipulator, seq: IChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float) {
+    public function new(timeManipulator: TimeManipulator, 
+                      seq: IChordProgression, 
+                      rhythmGenerator: IRhythmGenerator,
+                      instrumentContext: IInstrumentContext) {
         this.timeManipulator = timeManipulator;
         this.seq = seq;
         this.rhythmGenerator = rhythmGenerator;
-        this.gateLength = gateLength;
-        this.transposition = 0;
+        this.instrumentContext = instrumentContext;
         this.cachedNotes = null;
         this.lastNoteIndex = -1;
         this.lastNoteValue = -1;
@@ -239,8 +327,11 @@ class LineGenerator implements ILineGenerator {
      * Creates a LineGenerator with the specified rhythm generator.
      * This is the preferred way to create a LineGenerator with a custom rhythm pattern.
      */
-    public static function create(timeManipulator: TimeManipulator, seq: IChordProgression, rhythmGenerator: IRhythmGenerator, gateLength: Float): LineGenerator {
-        return new LineGenerator(timeManipulator, seq, rhythmGenerator, gateLength);
+    public static function create(timeManipulator: TimeManipulator, 
+                                seq: IChordProgression, 
+                                rhythmGenerator: IRhythmGenerator,
+                                instrumentContext: IInstrumentContext): LineGenerator {
+        return new LineGenerator(timeManipulator, seq, rhythmGenerator, instrumentContext);
     }
 
     /**
@@ -249,12 +340,15 @@ class LineGenerator implements ILineGenerator {
      * 
      * @throws String Exception if the pattern cannot be parsed
      */
-    public static function createFromPattern(timeManipulator: TimeManipulator, seq: IChordProgression, pattern: String, gateLength: Float): LineGenerator {
+    public static function createFromPattern(timeManipulator: TimeManipulator, 
+                                           seq: IChordProgression, 
+                                           pattern: String,
+                                           instrumentContext: IInstrumentContext): LineGenerator {
         var rhythmGenerator = RhythmLanguage.makeRhythmGenerator(pattern);
         if (rhythmGenerator.parseFailed()) {
-            throw 'Invalid rhythm pattern: "${pattern}"';
+            throw "Invalid rhythm pattern: \"" + pattern + "\"";
         }
-        return create(timeManipulator, seq, rhythmGenerator, gateLength);
+        return LineGenerator.create(timeManipulator, seq, rhythmGenerator, instrumentContext);
     }
 
     private function selectNotesFromChord(selector:SelectorType, chordThing:ChordThing):Array<Int> {
@@ -321,13 +415,11 @@ class LineGenerator implements ILineGenerator {
         }
     }
 
-    private function generateCachedNotes(): Array<Note> {
-        var notes = new Array<Note>();
+    private function generateCachedNotes(): Array<INote> {
+        var notes = new Array<INote>();
         var currentTime = 0.0;
         var totalSteps = rhythmGenerator.getTotalSteps();
-        var patternLength = rhythmGenerator.getPatternLength();
         var stepSize = timeManipulator.chordTicks / totalSteps;
-        var noteLength = stepSize * gateLength;
 
         for (ct in seq.toChordThings()) {
             lastNoteIndex = -1;
@@ -339,12 +431,10 @@ class LineGenerator implements ILineGenerator {
                 if (selector != Rest) {
                     var notesToAdd = selectNotesFromChord(selector, ct);
                     for (note in notesToAdd) {
-                        notes.push(new Note(
-                            0,
+                        notes.push(this.instrumentContext.makeNote(
                             note,
-                            100,
                             currentTime,
-                            noteLength
+                            stepSize
                         ));
                     }
                 }
@@ -357,7 +447,7 @@ class LineGenerator implements ILineGenerator {
     public function getPitches(): Array<Int> {
         var pitches = new Array<Int>();
         for (note in cachedNotes) {
-            pitches.push(note.note);
+            pitches.push(note.getMidiNoteValue());
         }
         return pitches;
     }
@@ -369,120 +459,47 @@ class LineGenerator implements ILineGenerator {
         for (i in 0...cachedNotes.length - 1) {
             var currentNote = cachedNotes[i];
             var nextNote = cachedNotes[i + 1];
-            var duration = nextNote.startTime - currentNote.startTime;
+            var duration = nextNote.getStartTime() - currentNote.getStartTime();
             durations.push(duration);
         }
 
         // For the last note, use its length
-        durations.push(cachedNotes[cachedNotes.length - 1].length);
+        durations.push(cachedNotes[cachedNotes.length - 1].getLength());
 
         return durations;
     }
 
-    public function generateNotes(startTime: Float, channel: Int, velocity: Int): Array<Note> {
-        if (cachedNotes == null) {
-            cachedNotes = generateCachedNotes();
+    /**
+     * Generate notes for this line
+     * @param startTime The start time in ticks
+     * @return Array of notes with proper instrument-specific properties
+     */
+    public function generateNotes(startTime: Float): Array<INote> {
+        if (this.cachedNotes == null) {
+            this.cachedNotes = this.generateCachedNotes();
         }
         
-        var adjustedNotes = new Array<Note>();
-        for (note in cachedNotes) {
-            adjustedNotes.push(new Note(
-                channel,
-                note.note + transposition,  // Apply transposition here
-                velocity,
-                note.startTime + startTime,
-                note.length
+        return this.cachedNotes;
+    }
+
+   
+    /**
+     * Generate notes in seconds for this line
+     * @param startTime The start time in seconds
+     * @return Array of notes with proper instrument-specific properties and timing in seconds
+     */
+    public function notesInSeconds(startTime: Float): Array<INote> {
+        var tickNotes = this.generateNotes(startTime);
+        var secondsPerTick = (60.0 / (this.timeManipulator.getBPM() * this.timeManipulator.getPPQ()));
+        var result = new Array<INote>();
+        for (n in tickNotes) {
+            result.push(this.instrumentContext.makeNote(
+                n.getMidiNoteValue(),
+                n.getStartTime() * secondsPerTick,
+                n.getLength() * secondsPerTick
             ));
         }
-        return adjustedNotes;
-    }
-
-    public function notesToTimeEvents(notes:Array<Note>):Array<{time:Float, event:DeltaEvent}> {
-        var timeEvents = new Array<{time:Float, event:DeltaEvent}>();
-        
-        for (note in notes) {
-            // Note-on event
-            timeEvents.push({
-                time: note.startTime,
-                event: new DeltaEvent(
-                    note.chan, 
-                    note.note, 
-                    note.velocity, 
-                    0,
-                    NOTE_ON
-                )
-            });
-            
-            // Note-off event
-            timeEvents.push({
-                time: note.startTime + note.length,
-                event: new DeltaEvent(
-                    note.chan, 
-                    note.note, 
-                    0,
-                    0,
-                    NOTE_OFF
-                )
-            });
-        }
-        return timeEvents;
-    }
-
-    public function sortTimeEvents(timeEvents:Array<{time:Float, event:DeltaEvent}>):Array<{time:Float, event:DeltaEvent}> {
-        timeEvents.sort((a, b) -> {
-            var timeDiff = a.time - b.time;
-            if (Math.abs(timeDiff) < 0.0001) {
-                // At same time:
-                // 1. If same note, NOTE_OFF comes before NOTE_ON
-                if (a.event.note == b.event.note && a.event.type != b.event.type) {
-                    return a.event.type == NOTE_OFF ? -1 : 1;
-                }
-                // 2. If different notes, maintain original order based on note value
-                return a.event.note - b.event.note;
-            }
-            return timeDiff > 0 ? 1 : -1;
-        });
-        return timeEvents;
-    }
-
-    public function asDeltaEvents():Array<DeltaEvent> {
-        var events = new Array<DeltaEvent>();
-        var notes = generateCachedNotes();
-        
-        // First convert to time events and sort them
-        var timeEvents = notesToTimeEvents(notes);
-        timeEvents = sortTimeEvents(timeEvents);
-        
-        // Calculate deltas by comparing with previous event's time
-        for (i in 0...timeEvents.length) {
-            var previousTime = (i > 0) ? timeEvents[i-1].time : 0.0;
-            var currentTime = timeEvents[i].time;
-            var delta = currentTime - previousTime;
-            
-            timeEvents[i].event.deltaFromLast = delta;
-            events.push(timeEvents[i].event);
-        }
-        
-        return events;
-    }
-
-    public function notesInSeconds(startTime:Float, channel:Int, velocity:Int):Array<Note> {
-        var tickNotes = generateNotes(startTime, channel, velocity);
-        var secondsPerTick = 60.0 / (timeManipulator.getBPM() * timeManipulator.getPPQ());
-        
-        return [for (n in tickNotes) new Note(
-            n.chan,
-            n.note,
-            n.velocity,
-            n.startTime * secondsPerTick,
-            n.length * secondsPerTick
-        )];
-    }
-
-    public function transpose(offset: Int): LineGenerator {
-        this.transposition = offset;
-        this.cachedNotes = null;  // Clear cache to force regeneration
-        return this;
+        return result;
     }
 }
 

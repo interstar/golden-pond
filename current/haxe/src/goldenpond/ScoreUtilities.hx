@@ -1,3 +1,6 @@
+package;
+
+
 /*
 GoldenPond FL Studio Script
 Copyright (C) 2024 Phil Jones
@@ -17,13 +20,44 @@ To understand the GNU Affero General Public License see <https://www.gnu.org/lic
 
 
 @:expose
+interface INote {
+  function getMidiNoteValue():Int;
+  function getStartTime():Float;
+  function getLength():Float;
+}
 
-class Note {
-  public var chan:Int;
-  public var note:Int;
-  public var startTime:Float;
-  public var length:Float;
-  public var velocity:Int;
+
+
+@:expose
+interface IDeserializationHelper {
+  function helpMake(code:String,json:String):ISerializable;
+}
+
+@:expose
+interface ISerializable {
+  function toString(): String;
+  function toJSON(): String;
+  function getCode(): String;
+}
+
+
+
+@:expose
+interface IInstrumentContext extends ISerializable {
+  // Note that duration is actually the duration available for the whole of the note. We expect 
+  // the instrument context to know about gateLengths etc. to calculate the real length of the note
+  function makeNote(note: Int, startTime: Float, duration: Float): INote;
+}
+
+
+@:expose
+
+class Note implements INote {
+  private  var chan:Int;
+  private var note:Int;
+  private var startTime:Float;
+  private var length:Float;
+  private var velocity:Int;
 
   public function new(chan:Int, note:Int, velocity:Int, startTime:Float, length:Float) {
     this.chan = chan;
@@ -54,32 +88,37 @@ class Note {
   public function transpose(offset:Int):Note {
     return new Note(this.chan,this.note+offset,this.velocity,this.startTime,this.length);
   }
+
+  public function getMidiNoteValue():Int {
+    return this.note;
+  }
+
+  public function getStartTime():Float {
+    return this.startTime;
+  }
+
+  public function getLength():Float {
+    return this.length;
+  }
 }
-
-
 
 @:expose
 class ScoreUtilities {
-
-  public static function getNoteOn():NoteEventType {
-    return NOTE_ON;
+  public static function transposeNotes(notes:Array<INote>, offset:Int, instrumentContext:IInstrumentContext):Array<INote> {
+    return [for (n in notes) instrumentContext.makeNote(
+      n.getMidiNoteValue() + offset,
+      n.getStartTime(),
+      n.getLength()
+    )];
   }
 
-  public static function getNoteOff():NoteEventType {
-    return NOTE_OFF;
-  }
-
-  public static function transposeNotes(notes:Array<Note>,offset:Int):Array<Note> {
-    return [for (n in notes) n.transpose(offset)];
-  }
-
-  public static function makePianoRollSVG(notes:Array<Note>, svgWidth:Int, svgHeight:Int):String {
+  public static function makePianoRollSVG(notes:Array<INote>, svgWidth:Int, svgHeight:Int):String {
     var noteHeight = svgHeight/100;
     
     // Find time range to scale properly
     var maxTime = 0.0;
     for (note in notes) {
-        maxTime = Math.max(maxTime, note.startTime + note.length);
+        maxTime = Math.max(maxTime, note.getStartTime() + note.getLength());
     }
     
     // Calculate timeScale based on the actual note durations
@@ -101,9 +140,9 @@ class ScoreUtilities {
     // Draw each note as a rectangle
     for (note in notes) {
         // Ensure all values are valid numbers
-        var x = note.startTime * timeScale;
-        var y = svgHeight - ((note.note - pitchOffset) * noteHeight) - noteHeight;
-        var width = note.length * timeScale;
+        var x = note.getStartTime() * timeScale;
+        var y = svgHeight - ((note.getMidiNoteValue() - pitchOffset) * noteHeight) - noteHeight;
+        var width = note.getLength() * timeScale;
         var height = noteHeight;
         
         // Skip invalid notes
@@ -123,31 +162,3 @@ class ScoreUtilities {
 
   
 }
-
-@:expose
-enum NoteEventType {
-    NOTE_ON;
-    NOTE_OFF;
-}
-
-@:expose
-class DeltaEvent {
-    public var chan:Int;
-    public var note:Int;
-    public var velocity:Int;
-    public var deltaFromLast:Float;
-    public var type:NoteEventType;
-
-    public function new(chan:Int, note:Int, velocity:Int, deltaFromLast:Float, type:NoteEventType) {
-        this.chan = chan;
-        this.note = note;
-        this.velocity = velocity;
-        this.deltaFromLast = deltaFromLast;
-        this.type = type;
-    }
-
-    public function toString():String {
-        return 'DeltaEvent[chan: ${chan}, note: ${note}, vel: ${velocity}, delta: ${deltaFromLast}, type: ${type}]';
-    }
-}
-  

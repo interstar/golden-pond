@@ -88,10 +88,11 @@ class TestSuite1 {
       	"note to string"
       );
 	  trace("Transposing collections of Notes");
-	  var ns = [new Note(0,68,100,4,0.5), new Note(0,64,50,8,0.5)];
+	  var ns:Array<INote> = [new Note(0,68,100,4,0.5), new Note(0,64,50,8,0.5)];
+	  var instrumentContext = new MidiInstrumentContext(0, 100, 0.8, 0);
 	  tester.testit("Note collection transposition",
-		 ScoreUtilities.transposeNotes(ns,-4),
-		 [new Note(0,64,100,4,0.5), new Note(0,60,50,8,0.5)],
+		 ScoreUtilities.transposeNotes(ns, -4, instrumentContext),
+		 [instrumentContext.makeNote(64,4,0.5), instrumentContext.makeNote(60,8,0.5)],
 		 "note collection transposition");
 	
 	}
@@ -427,70 +428,60 @@ class TestSuite1 {
     static function testGoldenData(tester:UnitTester) {
         trace("Testing GoldenData");
         
-        // Test JSON serialization and deserialization
-        var data = new GoldenData();
-        data.root = 60;  // C4
-        data.mode = 0;   // Major
-        data.chordSequence = "1,4,5,1";  // C, F, G, C
-        data.stutter = 0;  // No stuttering
-        data.bpm = 120;
-        data.chordDuration = 4;
+        // Create a GoldenData object
+        var goldenData = new GoldenData();
         
-        data.addLine("1.1.1.1. 4", 0.8, 0, 0, 0.8);  // Basic rhythm with density
-        data.addLine("1...1... 2", 0.6, -1, 1, 0.6);  // Lower octave, different rhythm with density
+        // Add some lines
+        goldenData.addLine("1,2,3", new MidiInstrumentContext(0, 100, 0.8, 0))
+                 .addLine("4,5,6", new MidiInstrumentContext(1, 100, 0.8, 0));
         
-        // Test the initial state
-        var progression = data.createProgression();
-        tester.testit("GoldenData initial progression",
-            progression.toNotes(),
-            [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]],
-            "Initial progression should match expected chords");
-            
-        // Test line generation
-        var timingInfo = new TimeManipulator();
-        timingInfo.setPPQ(96)
-            .setChordDuration(data.chordDuration)
-            .setBPM(data.bpm);
-            
-        var lines = data.createLineGenerators(timingInfo);
-        tester.testit("GoldenData line count",
-            lines.length,
-            2,
-            "Should have 2 lines");
-            
-        // Test JSON serialization
-        var json = data.toJSON();
+        // Test serialization
+        var json = goldenData.toJSON();
         tester.testit("GoldenData JSON serialization",
             json != null && json.length > 0,
             true,
             "JSON should not be null or empty");
             
-        // Test JSON deserialization
-        var reconstructed = GoldenData.fromJSON(json);
+        // Test deserialization
+        var deserialized = GoldenData.makeFromJSON(json, new DeserializationHelper());
         tester.testit("GoldenData JSON deserialization",
-            reconstructed.root == data.root &&
-            reconstructed.mode == data.mode &&
-            reconstructed.chordSequence == data.chordSequence &&
-            reconstructed.stutter == data.stutter &&
-            reconstructed.bpm == data.bpm &&
-            reconstructed.chordDuration == data.chordDuration &&
-            reconstructed.lines.length == data.lines.length,
+            deserialized != null && deserialized.lines.length == 2,
             true,
-            "Reconstructed data should match original");
+            "Deserialized object should not be null and should have 2 lines");
             
+        // Test that the data matches
+        tester.testit("GoldenData root", deserialized.root == goldenData.root, true, "Root should match");
+        tester.testit("GoldenData mode", deserialized.mode == goldenData.mode, true, "Mode should match");
+        tester.testit("GoldenData chord sequence", deserialized.chordSequence == goldenData.chordSequence, true, "Chord sequence should match");
+        tester.testit("GoldenData stutter", deserialized.stutter == goldenData.stutter, true, "Stutter should match");
+        tester.testit("GoldenData bpm", deserialized.bpm == goldenData.bpm, true, "BPM should match");
+        tester.testit("GoldenData chord duration", deserialized.chordDuration == goldenData.chordDuration, true, "Chord duration should match");
+        
+        // Test that the lines match
+        for (i in 0...2) {
+            tester.testit("GoldenData line pattern", deserialized.lines[i].pattern == goldenData.lines[i].pattern, true, "Line pattern should match");
+            tester.testit("GoldenData instrument context code", deserialized.lines[i].instrumentContext.getCode() == goldenData.lines[i].instrumentContext.getCode(), true, "Instrument context code should match");
+        }
+        
         // Test that the reconstructed data generates the same progression
-        var reconstructedProgression = reconstructed.createProgression();
+        var reconstructedProgression = deserialized.makeChordProgression();
         tester.testit("GoldenData reconstructed progression",
             reconstructedProgression.toNotes(),
-            progression.toNotes(),
+            goldenData.makeChordProgression().toNotes(),
             "Reconstructed progression should match original");
             
-        // Test that the reconstructed data generates the same lines
-        var reconstructedLines = reconstructed.createLineGenerators(timingInfo);
-        tester.testit("GoldenData reconstructed line count",
-            reconstructedLines.length,
-            lines.length,
-            "Reconstructed should have same number of lines");
+        // Test toString output
+        var summary = goldenData.toString();
+        var modeNames = ["major", "minor", "harmonic minor", "melodic minor"];
+        var modeName = modeNames[goldenData.mode];
+        
+        tester.testit("GoldenData toString",
+            summary.indexOf("GoldenPond Project") >= 0 &&
+            summary.indexOf("Root: " + goldenData.root) >= 0 &&
+            summary.indexOf("Mode: " + modeName + " (" + goldenData.mode + ")") >= 0 &&
+            summary.indexOf("BPM: " + goldenData.bpm) >= 0,
+            true,
+            "toString should contain expected information");
     }
    
 }

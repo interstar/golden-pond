@@ -20,6 +20,18 @@ package;
 import ChordParser;
 import Mode;
 import TimedSequence;
+import ScoreUtilities;
+
+// Add this typedef at the top of the file, after the imports
+typedef GoldenDataJson = {
+    var root: Int;
+    var mode: Int;
+    var chordSequence: String;
+    var stutter: Int;
+    var bpm: Int;
+    var chordDuration: Int;
+    var lines: Array<LineDataJson>;
+}
 
 /**
  * GoldenData - A class to store and serialize all project data
@@ -37,7 +49,7 @@ class GoldenData {
     public var bpm:Int;
     public var chordDuration:Int;
     
-    // Line data - each entry is a map with pattern, volume, octave, etc.
+    // Line data - each entry contains pattern and instrument context
     public var lines:Array<LineData>;
     
     // Track if data has changed
@@ -58,15 +70,12 @@ class GoldenData {
     /**
      * Add a line to the project
      * @param pattern The rhythm pattern string
-     * @param volume The volume (0.0-1.0)
-     * @param octave The octave transposition (-3 to 3)
-     * @param channel The channel number (0-15)
-     * @param gateLength The gate length (0.0-1.0)
+     * @param instrumentContext The instrument context for this line
      * @return This GoldenData instance for chaining
      */
     @:expose
-    public function addLine(pattern:String, volume:Float, octave:Int, channel:Int = 0, gateLength:Float = 0.8):GoldenData {
-        lines.push(new LineData(pattern, volume, octave, channel, gateLength));
+    public function addLine(pattern:String, instrumentContext:IInstrumentContext):GoldenData {
+        lines.push(new LineData(pattern, instrumentContext));
         return this;
     }
     
@@ -82,11 +91,11 @@ class GoldenData {
     }
     
     /**
-     * Get the Mode object corresponding to the current mode index
+     * Make the Mode object corresponding to the current mode index
      * @return The Mode object
      */
     @:expose
-    public function getModeObject():Mode {
+    public function makeMode():Mode {
         switch (this.mode) {
             case 0: return Mode.getMajorMode();
             case 1: return Mode.getMinorMode();
@@ -97,12 +106,12 @@ class GoldenData {
     }
     
     /**
-     * Create a ChordProgression from the current settings
-     * @return A ChordProgression object
+     * Make a chord progression from the current settings
+     * @return The chord progression
      */
     @:expose
-    public function createProgression():IChordProgression {
-        var baseProgression = new ChordProgression(this.root, this.getModeObject(), this.chordSequence);
+    public function makeChordProgression():IChordProgression {
+        var baseProgression = new ChordProgression(this.root, this.makeMode(), this.chordSequence);
         if (this.stutter > 0) {
             return new StutteredChordProgression(baseProgression, this.stutter);
         }
@@ -110,46 +119,51 @@ class GoldenData {
     }
     
     /**
-     * Create line generators for all lines in the project
-     * @param timingInfo The TimeManipulator to use for timing
-     * @return Array of LineGenerator objects
+     * Make a time manipulator from the current settings
+     * @return The time manipulator
      */
     @:expose
-    public function createLineGenerators(timingInfo:TimeManipulator):Array<LineGenerator> {
-        var progression = this.createProgression();
-        var generators:Array<LineGenerator> = [];
-        
-        for (line in this.lines) {
-            var generator = LineGenerator.createFromPattern(
-                timingInfo,
-                progression,
-                line.pattern,
-                line.gateLength
-            );
-            if (generator != null) {
-                generator.transpose(line.octave * 12);
-                generators.push(generator);
-            }
-        }
-        
-        return generators;
+    public function makeTimeManipulator():TimeManipulator {
+        return new TimeManipulator()
+            .setPPQ(96)
+            .setChordDuration(this.chordDuration)
+            .setBPM(this.bpm);
     }
     
     /**
-     * Check if the data has changed since the last serialization
+     * Make a line generator for the specified line
+     * @param lineIndex The index of the line to generate
+     * @return The line generator
+     */
+    @:expose
+    public function makeLineGenerator(lineIndex:Int):ILineGenerator {
+        if (lineIndex < 0 || lineIndex >= this.lines.length) {
+            throw 'Invalid line index: $lineIndex';
+        }
+        
+        var line = this.lines[lineIndex];
+        var timeManipulator = this.makeTimeManipulator();
+        var progression = this.makeChordProgression();
+    
+        
+        return LineGenerator.createFromPattern(timeManipulator, progression, line.pattern, line.instrumentContext);
+    }
+    
+    /**
+     * Check if the data has changed since last serialization
      * @return True if the data has changed
      */
     @:expose
     public function hasChanged():Bool {
-        var currentString = this.toString();
+        var currentString = this.toJSON();
         var changed = currentString != this.lastSerializedString;
         this.lastSerializedString = currentString;
         return changed;
     }
     
     /**
-     * Convert the project data to a string representation
-     * @return A string representation of the project
+     * Get a string representation of the project
+     * @return A formatted string showing all project data
      */
     @:expose
     public function toString():String {
@@ -159,7 +173,7 @@ class GoldenData {
         var result = 'GoldenPond Project\n';
         result += '-------------------------------------------\n';
         result += 'Root: ${this.root}\n';
-        result += 'Mode: ${modeName}\n';
+        result += 'Mode: ${modeName} (${this.mode})\n';
         result += 'Chord Sequence: ${this.chordSequence}\n';
         result += 'Stutter: ${this.stutter}\n';
         result += 'BPM: ${this.bpm}\n';
@@ -168,7 +182,7 @@ class GoldenData {
         
         for (i in 0...this.lines.length) {
             var line = this.lines[i];
-            result += '  Line ${i+1}: Pattern="${line.pattern}", Volume=${line.volume}, Octave=${line.octave}, Channel=${line.channel}\n';
+            result += '  Line ${i+1}: Pattern="${line.pattern}", InstrumentContext=${line.instrumentContext.toString()}\n';
         }
         
         result += '-------------------------------------------\n';
@@ -191,10 +205,8 @@ class GoldenData {
             lines: this.lines.map(function(line) {
                 return {
                     pattern: line.pattern,
-                    volume: line.volume,
-                    octave: line.octave,
-                    channel: line.channel,
-                    gateLength: line.gateLength
+                    instrumentContextCode: line.instrumentContext.getCode(),
+                    instrumentContextData: line.instrumentContext.toJSON()
                 };
             })
         };
@@ -204,11 +216,12 @@ class GoldenData {
     /**
      * Create a GoldenData object from a JSON string
      * @param json The JSON string
+     * @param deserializationHelper Helper for deserializing complex objects
      * @return A new GoldenData object
      */
     @:expose
-    public static function fromJSON(json:String):GoldenData {
-        var data = haxe.Json.parse(json);
+    public static function makeFromJSON(json: String, deserializationHelper: IDeserializationHelper): GoldenData {
+        var data: GoldenDataJson = haxe.Json.parse(json);
         var result = new GoldenData();
         
         // Set basic properties
@@ -219,17 +232,16 @@ class GoldenData {
         result.bpm = data.bpm;
         result.chordDuration = data.chordDuration;
         
-        // Recreate lines
+        // Recreate lines using the helper
         result.lines = [];
-        var linesArray:Array<Dynamic> = cast data.lines;
-        for (lineData in linesArray) {
-            result.addLine(
-                lineData.pattern,
-                lineData.volume,
-                lineData.octave,
-                lineData.channel,
-                lineData.gateLength
-            );
+        for (lineData in data.lines) {
+            try {
+                var line = cast deserializationHelper.helpMake('LineData', haxe.Json.stringify(lineData));
+                result.lines.push(cast line);
+            } catch (e: String) {
+                trace('Error deserializing line: $e');
+                continue;
+            }
         }
         
         return result;
@@ -239,18 +251,28 @@ class GoldenData {
 /**
  * LineData - A class to store data for a single line
  */
-class LineData {
+class LineData implements ISerializable {
     public var pattern:String;
-    public var volume:Float;
-    public var octave:Int;
-    public var channel:Int;
-    public var gateLength:Float;
+    public var instrumentContext:IInstrumentContext;
     
-    public function new(pattern:String, volume:Float, octave:Int, channel:Int, gateLength:Float = 0.8) {
+    public function new(pattern:String, instrumentContext:IInstrumentContext) {
         this.pattern = pattern;
-        this.volume = volume;
-        this.octave = octave;
-        this.channel = channel;
-        this.gateLength = gateLength;
+        this.instrumentContext = instrumentContext;
+    }
+
+    public function toString():String {
+        return 'LineData[pattern: $pattern, instrumentContext: ${instrumentContext.toString()}]';
+    }
+
+    public function toJSON():String {
+        return haxe.Json.stringify({
+            pattern: this.pattern,
+            instrumentContextCode: this.instrumentContext.getCode(),
+            instrumentContextData: this.instrumentContext.toJSON()
+        });
+    }
+
+    public function getCode():String {
+        return 'LineData';
     }
 } 

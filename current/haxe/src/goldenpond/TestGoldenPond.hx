@@ -32,6 +32,5 @@ class TestGoldenPond {
         TestSuite2.allTests(tester);
         tester.printSummary();
     }
-
 }
 

@@ -13,11 +13,8 @@ class TestSuite2 {
         testMenuHelper(tester);
         testTimeManipulator(tester);
         testRhythmGenerator(tester);
-        testDeltaEvents(tester);
-        testTimeEventGeneration(tester);
         testChordTimings(tester);
         testRhythmGeneratorK1(tester);
-        testTimeEventsForK1(tester);
         testNotesInSeconds(tester);
         testRhythmPatternParser(tester);
         testRhythmLanguage(tester);
@@ -63,7 +60,7 @@ class TestSuite2 {
 
 		// Test ChordLine - now using explicit RhythmGenerator
 		var chordRhythm = new SimpleRhythmGenerator(5, 8, FullChord, 1, 0);
-		var chord_line = LineGenerator.create(ti, seq, chordRhythm, 0.8).generateNotes(0, 0, 64);
+		var chord_line = LineGenerator.create(ti, seq, chordRhythm, new MidiInstrumentContext(0, 64, 0.8, 0)).generateNotes(0);
 		tester.testit("ChordLine first five chords",
 			chord_line.slice(0, 20),
 			[
@@ -98,9 +95,8 @@ class TestSuite2 {
 
 		// Test BassLine - now using explicit RhythmGenerator
 		var bassRhythm = new SimpleRhythmGenerator(1, 1, SpecificNote(1), 16, 0);
-		var bass_line = LineGenerator.create(ti, seq, bassRhythm, 0.8)
-			.transpose(-12)  // Explicitly transpose down one octave
-			.generateNotes(0, 1, 100);
+		var bass_line = LineGenerator.create(ti, seq, bassRhythm, new MidiInstrumentContext(1, 100, 0.8, -12))
+			.generateNotes(0);
 		tester.testit("BassLine first twenty notes",
 			bass_line.slice(0, 20),
 			[
@@ -130,9 +126,8 @@ class TestSuite2 {
 
 		// Test TopLine - now using explicit RhythmGenerator
 		var topRhythm = new SimpleRhythmGenerator(3, 8, TopNote, 2, 0);
-		var top_line = LineGenerator.create(ti, seq, topRhythm, 0.6)
-			.transpose(12)   // Explicitly transpose up one octave
-			.generateNotes(0, 2, 100);
+		var top_line = LineGenerator.create(ti, seq, topRhythm, new MidiInstrumentContext(2, 100, 0.6, 12))
+			.generateNotes(0);
 		tester.testit("TopLine first twenty notes",
 			top_line.slice(0, 20),
 			[
@@ -162,7 +157,8 @@ class TestSuite2 {
 
 		// Test ArpLine - now using explicit RhythmGenerator
 		var arpRhythm = new SimpleRhythmGenerator(6, 12, Ascending, 2, 0);
-		var arp_line = LineGenerator.create(ti, seq, arpRhythm, 0.5).generateNotes(0, 3, 100);
+		var arp_line = LineGenerator.create(ti, seq, arpRhythm, new MidiInstrumentContext(3, 100, 0.5, 0))
+			.generateNotes(0);
 		tester.testit("ArpLine first twenty notes",
 			arp_line.slice(0, 20),
 			[
@@ -192,12 +188,13 @@ class TestSuite2 {
 
 		// Test RandomLine - now using explicit RhythmGenerator
 		var randomRhythm = new BjorklundRhythmGenerator(5, 8, Random, 4, 0);
-		var rand_line = LineGenerator.create(ti, seq, randomRhythm, 0.5).generateNotes(0, 4, 100);
+		var rand_line = LineGenerator.create(ti, seq, randomRhythm, new MidiInstrumentContext(4, 100, 0.5, 0))
+			.generateNotes(0);
 
 		// Test timing pattern (5 hits every 8 steps)
 		var timings = new Array<Float>();
 		for (i in 0...20) {
-			timings.push(rand_line[i].startTime);
+			timings.push(rand_line[i].getStartTime());
 		}
 
 		tester.testit("RandomLine timing pattern",
@@ -209,34 +206,26 @@ class TestSuite2 {
 		// Test note properties
 		for (note in rand_line.slice(0, 20)) {
 			// All notes should be from current chord
-			var chordIndex = Math.floor(note.startTime / (ti.chordTicks));
+			var chordIndex = Math.floor(note.getStartTime() / (ti.chordTicks));
 			var currentChord = seq.toNotes()[chordIndex];
 			tester.testit("RandomLine note in chord",
-				currentChord.contains(note.note),
+				currentChord.contains(note.getMidiNoteValue()),
 				true,
-				'Note ${note.note} should be in chord at time ${note.startTime}'
+				'Note ${note.getMidiNoteValue()} should be in chord at time ${note.getStartTime()}'
 			);
 
 			// Note length should be consistent
 			tester.testit("RandomLine note length",
-				note.length,
+				note.getLength(),
 				120.0,  // 0.5 * step size for density4
 				"Note length should be consistent"
-			);
-
-			// Channel and velocity should be consistent
-			tester.testit("RandomLine note properties",
-				[note.chan, note.velocity],
-				[4, 100],
-				"Channel and velocity should be consistent"
 			);
 		}
 
 		// Test ChordLine with transposition - now using explicit RhythmGenerator
 		var transposedRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-		var transposed_line = LineGenerator.create(ti, seq, transposedRhythm, 0.8);
-		transposed_line.transpose(12);  // Transpose up one octave
-		var transposed_notes = transposed_line.generateNotes(0, 0, 64);
+		var transposed_line = LineGenerator.create(ti, seq, transposedRhythm, new MidiInstrumentContext(0, 64, 0.8, 12));  // Transpose up one octave
+		var transposed_notes = transposed_line.generateNotes(0);
 		tester.testit("ChordLine transposition",
 			transposed_notes.slice(0, 4),
 			[
@@ -254,8 +243,8 @@ class TestSuite2 {
         [SpecificNote(1), Rest, Ascending, Rest, Ascending, Rest, Repeat, Descending],
         "Should parse mixed pattern"
         );
-        var line = LineGenerator.create(ti, seq, mixed, 0.8);
-        var notes = line.generateNotes(0, 0, 64);
+        var line = LineGenerator.create(ti, seq, mixed, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes = line.generateNotes(0);
         tester.testit("Mixed Line first 5 notes",
         notes.slice(0, 5),
         [
@@ -328,80 +317,8 @@ class TestSuite2 {
                "2 in 8 pattern should have 2 hits");
     }
 
-    static function testDeltaEvents(tester:UnitTester) {
-        var startCount = tester.getTestCount();
-        
-        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
-        var seq = new ChordProgression(60, MAJOR, "1,4,5");
-        
-        var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-        var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord, 1, 0);
-        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8);
-        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8);
-        var deltas1 = chordLine1.asDeltaEvents();
-        var deltas2 = chordLine2.asDeltaEvents();
-
-        tester.testit("k=1 first chord timing",
-            deltas1.slice(0, 6).map(d -> d.deltaFromLast),
-            [0.0, 0.0, 0.0, 76.8, 0.0, 0.0],
-            "k=1 first chord should have correct note timings"
-        );
-
-        tester.testit("k=2 first chord timing",
-            deltas2.slice(0, 6).map(d -> d.deltaFromLast),
-            [0.0, 0.0, 0.0, 76.8, 0.0, 0.0],
-            "k=2 first chord should have correct note timings"
-        );
-
-        tester.testit("k=1 vs k=2 chord spacing",
-            [deltas1[6].deltaFromLast, deltas2[6].deltaFromLast],
-            [307.2, 115.2],
-            "k=1 and k=2 should have different spacing between events"
-        );
-    }
-
-    static function testTimeEventGeneration(tester:UnitTester) {
-        trace("\n=== Testing Time Event Generation ===");
-        
-        // Create a simple set of notes
-        var notes = [
-            new Note(0, 60, 100, 0.0, 76.8),    // C, starts at 0
-            new Note(0, 64, 100, 0.0, 76.8),    // E, starts at 0
-            new Note(0, 67, 100, 0.0, 76.8)     // G, starts at 0
-        ];
-        
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-        var line = LineGenerator.create(new TimeManipulator(), new ChordProgression(60, Mode.getMajorMode(), "1"), chordRhythm, 0.8);
-        var timeEvents = line.notesToTimeEvents(notes);
-        
-        // Test event generation
-        tester.testit("Time event count", 
-            timeEvents.length, 
-            6,  // 3 note-ons + 3 note-offs
-            "Should generate ON and OFF events for each note"
-        );
-        
-        // Test event times
-        tester.testit("Note-on times",
-            timeEvents.filter(te -> te.event.type == NOTE_ON).map(te -> te.time),
-            [0.0, 0.0, 0.0],
-            "All notes should start at time 0"
-        );
-        
-        tester.testit("Note-off times",
-            timeEvents.filter(te -> te.event.type == NOTE_OFF).map(te -> te.time),
-            [76.8, 76.8, 76.8],
-            "All notes should end at time 76.8"
-        );
-        
-        // Test sorting
-        var sorted = line.sortTimeEvents(timeEvents);
-        tester.testit("Sorted event order",
-            sorted.map(te -> te.event.type),
-            [NOTE_ON, NOTE_ON, NOTE_ON, NOTE_OFF, NOTE_OFF, NOTE_OFF],
-            "Should group ONs and OFFs together"
-        );
-    }
+    
+ 
 
     static function testChordTimings(tester:UnitTester) {
         trace("\n=== Testing Chord Timings ===");
@@ -413,55 +330,42 @@ class TestSuite2 {
         // Test k=1 case
         trace("\nTesting k=1:");
         var chordRhythm1 = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, 0.8);
-        var notes1 = chordLine1.generateNotes(0, 0, 100);  // channel 0, velocity 100
-        var deltas1 = chordLine1.asDeltaEvents();
-
+        var chordLine1 = LineGenerator.create(ti, seq, chordRhythm1, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes1 = chordLine1.generateNotes(0);
         
         // Test k=2 case
         trace("\nTesting k=2:");
         var chordRhythm2 = new SimpleRhythmGenerator(2, 4, FullChord, 1, 0);
-        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, 0.8);
-        var notes2 = chordLine2.generateNotes(0, 0, 100);  // channel 0, velocity 100
+        var chordLine2 = LineGenerator.create(ti, seq, chordRhythm2, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes2 = chordLine2.generateNotes(0);
         
-        
-        // Get delta events for k=2
-        var deltas2 = chordLine2.asDeltaEvents();
-        
-        // Test delta expectations for k=1
-        tester.testit("k=1 first two chords deltas",
-            deltas1.slice(0, 15).map(d -> Math.round(d.deltaFromLast * 10) / 10),
-            [
-                // First chord
-                0.0, 0.0, 0.0,           // Note-ons together
-                76.8, 0.0, 0.0,          // Note-offs together
-                // Second chord
-                307.2,                    // Delta to next chord start
-                0.0, 0.0,                // Other note-ons in chord
-                76.8, 0.0, 0.0,          // Note-offs together
-                // Start of third chord
-                307.2,                    // Delta to next chord
-                0.0, 0.0                 // Other note-ons in chord
-            ],
+        // Test note timing expectations for k=1
+        tester.testit("k=1 first two chords timing",
+            notes1.slice(0, 6).map(note -> note.getStartTime()),
+            [0, 0, 0, 384, 384, 384],
             "First two chords should have correct timing"
         );
         
-        // Also test k=2 deltas
-        tester.testit("k=2 first two chords deltas",
-            deltas2.slice(0, 15).map(d -> Math.round(d.deltaFromLast * 10) / 10),
-            [
-                // First chord
-                0.0, 0.0, 0.0,           // Note-ons together
-                76.8, 0.0, 0.0,          // Note-offs together
-                // Second chord (should be closer due to k=2)
-                115.2,                    // Delta to next chord start
-                0.0, 0.0,                // Other note-ons in chord
-                76.8, 0.0, 0.0,          // Note-offs together
-                // Start of third chord
-                115.2,                    // Delta to next chord
-                0.0, 0.0                 // Other note-ons in chord
-            ],
+        // Test note timing expectations for k=2
+        tester.testit("k=2 first two chords timing",
+            notes2.slice(0, 6).map(note -> note.getStartTime()),
+            [0, 0, 0, 192, 192, 192],
             "k=2 should have shorter gaps between chords"
+        );
+        
+        // Test note lengths
+        var gateLength = 0.8;  // Store gate length for clarity
+        var stepSize = 96;  // 384 ticks / 4 steps = 96 ticks per step
+        tester.testit("k=1 note lengths",
+            notes1.slice(0, 3).map(note -> note.getLength()),
+            [stepSize * gateLength, stepSize * gateLength, stepSize * gateLength],
+            "k=1 notes should have correct length (adjusted by gate length)"
+        );
+        
+        tester.testit("k=2 note lengths",
+            notes2.slice(0, 3).map(note -> note.getLength()),
+            [stepSize * gateLength, stepSize * gateLength, stepSize * gateLength],
+            "k=2 notes should have correct length (adjusted by gate length)"
         );
         
         trace('Chord Timings: ${tester.getTestCount() - startCount} tests run\n');
@@ -505,100 +409,63 @@ class TestSuite2 {
         );
     }
 
-    static function testTimeEventsForK1(tester:UnitTester) {
-        var ti = new TimeManipulator().setPPQ(96).setChordDuration(4);
-        var seq = new ChordProgression(60, MAJOR, "1,4");
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-        var chordLine = LineGenerator.create(ti, seq, chordRhythm, 0.8);
-        
-        var notes = chordLine.generateNotes(0, 0, 100);
-        
-        var timeEvents = chordLine.notesToTimeEvents(notes);
-        timeEvents = chordLine.sortTimeEvents(timeEvents);
-        
-        // Test first chord's events (should be 6 events - 3 note-ons and 3 note-offs)
-        tester.testit("k=1 first chord time events",
-            timeEvents.slice(0, 6).map(te -> { 
-                time: tester.floatEqual(te.time, 0.0) ? 0.0 : tester.floatEqual(te.time, 76.8) ? 76.8 : te.time, 
-                type: te.event.type 
-            }),
-            [
-                { time: 0.0, type: NOTE_ON },
-                { time: 0.0, type: NOTE_ON },
-                { time: 0.0, type: NOTE_ON },
-                { time: 76.8, type: NOTE_OFF },
-                { time: 76.8, type: NOTE_OFF },
-                { time: 76.8, type: NOTE_OFF }
-            ],
-            "First chord should have notes starting at 0 and ending at 76.8"
-        );
-        
-        // Test second chord's events - update expected times to match actual chord duration
-        tester.testit("k=1 second chord time events",
-            timeEvents.slice(6, 12).map(te -> { 
-                time: tester.floatEqual(te.time, 384.0) ? 384.0 : tester.floatEqual(te.time, 460.8) ? 460.8 : te.time, 
-                type: te.event.type 
-            }),
-            [
-                { time: 384.0, type: NOTE_ON },  // Start at next chord (384 ticks)
-                { time: 384.0, type: NOTE_ON },
-                { time: 384.0, type: NOTE_ON },
-                { time: 460.8, type: NOTE_OFF }, // End 76.8 ticks later
-                { time: 460.8, type: NOTE_OFF },
-                { time: 460.8, type: NOTE_OFF }
-            ],
-            "Second chord should start at next chord boundary (384 ticks)"
-        );
-    }
-
     static function testNotesInSeconds(tester:UnitTester) {
-        trace("Starting testNotesInSeconds...");
+        trace("\n=== Testing Notes in Seconds Conversion ===");
+        var startCount = tester.getTestCount();
         
-        var tm = new TimeManipulator();
-        tm.setPPQ(96).setChordDuration(4).setBPM(120);
+        // Set up with specific BPM and PPQ for predictable conversion
+        var ti = new TimeManipulator();
+        ti.setPPQ(960).setBPM(120);  // 960 PPQ, 120 BPM = 8 PPQN (pulses per quarter note)
+        var seq = new ChordProgression(60, MAJOR, "1,4,5");  // Simple 3-chord progression
+        var rhythm = new SimpleRhythmGenerator(1, 1, FullChord, 1, 0);
+        var gateLength = 0.8;  // Store gate length for calculations
+        var line = LineGenerator.create(ti, seq, rhythm, new MidiInstrumentContext(0, 64, gateLength, 0));
         
-        var prog = new ChordProgression(60, Mode.getMajorMode(), "1,4,5");
-        var chordRhythm = new SimpleRhythmGenerator(1, 4, FullChord, 1, 0);
-        var line = LineGenerator.create(tm, prog, chordRhythm, 0.8);
+        // Generate notes in ticks
+        var tickNotes = line.generateNotes(0);
         
-        var tickNotes = line.generateNotes(0, 0, 100);
-        var secondNotes = line.notesInSeconds(0, 0, 100);
+        // Convert to seconds
+        var secondNotes = line.notesInSeconds(0);
         
-        trace('Generated ${tickNotes.length} notes');
+        // Test that we have the same number of notes
+        tester.testit("Note count matches", 
+            tickNotes.length, 
+            secondNotes.length, 
+            "Should generate same number of notes"
+        );
         
-        // Test length match
-        tester.testit("Notes count", tickNotes.length, secondNotes.length, "Should have same number of notes");
+        // Calculate conversion factor: seconds per tick
+        // At 120 BPM, one quarter note = 0.5 seconds
+        // With 960 PPQ, one tick = 0.5/960 = 0.000520833... seconds
+        var secondsPerTick = 60.0 / (ti.getBPM() * ti.getPPQ());
         
-        // At 120 BPM, one tick = 60/(120*96) seconds
-        var secondsPerTick = 60.0 / (120.0 * 96.0);
-        
+        // Test each note's properties
         for (i in 0...tickNotes.length) {
-            var tickNote = tickNotes[i];
-            var secondNote = secondNotes[i];
-            
-            // Test each property individually
-            tester.testit('Note ${i} pitch', tickNote.note, secondNote.note, "Note pitch should match");
-            tester.testit('Note ${i} channel', tickNote.chan, secondNote.chan, "Channel should match");
-            tester.testit('Note ${i} velocity', tickNote.velocity, secondNote.velocity, "Velocity should match");
-            
-            // Test time values with explicit float comparison
-            var expectedStartTime = tickNote.startTime * secondsPerTick;
-            var expectedLength = tickNote.length * secondsPerTick;
-            
-            tester.testit('Note ${i} start time', 
-                tester.floatEqual(expectedStartTime, secondNote.startTime), 
-                true,
-                'Start time should be ${expectedStartTime}'
+            // MIDI note values should be identical
+            tester.testit('Note ${i} pitch', 
+                tickNotes[i].getMidiNoteValue(), 
+                secondNotes[i].getMidiNoteValue(), 
+                "MIDI note value should match"
             );
             
-            tester.testit('Note ${i} length', 
-                tester.floatEqual(expectedLength, secondNote.length), 
-                true,
-                'Length should be ${expectedLength}'
+            // Start time should be converted from ticks to seconds
+            var expectedStartTime = tickNotes[i].getStartTime() * secondsPerTick;
+            tester.testit('Note ${i} start time in seconds', 
+                secondNotes[i].getStartTime(), 
+                expectedStartTime, 
+                "Start time should be correctly converted to seconds"
+            );
+            
+            // Length should be converted from ticks to seconds and adjusted by gate length
+            var expectedLength = tickNotes[i].getLength() * secondsPerTick * gateLength;
+            tester.testit('Note ${i} length in seconds', 
+                secondNotes[i].getLength(), 
+                expectedLength, 
+                "Length should be correctly converted to seconds"
             );
         }
         
-        trace("testNotesInSeconds completed.");
+        trace('Notes in Seconds: ${tester.getTestCount() - startCount} tests run\n');
     }
 
     static function testRhythmPatternParser(tester:UnitTester) {
@@ -815,8 +682,8 @@ class TestSuite2 {
         
         // Test creating LineGenerator with SimpleRhythmGenerator
         var simpleRhythm = new SimpleRhythmGenerator(3, 8, FullChord, 1, 0);
-        var line1 = LineGenerator.create(ti, seq, simpleRhythm, 0.8);
-        var notes1 = line1.generateNotes(0, 0, 100);
+        var line1 = LineGenerator.create(ti, seq, simpleRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes1 = line1.generateNotes(0);
         
         tester.testit("LineGenerator with SimpleRhythmGenerator",
             notes1.length > 0,
@@ -826,8 +693,8 @@ class TestSuite2 {
         
         // Test creating LineGenerator with BjorklundRhythmGenerator
         var bjorklundRhythm = new BjorklundRhythmGenerator(3, 8, FullChord, 1, 0);
-        var line2 = LineGenerator.create(ti, seq, bjorklundRhythm, 0.8);
-        var notes2 = line2.generateNotes(0, 0, 100);
+        var line2 = LineGenerator.create(ti, seq, bjorklundRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes2 = line2.generateNotes(0);
         
         tester.testit("LineGenerator with BjorklundRhythmGenerator",
             notes2.length > 0,
@@ -837,8 +704,8 @@ class TestSuite2 {
         
         // Test creating LineGenerator with ExplicitRhythmGenerator
         var explicitRhythm = new ExplicitRhythmGenerator([FullChord, Rest, FullChord, Rest, FullChord], 1);
-        var line3 = LineGenerator.create(ti, seq, explicitRhythm, 0.8);
-        var notes3 = line3.generateNotes(0, 0, 100);
+        var line3 = LineGenerator.create(ti, seq, explicitRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var notes3 = line3.generateNotes(0);
         
         tester.testit("LineGenerator with ExplicitRhythmGenerator",
             notes3.length > 0,
@@ -855,7 +722,7 @@ class TestSuite2 {
         
         for (i in 0...patterns.length) {
             var pattern = patterns[i];
-            var line = LineGenerator.createFromPattern(ti, seq, pattern, 0.8);
+            var line = LineGenerator.createFromPattern(ti, seq, pattern, new MidiInstrumentContext(0, 64, 0.8, 0));
             tester.testit('LineGenerator from pattern "${pattern}"',
                 line != null,
                 true,
@@ -866,7 +733,7 @@ class TestSuite2 {
         // Test with invalid pattern
         var exceptionThrown = false;
         try {
-            var invalidLine = LineGenerator.createFromPattern(ti, seq, "invalid pattern", 0.8);
+            var invalidLine = LineGenerator.createFromPattern(ti, seq, "invalid pattern", new MidiInstrumentContext(0, 64, 0.8, 0));
             // If we get here, no exception was thrown
         } catch (e:String) {
             exceptionThrown = true;
@@ -894,11 +761,11 @@ class TestSuite2 {
         
         // Test RandomFromScale selector
         var randomScaleRhythm = new SimpleRhythmGenerator(1, 4, RandomFromScale, 1, 0);
-        var randomScaleLine = LineGenerator.create(ti, seq, randomScaleRhythm, 0.8);
-        var randomScaleNotes = randomScaleLine.generateNotes(0, 0, 100);
+        var randomScaleLine = LineGenerator.create(ti, seq, randomScaleRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var randomScaleNotes = randomScaleLine.generateNotes(0);
         
         tester.testit("RandomFromScale selector note in scale",
-            randomScaleNotes[0].note >= 60 && randomScaleNotes[0].note <= 71,
+            randomScaleNotes[0].getMidiNoteValue() >= 60 && randomScaleNotes[0].getMidiNoteValue() <= 71,
             true,
             "Random scale note should be within C major scale"
         );
@@ -906,12 +773,12 @@ class TestSuite2 {
 
     static function runScoreUtils() {   
         var ti = new TimeManipulator().setPPQ(960);
-		var seq = new ChordProgression(60, MAJOR, "72,75,71");
-		trace(seq);
-		var density = MenuHelper.rhythmicDensityToNumeric(FOUR);  // 1/4 - divide each chord into 4 steps
-		var chordRhythm = new SimpleRhythmGenerator(1, 1, FullChord, 1, 0);
-		var svg = ScoreUtilities.makePianoRollSVG(LineGenerator.create(ti, seq, chordRhythm, 0.8).generateNotes(0,0,64),800,600);		 
-		trace(svg);
+        var seq = new ChordProgression(60, MAJOR, "72,75,71");
+        trace(seq);
+        var density = MenuHelper.rhythmicDensityToNumeric(FOUR);  // 1/4 - divide each chord into 4 steps
+        var chordRhythm = new SimpleRhythmGenerator(1, 1, FullChord, 1, 0);
+        var svg = ScoreUtilities.makePianoRollSVG(LineGenerator.create(ti, seq, chordRhythm, new MidiInstrumentContext(0, 64, 0.8, 0)).generateNotes(0), 800, 600);         
+        trace(svg);
     }
     
     
