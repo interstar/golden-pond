@@ -13,57 +13,103 @@ Then make a local test file. For example
 -->
 
 ```python
-from goldenpond import Mode, ChordProgression, TimeManipulator, ChordLine, ArpLine, BassLine
+from goldenpond import GoldenData, Mode, TimeManipulator, MidiInstrumentContext
 
-seq = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
-MINOR = Mode.getMinorMode()
-prog = ChordProgression(48, MINOR, seq)
+# Create a GoldenData instance
+data = GoldenData()
+data.root = 48  # C3
+data.mode = 1  # Minor mode (0=major, 1=minor, 2=harmonic minor, 3=melodic minor)
+data.chordSequence = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
+data.stutter = 0  # No stuttering
+data.bpm = 120
+data.chordDuration = 4
 
-# TimeManipulator with PPQ, chord duration and BPM
-tm = TimeManipulator().setPPQ(96).setChordDuration(4).setBPM(120)
+# Add lines with different patterns and instrument contexts
+data.addLine("5/8 c 1", MidiInstrumentContext(0, 64, 0.8, 0))  # Chords on channel 0
+data.addLine("7/12 > 2", MidiInstrumentContext(1, 80, 0.5, 12))  # Arpeggio on channel 1
+data.addLine("4/8 1 4", MidiInstrumentContext(2, 90, 0.8, -12))  # Bass on channel 2
 
-# Create lines with k, n, gateLength and rhythmicDensity parameters
-chord_line = ChordLine(tm, prog, 1, 4, 0.8, 1.0)  # k=1, n=4, 80% gate length, density=1.0
-arp_line = ArpLine(tm, prog, 7, 12, 0.5, 0.5)    # k=7, n=12, 50% gate length, density=0.5
-bass_line = BassLine(tm, prog, 1, 4, 0.8, 0.25)   # k=1, n=4, 80% gate length, density=0.25
+# Create TimeManipulator and line generators
+tm = TimeManipulator().setPPQ(96).setChordDuration(data.chordDuration).setBPM(data.bpm)
+generators = data.createLineGenerators(tm)
 
 # Generate notes from each line
-chords = chord_line.generateNotes(0, 0, 100)  # channel 0, velocity 100
-arp = arp_line.generateNotes(0, 1, 100)      # channel 1, velocity 100
-bass = bass_line.generateNotes(0, 2, 100)    # channel 2, velocity 100
+chords = generators[0].generateNotes(0)  # First line (chords)
+arp = generators[1].generateNotes(0)     # Second line (arpeggio)
+bass = generators[2].generateNotes(0)    # Third line (bass)
 
-print([x.toString() for x in chords])
-print([x.toString() for x in arp])
+# Print chord notes with formatted floats
+print("First 20 Chord notes:")
+for note in chords[:20]:
+    print(f"Note[midi: {note.getMidiNoteValue()}, startTime: {note.getStartTime():.1f}, length: {note.getLength():.1f}]")
+
+# Print first arp note details with formatted floats
 first_note = arp[0]
-print("First Note")
-print("Getting individual fields : %s, %s, %s"%(first_note.note, first_note.start_time, first_note.length))
-print(arp[0].toString())
+print("\nFirst Note from Arpeggio")
+print(f"Getting individual fields: midi={first_note.getMidiNoteValue()}, "
+      f"startTime={first_note.getStartTime():.1f}, length={first_note.getLength():.1f}")
+
+# Print a summary of the data
+print("\nGoldenData Summary:")
+print(data.toString())
+
 ```
 
-GoldenPond is a little language for defining chord-progressions, following the rules of functional harmony, in a convenient, programmer-friendly way.
+GoldenPond is a library for creating musical patterns using a simple text-based language. It helps you define chord progressions and rhythmic patterns (like arpeggios and basslines) that follow music theory rules.
 
-See https://gilbertlisterresearch.com/GoldenPond.html for more details.
+### Understanding the Example Code
 
-In this example, we define a chord-progression using the GoldenPond language, and assign it to variable `seq`.
+Let's break down what the example code does:
 
-The ChordProgression class knows how to parse the string which expresses the chord progression in the GoldenPond language. It must also be given a root note (in this example, MIDI note 48) and a mode (Major or Minor. We get these from the Mode class).
+1. **Setting Up the Musical Data**
+   ```python
+   data = GoldenData()
+   data.root = 48  # C3
+   data.mode = 1   # Minor mode
+   data.chordSequence = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
+   data.bpm = 120
+   data.chordDuration = 4
+   ```
+   This creates a musical piece in C minor at 120 BPM, with each chord lasting 4 beats.
 
-However, while a ChordProgression has successfully turned our sequence into a collection of pitch values, we don't (yet) have these notes organized into a score of events across time. This is where the Line classes come in.
+2. **Defining Musical Lines**
+   ```python
+   data.addLine("5/8 c 1", MidiInstrumentContext(0, 64, 0.8, 0))  # Chords
+   data.addLine("7/12 > 2", MidiInstrumentContext(1, 80, 0.5, 12))  # Arpeggio
+   data.addLine("4/8 1 4", MidiInstrumentContext(2, 90, 0.8, -12))  # Bass
+   ```
+   Each line defines a different musical part:
+   - First line: Full chords playing 5 notes in 8 steps
+   - Second line: Ascending arpeggios playing 7 notes in 12 steps
+   - Third line: Bass notes playing 4 notes in 8 steps
 
-Each Line class (ChordLine, ArpLine, BassLine, etc.) takes a TimeManipulator and ChordProgression and generates notes in different ways:
+3. **Generating Notes**
+   ```python
+   tm = TimeManipulator().setPPQ(96).setChordDuration(data.chordDuration).setBPM(data.bpm)
+   generators = data.createLineGenerators(tm)
+   chords = generators[0].generateNotes(0)
+   ```
+   This creates the actual musical notes with proper timing.
 
-- ChordLine: plays all notes in each chord simultaneously
-- ArpLine: plays chord notes as arpeggios using Euclidean rhythms
-- BassLine: plays just the root notes using Euclidean rhythms
-- TopLine: plays just the highest notes using Euclidean rhythms
-- RandomLine: randomly selects notes from each chord
+4. **Accessing Note Data**
+   ```python
+   print(f"Note[midi: {note.getMidiNoteValue()}, startTime: {note.getStartTime():.1f}, length: {note.getLength():.1f}]")
+   ```
+   Each note contains:
+   - `midi`: The MIDI note number (pitch)
+   - `startTime`: When the note starts (in beats)
+   - `length`: How long the note lasts (in beats)
 
-The Euclidean rhythm functions use a "[Euclidean Rhythm](https://en.wikipedia.org/wiki/Euclidean_rhythm)" algorithm to spread the notes in time. The values k and n passed as arguments control the rhythm pattern. For example, ArpLine(tm, prog, 7, 12, 0.5) will create an arpeggio with 7 pulses spread evenly across 12 steps, with notes 50% of their maximum length.
+### What You Can Do With This
 
-In this example, you can see we don't do anything with this data except print it out. GoldenPond doesn't play or render the audio. It's purely about parsing this programmer-oriented representation of chord-progressions into a simple data structure. See https://github.com/interstar/golden-pond/blob/main/current/haxe/for-distribution/examples/midi_example.py for an example of using it to make a MIDI file.
+GoldenPond doesn't play music directly - it creates a data structure that you can use to:
+- Generate MIDI files (see the `midi_example.py` in the repository)
+- Create music in your own application
+- Analyze musical patterns
+- Experiment with different chord progressions and rhythms
 
-### The Obscure Genesis of this Code
+For more details about the chord and rhythm languages, visit the [GoldenPond website](https://gilbertlisterresearch.com/goldenpond.html).
 
-The GoldenPond library is NOT written in Python. It's written in Haxe (https://haxe.org/), a programming language designed to be transpiled to a number of other languages including Python.
+### Technical Note
 
-The [git-repository](https://github.com/interstar/golden-pond) contains this Haxe code and various scripts used in transpiling and building it into a number of forms. This Python library is just one of them. 
+The GoldenPond library is written in Haxe and transpiled to Python. The [source repository](https://github.com/interstar/golden-pond) contains the original Haxe code and build scripts. 

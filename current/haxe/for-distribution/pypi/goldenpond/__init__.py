@@ -11,5 +11,6 @@ from .goldenpond import (
     GoldenData,
     IRhythmGenerator,
     SelectorType,
-    ScoreUtilities
+    ScoreUtilities,
+    MidiInstrumentContext
 )
