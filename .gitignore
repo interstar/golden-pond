@@ -1,0 +1,10 @@
+attic
+current/haxe/out/*
+*.*~
+.venv
+for-distribution/fl/generated.py
+for-distribution/fl/goldenpond.pyscript
+*mid
+for-distribution/pypi/dist/*
+for-distribution/web-app/goldenpond.js
+
