@@ -34,9 +34,9 @@ The status of the Haxe->Python code is that :
 
 The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
-- it doesn't pass all the tests, but this is to do with quirks of Javascript equality tests.
-- it runs successfully in the browser as part of a demonstration web-editor / web-app. (See haxe/for-distribution/web-app/, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html)
-- you can try this web version [here](https://gilbertlisterresearch.com/identity_assets/webapp/index.html) Not that it's still very much work in progress.
+- it runs in the browser, and there's an online version you can play with in the browser at [https://gilbertlisterresearch.com/assets/goldenpond/index.html](https://gilbertlisterresearch.com/assets/goldenpond/index.html) It's still work in progress. 
+- it doesn't pass all the unit tests, but this seems to be to do with quirks of Javascript equality testing.
+- you can see haxe/for-distribution/web-app/ for where we develop the web-app, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
@@ -62,73 +62,120 @@ The Python code for FL Studio was the first time I wrote this in Python. And the
 
 ### Example
 
-Here's a brief example of making a multi-track MIDI file from a chord progression
+Here's a brief example of making a multi-track MIDI file from a chord progression. Note you'll need the Python [pretty_midi](https://craffel.github.io/pretty-midi/) library. See [the tutorial](https://gilbertlisterresearch.com/goldenpond.html) for details of both the chord language for defining the progression (or sequence), and the rhythm language that use used for each of the lines here.
 
 ```
-from goldenpond import Mode, ChordProgression, TimeManipulator
+import sys
+import os
+from goldenpond import (
+    Mode, ChordProgression, TimeManipulator, LineGenerator,
+    RhythmLanguage, MenuHelper, RhythmicDensity,
+    GoldenData, MidiInstrumentContext
+)
 
+# Create a GoldenData instance
+data = GoldenData() # This is where we store all the information to generate a track
+data.root = 48  # C3
+data.mode = 0   # Major
+data.chordSequence = "71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,"*2
+data.stutter = 0
+data.bpm = 120
+data.chordDuration = 4
 
-# Define a chord progression.
-# The first two parameters are the key signature (we're in the key of C Major (midi note 48, MAJOR mode)
-# The last is a string containing a number for each note.
-# Numbers 1-7 mean the chord on that degree of our current scale. Ie 1 is the tonic, 5 the dominant etc.
-# By default the chords are simple triads. Adding a 7 on the front makes them sevenths. A 9 makes them
-# ninths. Eg. 93 is the 9th on the 3rd degree of the scale.
+# Add lines with their instrument contexts
+# The first string is the rhythm language that defines the pattern by which notes are pulled out of the chords and the rhythms they are played in. The InstrumentContext
+# has the information specific to the instrument we use.
+# In a midi context, that instrument needs a midi channel, a velocity, a "gate length" (ie. time between noteOn and noteOff events, and a transposition. 
+data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # a 1 note in 4 steps pattern, repeated once over the chord duration
+data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 8 notes in 12 steps, ascending arpeggio (simplified Euclidean algorithm)
+data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # explicit pattern of top notes from the chords and upward and downward arpeggios
+data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes from the chords in 3 in 8 (tresillo) Euclidean rhythm
 
+# Create line generators
+generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
 
-seq = ChordProgression(48,MAJOR,
-         '71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3)
-
-# The TimeManipulator can take the list of chords as notes and spreads these notes in time
-ti = TimeManipulator()
-ti.setNoteLen(1.2).setChordLen(16).setPPQ(0.7)
-
-# If we ask it for chords, we get all the notes of each chord at the same time. 
-chords = ti.chords(seq, 0, 0)
-
-# We can also ask it to arpeggiate the notes according to a 'Euclidean' rule for spreading n hits
-# across k potential positions within the measure.
-# In this example, we are spreading 7 hits across 12 positions
-
-arps = ti.arpeggiate(seq, 7, 12, 1, 0)
-
-# We now have two lines of Note objects. One representing chords, one the arpeggios,
-# we now use pretty_midi to put these into MIDI format and write them to a file.
+# Generate notes from each line
+chords = generators[0].generateNotes(0)
+arps = generators[1].generateNotes(0)
+bass = generators[2].generateNotes(0)
+flute = generators[3].generateNotes(0)
 
 import pretty_midi
 
 # Create a PrettyMIDI object
 midi_data = pretty_midi.PrettyMIDI()
 
-# Create an instrument instance
+# Create instrument instances
 piano_program = pretty_midi.instrument_name_to_program('Acoustic Grand Piano')
 piano = pretty_midi.Instrument(program=10)
 piano2 = pretty_midi.Instrument(program=5)
-
 pad = pretty_midi.Instrument(program=89)
 pad2 = pretty_midi.Instrument(program=54)
+bass_program = pretty_midi.Instrument(program=32)
+flute_program = pretty_midi.Instrument(program=76)
 
-for n in chords :
-	end = n.start_time+n.length
-	note = pretty_midi.Note(velocity=64, pitch=n.note, start=n.start_time, end=end)
-	pad.notes.append(note)
-	pad2.notes.append(note)
-	
-for n in arps :
-	end = n.start_time+n.length
-	note = pretty_midi.Note(velocity=64, pitch=n.note+24, start=n.start_time, end=end)
-	piano.notes.append(note)
-	note = pretty_midi.Note(velocity=64, pitch=n.note+12, start=n.start_time, end=end)	
-	piano2.notes.append(note)
-	
-	
-# Add the instrument to the PrettyMIDI object
+# Add notes to instruments
+for n in chords:
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
+    pad.notes.append(note)
+    pad2.notes.append(note)
+    
+for n in arps:
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
+    piano.notes.append(note)
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue() + 12),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
+    piano2.notes.append(note)
+
+for n in bass:
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
+    bass_program.notes.append(note)
+
+for n in flute:
+    note = pretty_midi.Note(
+        velocity=int(n.velocity),
+        pitch=int(n.getMidiNoteValue()),
+        start=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm),
+        end=n.getStartTime() / data.makeTimeManipulator().ppq * (60.0 / data.bpm) + 
+            n.getLength() / data.makeTimeManipulator().ppq * (60.0 / data.bpm)
+    )
+    flute_program.notes.append(note)
+
+# Add the instruments to the PrettyMIDI object
 midi_data.instruments.append(piano)
 midi_data.instruments.append(pad)
 midi_data.instruments.append(piano2)
 midi_data.instruments.append(pad2)
+midi_data.instruments.append(bass_program)
+midi_data.instruments.append(flute_program)
+
 # Save the MIDI file
 midi_data.write('./gp_example.mid')
+
+print("MIDI file saved as gp_example.mid")
 
 
 ```
