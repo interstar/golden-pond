@@ -36,7 +36,7 @@ The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
 - it doesn't pass all the tests, but this is to do with quirks of Javascript equality tests.
 - it runs successfully in the browser as part of a demonstration web-editor / web-app. (See haxe/for-distribution/web-app/, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html)
-- this web version will shortly be visible online
+- you can try this web version [here](https://gilbertlisterresearch.com/identity_assets/webapp/index.html) Not that it's still very much work in progress.
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
@@ -72,24 +72,28 @@ from goldenpond import Mode, ChordProgression, TimeManipulator
 # The first two parameters are the key signature (we're in the key of C Major (midi note 48, MAJOR mode)
 # The last is a string containing a number for each note.
 # Numbers 1-7 mean the chord on that degree of our current scale. Ie 1 is the tonic, 5 the dominant etc.
-# By default the chords are simple triads. Adding a 7 on the front makes them sevenths. A 9 makes them ninths. Eg. 93 is the 9th on the 3rd degree of the scale.
+# By default the chords are simple triads. Adding a 7 on the front makes them sevenths. A 9 makes them
+# ninths. Eg. 93 is the 9th on the 3rd degree of the scale.
 
 
-seq = ChordProgression(48,MAJOR,'71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3)
+seq = ChordProgression(48,MAJOR,
+         '71,74,-94,73,9(5/2),72,-75,91,!,71,74,-94,73,9(5/2),72,-75,-95,!,'*3)
 
 # The TimeManipulator can take the list of chords as notes and spreads these notes in time
-
-ti = TimeManipulator(4,1.2,16,0.7)
+ti = TimeManipulator()
+ti.setNoteLen(1.2).setChordLen(16).setPPQ(0.7)
 
 # If we ask it for chords, we get all the notes of each chord at the same time. 
 chords = ti.chords(seq, 0, 0)
 
-# We can also ask it to arpeggiate the notes according to a 'Euclidean' rule for spreading n hits across k potential positions within the measure.
+# We can also ask it to arpeggiate the notes according to a 'Euclidean' rule for spreading n hits
+# across k potential positions within the measure.
 # In this example, we are spreading 7 hits across 12 positions
 
 arps = ti.arpeggiate(seq, 7, 12, 1, 0)
 
-# We now have two lines of Note objects. One representing chords, one the arpeggios, we now use pretty_midi to put these into MIDI format and write them to a file.
+# We now have two lines of Note objects. One representing chords, one the arpeggios,
+# we now use pretty_midi to put these into MIDI format and write them to a file.
 
 import pretty_midi
 
