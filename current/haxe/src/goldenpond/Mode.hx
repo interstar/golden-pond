@@ -209,11 +209,14 @@ class Mode {
         return make_chord_from_pattern(root, n, [1, 3, 5, 7, 9]);
     }
 
-    public function equals(other:Mode):Bool {
-        if (other == null) return false;
-        if (intervals.length != other.intervals.length) return false;
+    public function valueEquals(other:Dynamic):Bool {
+        if (!Std.isOfType(other, Mode)) return false;
+        var otherMode:Mode = cast(other, Mode);
+        
+        if (otherMode == null) return false;
+        if (intervals.length != otherMode.intervals.length) return false;
         for (i in 0...intervals.length) {
-            if (intervals[i] != other.intervals[i]) return false;
+            if (intervals[i] != otherMode.intervals[i]) return false;
         }
         return true;
     }

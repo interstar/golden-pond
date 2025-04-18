@@ -76,12 +76,14 @@ class Note implements INote {
       return {chan: this.chan, note: this.note, velocity: this.velocity, startTime: this.startTime, length: this.length};
   }
     
-  public function equals(other:Note):Bool {
-    return this.chan == other.chan &&
-           this.note == other.note && 
-           this.velocity == other.velocity && 
-           this.startTime == other.startTime && 
-           this.length == other.length;
+  public function valueEquals(other:Dynamic):Bool {
+    if (!Std.isOfType(other, Note)) return false;
+    var otherNote:Note = cast(other, Note);
+    return this.chan == otherNote.chan &&
+           this.note == otherNote.note && 
+           this.velocity == otherNote.velocity && 
+           this.startTime == otherNote.startTime && 
+           this.length == otherNote.length;
   }
 
   @:expose

@@ -98,14 +98,19 @@ class UnitTester {
             var arrayB:Array<Dynamic> = cast b;
             if (arrayA.length != arrayB.length) return false;
             for (i in 0...arrayA.length) {
-                if (!deepEquals(arrayA[i], arrayB[i])) return false;
+                // For arrays of Note, ChordThing, or Mode objects, use valueEquals
+                if (Std.isOfType(arrayA[i], Note) || Std.isOfType(arrayA[i], ChordThing) || Std.isOfType(arrayA[i], Mode)) {
+                    if (!arrayA[i].valueEquals(arrayB[i])) return false;
+                } else if (!deepEquals(arrayA[i], arrayB[i])) {
+                    return false;
+                }
             }
             return true;
         }
 
-        // Objects with custom equals methods
+        // Objects with custom valueEquals methods
         if (Std.isOfType(a, Note) || Std.isOfType(a, ChordThing) || Std.isOfType(a, Mode)) {
-            return a.equals(b);
+            return a.valueEquals(b);
         }
 
         // Float comparison needs special handling
