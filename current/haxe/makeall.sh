@@ -1,5 +1,6 @@
 haxe py-lib.hxml
 haxe js-site.hxml
+./build-java-lib.sh
 
 cp out/python/goldenpond.py for-distribution/pypi/goldenpond/goldenpond.py
 cp out/python/goldenpond.py for-distribution/fl/generated.py
