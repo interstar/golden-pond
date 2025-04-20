@@ -42,7 +42,11 @@ The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
 - the longer term goal is to build it into a VST or other plugin so it can run in any DAW (But this is for next year)
 
-The status of the Haxe->Java code is that *there are issues*. Obviously it would be great to have in Java so I can write an Android app featuring the library. That's also a 2025 or 2026 goal.
+The status of the Haxe->Java code is that :
+- it now transpiles to Java and runs and passes all the unit tests
+- and bundles this into a JAR file
+- you can build and run an example Java program ( /haxe/for-distribution/java/Example.java ) that uses the library
+- Eventually there'll be an Android app featuring the library. That's also a 2025 or 2026 goal.
 
 
 ### History
@@ -65,6 +69,8 @@ The Python code for FL Studio was the first time I wrote this in Python. And the
 Here's a brief example of making a multi-track MIDI file from a chord progression. Note you'll need the Python [pretty_midi](https://craffel.github.io/pretty-midi/) library. See [the tutorial](https://gilbertlisterresearch.com/goldenpond.html) for details of both the chord language for defining the progression (or sequence), and the rhythm language that use used for each of the lines here.
 
 ```
+## You'll need pretty_midi, setuptools and goldenpond installed to run this
+
 import sys
 import os
 from goldenpond import (
@@ -74,7 +80,7 @@ from goldenpond import (
 )
 
 # Create a GoldenData instance
-data = GoldenData() # This is where we store all the information to generate a track
+data = GoldenData()
 data.root = 48  # C3
 data.mode = 0   # Major
 data.chordSequence = "71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,"*2
@@ -83,13 +89,10 @@ data.bpm = 120
 data.chordDuration = 4
 
 # Add lines with their instrument contexts
-# The first string is the rhythm language that defines the pattern by which notes are pulled out of the chords and the rhythms they are played in. The InstrumentContext
-# has the information specific to the instrument we use.
-# In a midi context, that instrument needs a midi channel, a velocity, a "gate length" (ie. time between noteOn and noteOff events, and a transposition. 
-data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # a 1 note in 4 steps pattern, repeated once over the chord duration
-data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 8 notes in 12 steps, ascending arpeggio (simplified Euclidean algorithm)
-data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # explicit pattern of top notes from the chords and upward and downward arpeggios
-data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes from the chords in 3 in 8 (tresillo) Euclidean rhythm
+data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # Play full chord on note in a 4 step pattern, 
+data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 8 notes in 12 steps, ascending arpeggio
+data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # two top notes, two descending notes and one ascendin
+data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes in a tresillo (3 in 8 Euclidean)
 
 # Create line generators
 generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
