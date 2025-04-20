@@ -18,10 +18,10 @@ data.bpm = 120
 data.chordDuration = 4
 
 # Add lines with their instrument contexts
-data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # One note per beat, full chord
-data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 7 notes in 12 steps, ascending
-data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # 2 notes in 12 steps, single note
-data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes
+data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # Play full chord on note in a 4 step pattern, 
+data.addLine("8/12 > 1", MidiInstrumentContext(1, 64, 0.5, 0))   # 8 notes in 12 steps, ascending arpeggio
+data.addLine("tt.<<.>. 1", MidiInstrumentContext(2, 64, 0.75, -12))  # two top notes, two descending notes and one ascendin
+data.addLine("3/8 r 1", MidiInstrumentContext(3, 64, 0.75, 12))  # Random notes in a tresillo (3 in 8 Euclidean)
 
 # Create line generators
 generators = [data.makeLineGenerator(i) for i in range(len(data.lines))]
