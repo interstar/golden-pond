@@ -115,5 +115,9 @@ def apply(form):
         try:
             flp.score.clearNotes(False)
             post_notes_to_score(all_notes)
+            
+            if data.hasChanged():
+                Utils.log("Project updated:\n%s" % data.toString())
+                
         except Exception as e:
             Utils.log(f"Error posting notes to score: {e}")

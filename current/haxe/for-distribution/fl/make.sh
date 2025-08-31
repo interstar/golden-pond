@@ -6,9 +6,10 @@ cat pre.py generated.py post.py > goldenpond.pyscript
 
 cat pre.py generated.py post-live.py > goldenpond-livecoding.pyscript
 
+cat pre.py generated.py post-fpc.py > goldenpond-fpc.pyscript
+
 cp goldenpond.pyscript  ../../../published/
 cp goldenpond-livecoding.pyscript  ../../../published/
+cp goldenpond-fpc.pyscript  ../../../published/
 
 echo "Now put the goldenpond.pyscript wherever FL Studio can find it. Probably  <User>/YOURNAME/Documents/Image-Line/FL Studio/Settings/Piano roll scripts/goldenpond.pyscript"
-
-
