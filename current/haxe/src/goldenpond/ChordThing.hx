@@ -47,7 +47,8 @@ class ChordThing {
         
         if (this.key != otherChord.key || !this.mode.valueEquals(otherChord.mode) || 
             this.degree != otherChord.degree || this.length != otherChord.length || 
-            this.inversion != otherChord.inversion) {
+            this.inversion != otherChord.inversion ||
+            this.secondary_degree != otherChord.secondary_degree) {
             return false;
         }
 
@@ -128,8 +129,18 @@ class ChordThing {
             "(" + this.secondary_degree + "/" + this.degree + ")"
         else
             "" + this.degree;
+        var modifierStrings = this.modifiers.map(function(modifier:Modifier):String {
+            return switch (modifier) {
+                case Modifier.SEVENTH: "SEVENTH";
+                case Modifier.NINTH: "NINTH";
+                case Modifier.SIXTH: "SIXTH";
+                case Modifier.SECONDARY: "SECONDARY";
+                case Modifier.VOICE_LEADING: "VOICE_LEADING";
+            };
+        });
+        var modifiersStr = "[" + modifierStrings.join(", ") + "]";
 
-        return "ChordThing(" + this.key + "," + modeStr + "," + degree_repr + "," + this.inversion + "," + this.length + ") + " + this.modifiers.toString();
+        return "ChordThing(" + this.key + "," + modeStr + "," + degree_repr + "," + this.inversion + "," + this.length + ") + " + modifiersStr;
     }
 
     public function clone():ChordThing {
@@ -353,4 +364,3 @@ class ChordThing {
         this.mode = newMode;
     }
 }
-
