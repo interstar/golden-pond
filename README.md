@@ -43,7 +43,7 @@ The status of the Haxe->C++ code is that :
 - the longer term goal is to build it into a VST or other plugin so it can run in any DAW (But this is for next year)
 
 The status of the Haxe->Java code is that :
-- it now transpiles to Java and runs and passes all the unit tests
+- it now transpiles to Java and passes all the unit tests
 - and bundles this into a JAR file
 - you can build and run an example Java program ( /haxe/for-distribution/java/Example.java ) that uses the library
 - Eventually there'll be an Android app featuring the library. That's also a 2025 or 2026 goal.

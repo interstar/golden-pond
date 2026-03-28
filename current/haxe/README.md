@@ -16,9 +16,7 @@ So I've been trying it.
 
 And it does seem to work. (Almost)
 
-At least, this current Haxe version of GoldenPond is successfully transpiling to, and passing the unit tests in, Python, Javascript and C++. It compiles and runs in Java too, but some tests are currently failing, which seems to be due to a subtle difference in how Java handles equality which I haven't worked out yet.
-
-That's what I'm currently trying to solve.
+At least, this current Haxe version of GoldenPond is successfully transpiling to, and passing the unit tests in, Python, Javascript, C++ and Java.
 
 ### How to run this
 
@@ -62,7 +60,7 @@ transpile and run the unit tests in C++
     haxe build-java.hxml
     ./run-java.sh
 
-Note that the Java build throws an error. The run-java.sh script seems to do the appropriate compiling with appropriate dependencies etc. You'll see that the unit tests fail with it though.
+The Java build works via the helper scripts in this directory, and the unit tests pass.
 
 I know and understand very little about Haxe (and Java and C++) building at the moment, so this is still work in progress. And maybe needs a different approach.
 
@@ -80,4 +78,3 @@ Eventually I hope I'll figure out getting working Java from Haxe. And then try t
 Similarly the Haxe transpiled to C++ will be the basis of any VSTs or similar plugins.
 
 These are both long term aspirations. But Haxe gets me closer to them than I've previously been.
-
