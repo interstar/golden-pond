@@ -17,6 +17,7 @@ class TestSuite2 {
         testRhythmGeneratorK1(tester);
         testNotesInSeconds(tester);
         testRhythmPatternParser(tester);
+        testChordTypes(tester);
         testRhythmLanguage(tester);
         testBjorklundPatterns(tester);
         testLineGeneratorWithRhythmGenerator(tester);
@@ -423,6 +424,7 @@ class TestSuite2 {
         
         // Generate notes in ticks
         var tickNotes = line.generateNotes(0);
+        var offsetTickNotes = line.generateNotes(960);
         
         // Convert to seconds
         var secondNotes = line.notesInSeconds(0);
@@ -464,6 +466,24 @@ class TestSuite2 {
                 "Length should be correctly converted to seconds"
             );
         }
+
+        tester.testit("Offset tick notes preserve count",
+            offsetTickNotes.length,
+            tickNotes.length,
+            "Applying a start offset should not change note count"
+        );
+
+        tester.testit("Offset tick notes shift first start time",
+            offsetTickNotes[0].getStartTime(),
+            tickNotes[0].getStartTime() + 960,
+            "generateNotes(startTime) should offset note start times"
+        );
+
+        tester.testit("Offset tick notes preserve length",
+            offsetTickNotes[0].getLength(),
+            tickNotes[0].getLength(),
+            "Applying a start offset should not change note lengths"
+        );
         
         trace('Notes in Seconds: ${tester.getTestCount() - startCount} tests run\n');
     }
@@ -527,6 +547,51 @@ class TestSuite2 {
         trace('Rhythm Pattern Parser: ${tester.getTestCount() - startCount} tests run\n');
 
 
+    }
+
+    static function testChordTypes(tester:UnitTester) {
+        trace("\n=== Testing Chord Types in Rhythm Language");
+        var startCount = tester.getTestCount();
+        
+        // Set up a simple test with C major 7th chord
+        var ti = new TimeManipulator();
+        ti.setPPQ(960).setChordDuration(4).setBPM(120);
+        var seq = new ChordProgression(60, MAJOR, "71"); // C major 7th chord
+        
+        // Test FullChord (c) - should return [60, 64, 67, 71] (C, E, G, B)
+        var fullChordRhythm = new SimpleRhythmGenerator(1, 1, FullChord, 1, 0);
+        var fullChordLine = LineGenerator.create(ti, seq, fullChordRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var fullChordNotes = fullChordLine.generateNotes(0);
+        
+        tester.testit("FullChord (c) - C major 7th",
+            fullChordNotes.slice(0, 4).map(note -> note.getMidiNoteValue()),
+            [60, 64, 67, 71], // C, E, G, B
+            "FullChord should return all chord notes in close position"
+        );
+        
+        // Test ChordWithBass (b) - should return [48, 60, 64, 67, 71] (C, C, E, G, B)
+        var bassChordRhythm = new SimpleRhythmGenerator(1, 1, ChordWithBass, 1, 0);
+        var bassChordLine = LineGenerator.create(ti, seq, bassChordRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var bassChordNotes = bassChordLine.generateNotes(0);
+        
+        tester.testit("ChordWithBass (b) - C major 7th",
+            bassChordNotes.slice(0, 5).map(note -> note.getMidiNoteValue()),
+            [48, 60, 64, 67, 71], // C, C, E, G, B (root doubled one octave lower)
+            "ChordWithBass should add root note one octave lower"
+        );
+        
+        // Test Drop2 (d) - should return [55, 60, 64, 71] (G, C, E, B) - G dropped down
+        var drop2Rhythm = new SimpleRhythmGenerator(1, 1, Drop2, 1, 0);
+        var drop2Line = LineGenerator.create(ti, seq, drop2Rhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var drop2Notes = drop2Line.generateNotes(0);
+        
+        tester.testit("Drop2 (d) - C major 7th",
+            drop2Notes.slice(0, 4).map(note -> note.getMidiNoteValue()),
+            [55, 60, 64, 71], // G, C, E, B (second highest note G dropped an octave)
+            "Drop2 should drop the second highest note down an octave"
+        );
+        
+        trace('Chord Types: ${tester.getTestCount() - startCount} tests run\n');
     }
 
     static function testRhythmLanguage(tester:UnitTester) {

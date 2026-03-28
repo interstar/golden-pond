@@ -17,6 +17,7 @@ class TestSuite1 {
         testChordNaming(tester);
         testChordProgressionNaming(tester);        
         testGoldenData(tester);
+        testCorrections(tester);
     }
 
     static function testMode(tester:UnitTester) {
@@ -294,6 +295,13 @@ class TestSuite1 {
             new ChordProgression(60, MAJOR, "7(5/2),72,75,71").toNotes(),
             [[69, 73, 76, 79], [62, 65, 69, 72], [67, 71, 74, 77], [60, 64, 67, 71]],
             "Making a secondary 7(5/2)");
+
+        tester.testit("Secondary chords compare secondary degree",
+            new ChordThing(60, MAJOR, 2).set_as_secondary(5).valueEquals(
+                new ChordThing(60, MAJOR, 2).set_as_secondary(6)
+            ),
+            false,
+            "ChordThing equality should distinguish different secondary degrees");
             
 
         // Test Minor Triad
@@ -482,6 +490,60 @@ class TestSuite1 {
             summary.indexOf("BPM: " + goldenData.bpm) >= 0,
             true,
             "toString should contain expected information");
+            
+        // Test PPQ functionality
+        trace("Testing GoldenData PPQ");
+        var goldenDataWithPPQ = new GoldenData();
+        
+        // Test the new setPPQ method
+        goldenDataWithPPQ.setPPQ(480);
+        tester.testit("GoldenData setPPQ", goldenDataWithPPQ.ppq, 480, "setPPQ should update the ppq value");
+
+        // Test that makeTimeManipulator uses the new ppq
+        var timeManipulator = goldenDataWithPPQ.makeTimeManipulator();
+        tester.testit("GoldenData makeTimeManipulator uses custom PPQ", timeManipulator.ppq, 480, "makeTimeManipulator should use the ppq from GoldenData");
+
+        // Test serialization and deserialization of ppq
+        var jsonWithPPQ = goldenDataWithPPQ.toJSON();
+        var deserializedWithPPQ = GoldenData.makeFromJSON(jsonWithPPQ, new DeserializationHelper());
+        tester.testit("GoldenData JSON deserialization with PPQ", deserializedWithPPQ.ppq, 480, "Deserialized object should have the correct ppq value");
+    }
+    
+    static function testCorrections(tester:UnitTester) {
+        trace("--- Testing GoldenData Note Correction ---");
+
+        // Setup: C Major progression, 4 beats/chord, 960 PPQ
+        var data = new GoldenData();
+        data.setPPQ(960); // Assumes the ppq change is implemented
+        data.chordSequence = "1,6"; // Cmaj (I), Amin (vi)
+        data.chordDuration = 4; // 4 beats = 3840 ticks per chord
+
+        // Test 1: Simple correction in the first chord (C Major scale)
+        var noteIn1 = 61; // C#
+        var time1 = 100;  // During the first chord (Cmaj)
+        var corrected1 = data.correct(noteIn1, time1);
+        tester.testit("Correction: C# to C in Cmaj", corrected1, 60, "Should correct C# down to C");
+
+        // Test 2: Correction in the second chord (A Minor scale)
+        var noteIn2 = 75; // D#5
+        var time2 = 4000; // During the second chord (Amin)
+        var corrected2 = data.correct(noteIn2, time2);
+        tester.testit("Correction: D#5 to D5 in Amin", corrected2, 74, "Should correct D#5 to D5 (closest note in A minor)");
+
+        // Test 3: Melodic Minor (Ascending)
+        // A Melodic Minor scale: A(69), B(71), C(72), D(74), E(76), F#(78), G#(80)
+        data.root = 69; // A
+        data.mode = 3;  // Melodic Minor
+        data.chordSequence = "1";
+        var noteIn3 = 77; // F5, which is the flat 6th
+        var corrected3 = data.correct(noteIn3, 100, 76); // Ascending from E5(76)
+        tester.testit("Correction: Melodic Minor Ascending", corrected3, 78, "Should correct F5 up to F#5 (the raised 6th)");
+
+        // Test 4: Melodic Minor (Descending)
+        // Should use A Natural Minor scale: A(69), B(71), C(72), D(74), E(76), F(77), G(79)
+        var noteIn4 = 78; // F# (the raised 6th)
+        var corrected4 = data.correct(noteIn4, 100, 80); // Descending from G#(80)
+        tester.testit("Correction: Melodic Minor Descending", corrected4, 77, "Should correct F# down to F (the natural 6th)");
     }
    
 }
