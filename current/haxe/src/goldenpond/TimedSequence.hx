@@ -377,6 +377,36 @@ class LineGenerator implements ILineGenerator {
             case FullChord:
                 chordThing.generateChordNotes();
                 
+            case ChordWithBass:
+                var chord = chordThing.generateChordNotes();
+                if (chord.length > 0) {
+                    // Add the root note one octave lower
+                    var rootNote = chord[0]; // First note is always the root
+                    var bassNote = rootNote - 12;
+                    return [bassNote].concat(chord);
+                }
+                return chord;
+                
+            case Drop2:
+                var chord = chordThing.generateChordNotes();
+                if (chord.length >= 2) {
+                    // Sort notes by pitch (highest to lowest)
+                    var sortedChord = chord.copy();
+                    sortedChord.sort(function(a, b) return b - a);
+                    
+                    // Drop the second highest note down an octave
+                    var secondHighest = sortedChord[1];
+                    var droppedNote = secondHighest - 12;
+                    
+                    // Replace the second highest note with the dropped version
+                    sortedChord[1] = droppedNote;
+                    
+                    // Sort back to maintain original order if possible
+                    sortedChord.sort(function(a, b) return a - b);
+                    return sortedChord;
+                }
+                return chord;
+                
             case Random:
                 var chord = chordThing.generateChordNotes();
                 lastNoteIndex = Std.int(Math.floor(Math.random() * chord.length));
@@ -478,8 +508,32 @@ class LineGenerator implements ILineGenerator {
         if (this.cachedNotes == null) {
             this.cachedNotes = this.generateCachedNotes();
         }
-        
-        return this.cachedNotes;
+
+        if (startTime == 0) {
+            return this.cachedNotes;
+        }
+
+        var offsetNotes = new Array<INote>();
+        for (note in this.cachedNotes) {
+            if (Std.isOfType(note, Note)) {
+                var noteStruct = (cast note:Note).toStruct();
+                offsetNotes.push(new Note(
+                    noteStruct.chan,
+                    noteStruct.note,
+                    noteStruct.velocity,
+                    noteStruct.startTime + startTime,
+                    noteStruct.length
+                ));
+            } else {
+                offsetNotes.push(this.instrumentContext.makeNote(
+                    note.getMidiNoteValue(),
+                    note.getStartTime() + startTime,
+                    note.getLength()
+                ));
+            }
+        }
+
+        return offsetNotes;
     }
 
    
@@ -502,5 +556,3 @@ class LineGenerator implements ILineGenerator {
         return result;
     }
 }
-
-
