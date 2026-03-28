@@ -130,13 +130,7 @@ class ChordThing {
         else
             "" + this.degree;
         var modifierStrings = this.modifiers.map(function(modifier:Modifier):String {
-            return switch (modifier) {
-                case Modifier.SEVENTH: "SEVENTH";
-                case Modifier.NINTH: "NINTH";
-                case Modifier.SIXTH: "SIXTH";
-                case Modifier.SECONDARY: "SECONDARY";
-                case Modifier.VOICE_LEADING: "VOICE_LEADING";
-            };
+            return Std.string(modifier);
         });
         var modifiersStr = "[" + modifierStrings.join(", ") + "]";
 
