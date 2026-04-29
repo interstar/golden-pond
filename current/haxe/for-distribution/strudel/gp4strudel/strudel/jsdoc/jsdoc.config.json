@@ -1,0 +1,14 @@
+{
+  "source": {
+    "includePattern": ".+\\.(js(doc|x)?|mjs)$",
+    "excludePattern": "node_modules|shift-parser|shift-reducer|shift-traverser|(?:^|[\\\\/])dist(?:[\\\\/]|$)"
+  },
+  "plugins": [
+    "node_modules/jsdoc/plugins/markdown",
+    "jsdoc/jsdoc-synonyms.js"
+  ],
+  "opts": {
+    "destination": "./out/",
+    "recurse": true
+  }
+}
