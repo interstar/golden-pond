@@ -256,6 +256,11 @@
         </div>
     </div>
 
+    <div class="control-section">
+        <h3>Tau / Sonic Pi Export:</h3>
+        <textarea id="tauCode" rows="14" cols="80" readonly spellcheck="false"></textarea>
+    </div>
+
     <br>
   </div>
 <script>
@@ -613,6 +618,7 @@
         
         // Update Strudel code
         updateStrudelCode();
+        updateTauCode();
         
         // Log if project data has changed
         if (projectData.hasChanged()) {
@@ -662,12 +668,28 @@
         });
     }
 
+    function getSelectedMode() {
+        const modeValue = parseInt(document.getElementById('mode').value, 10);
+        switch (modeValue) {
+            case 0:
+                return Mode.getMajorMode();
+            case 1:
+                return Mode.getMinorMode();
+            case 2:
+                return Mode.getHarmonicMinorMode();
+            case 3:
+                return Mode.getMelodicMinorMode();
+            default:
+                return Mode.getMajorMode();
+        }
+    }
+
     // Define instrument mappings
     const INSTRUMENT_PROGRAMS = {
         'chords': 0,    // Acoustic Grand Piano
         'bass': 32,     // Acoustic Bass
         'top': 73,      // Flute
-        'arp': 46,      // Harp
+        'arpeggio': 46, // Harp
         'random': 25    // Acoustic Guitar
     };
 
@@ -1036,7 +1058,7 @@
         try {
             const progression = new ChordProgression(
                 parseInt(document.getElementById('root').value),
-                document.getElementById('mode').value == "0" ? Mode.getMajorMode() : Mode.getMinorMode(),
+                getSelectedMode(),
                 chordSequence
             );
             
@@ -1121,6 +1143,20 @@
         code += '\n).cpm(cpm);\n';
         
         strudelCodeDiv.querySelector('code').textContent = code;
+    }
+
+    function updateTauCode() {
+        const tauCode = document.getElementById('tauCode');
+        if (!tauCode) {
+            return;
+        }
+
+        try {
+            ensureProjectData();
+            tauCode.value = Exports.exportToSonicPi(projectData);
+        } catch (error) {
+            tauCode.value = '// Error generating Tau export: ' + error.message;
+        }
     }
 </script>
 
