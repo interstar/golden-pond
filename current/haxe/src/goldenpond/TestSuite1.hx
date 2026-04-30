@@ -381,6 +381,9 @@ class TestSuite1 {
         tester.testit("C Minor chord name", cMinor.getChordName(), "Cm", "C Minor chord should be named 'Cm'");
         
         // Test with extensions
+        var cMaj7 = new ChordThing(60, Mode.getMajorMode(), 1).seventh();
+        tester.testit("Cmaj7 chord name", cMaj7.getChordName(), "Cmaj7", "I seventh in C major should be named 'Cmaj7'");
+
         var g7 = new ChordThing(60, Mode.getMajorMode(), 5).seventh();
         tester.testit("G7 chord name", g7.getChordName(), "G7", "G7 chord should be named 'G7'");
         
@@ -409,6 +412,15 @@ class TestSuite1 {
         // Test with complex combinations - in C major, the ii chord (D) with 7th and first inversion
         var complex = new ChordThing(60, Mode.getMajorMode(), 2).seventh().set_inversion(1);
         tester.testit("D7/F chord name", complex.getChordName(), "Dm7/F", "Dm7 with first inversion should be named 'Dm7/F'");
+
+        var lydianSharpFour = new ChordThing(60, Mode.getLydianMode(), 4);
+        tester.testit("Lydian #iv chord name", lydianSharpFour.getChordName(), "F#dim", "C Lydian degree 4 should be named from the Lydian root");
+
+        var harmonicMinorLeadingTone = new ChordThing(60, Mode.getHarmonicMinorMode(), 7);
+        tester.testit("Harmonic minor leading-tone chord name", harmonicMinorLeadingTone.getChordName(), "Bdim", "C harmonic minor degree 7 should use the raised leading tone");
+
+        var melodicMinorSixth = new ChordThing(60, Mode.getMelodicMinorMode(), 6);
+        tester.testit("Melodic minor sixth chord name", melodicMinorSixth.getChordName(), "Adim", "C melodic minor degree 6 should use the raised sixth and seventh scale");
     }
     
     static function testChordProgressionNaming(tester:UnitTester) {
@@ -431,6 +443,10 @@ class TestSuite1 {
         var jazzProg = new ChordProgression(60, Mode.getMajorMode(), "1,-4,(5/2),1");
         var expectedJazzNames = ["C", "Fm", "A", "C"];
         tester.testit("Jazz progression names", jazzProg.getChordNames(), expectedJazzNames, "Jazz progression should have correct names");
+
+        var modalProg = new ChordProgression(60, Mode.getMajorMode(), "7(6!4),7(2!4),7(5!4),7(1!4)");
+        var expectedModalNames = ["Am7", "D7", "Gmaj7", "Cmaj7"];
+        tester.testit("Modal progression names", modalProg.getChordNames(), expectedModalNames, "Modal chord names should use the selected bracket mode");
     }
     
     static function testGoldenData(tester:UnitTester) {

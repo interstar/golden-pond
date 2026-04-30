@@ -23,6 +23,7 @@ import ScoreUtilities;
 import RhythmGenerator;  
 import TestSuite1;
 import TestSuite2;
+import TestExports;
 
 class TestGoldenPond {
   	
@@ -30,7 +31,7 @@ class TestGoldenPond {
         var tester:UnitTester = new UnitTester();
         TestSuite1.allTests(tester);
         TestSuite2.allTests(tester);
+        TestExports.allTests(tester);
         tester.printSummary();
     }
 }
-

@@ -219,17 +219,7 @@ class ChordThing {
      * @return The MIDI note number of the root
      */
     private function calculateRootNote():Int {
-        // Get the appropriate scale intervals based on the mode
-        var intervals = (this.mode.valueEquals(Mode.getMajorMode())) ? 
-            [0, 2, 4, 5, 7, 9, 11] :  // Major scale intervals
-            [0, 2, 3, 5, 7, 8, 10];   // Minor scale intervals
-        
-        // Calculate the semitone offset for this degree
-        var degreeIndex = (this.degree - 1) % 7;
-        var semitoneOffset = intervals[degreeIndex];
-        
-        // Return the actual root note
-        return this.key + semitoneOffset;
+        return this.mode.nth_from(this.key, this.degree);
     }
     
     /**
@@ -257,10 +247,7 @@ class ChordThing {
      * @return The chord quality as a string (e.g., "", "m", "dim", "aug")
      */
     private function determineChordQuality():String {
-        // Get the actual chord notes without any inversions
-        var originalChord = this.clone();
-        originalChord.inversion = 0;
-        var chordNotes = originalChord.generateChordNotes();
+        var chordNotes = getUninvertedChordNotes();
         
         if (chordNotes.length < 3) {
             // Not enough notes to determine quality
@@ -273,8 +260,8 @@ class ChordThing {
         var fifth = chordNotes[2];
         
         // Calculate interval sizes
-        var thirdInterval = third - root;
-        var fifthInterval = fifth - root;
+        var thirdInterval = intervalFromRoot(third, root);
+        var fifthInterval = intervalFromRoot(fifth, root);
         
         // Determine chord quality based on intervals
         if (thirdInterval == 4 && fifthInterval == 7) {
@@ -295,26 +282,81 @@ class ChordThing {
         }
     }
     
-    /**
-     * Determines the extension type based on the chord notes
-     * @return The extension as a string (e.g., "7", "9", "maj7")
-     */
-    private function determineExtension():String {
-        if (!has_extensions()) {
-            return "";
+    private function getUninvertedChordNotes():Array<Int> {
+        var originalChord = this.clone();
+        originalChord.inversion = 0;
+        return originalChord.generateChordNotes();
+    }
+
+    private function intervalFromRoot(note:Int, root:Int):Int {
+        var interval = (note - root) % 12;
+        return interval < 0 ? interval + 12 : interval;
+    }
+
+    private function determineChordSuffix():String {
+        var chordNotes = getUninvertedChordNotes();
+        if (chordNotes.length < 3) return "";
+
+        var root = chordNotes[0];
+        var thirdInterval = intervalFromRoot(chordNotes[1], root);
+        var fifthInterval = intervalFromRoot(chordNotes[2], root);
+        var quality = determineChordQuality();
+        var hasSeventh = this.modifiers.indexOf(Modifier.SEVENTH) != -1;
+        var hasNinth = this.modifiers.indexOf(Modifier.NINTH) != -1;
+        var hasSixth = this.modifiers.indexOf(Modifier.SIXTH) != -1;
+
+        if (hasSixth) {
+            return quality == "" ? "6" : quality + "6";
         }
-        
-        // Check for 7th chords
-        if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
-            return "7";
+
+        if (!hasSeventh && !hasNinth) {
+            return quality;
         }
-        
-        // Check for 9th chords
-        if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
-            return "9";
+
+        if (chordNotes.length < 4) {
+            return quality;
         }
-        
-        return "";
+
+        var seventhInterval = intervalFromRoot(chordNotes[3], root);
+        var isNinth = hasNinth && chordNotes.length >= 5;
+
+        if (thirdInterval == 3 && fifthInterval == 6) {
+            if (seventhInterval == 9) {
+                return isNinth ? "dim9" : "dim7";
+            }
+            if (seventhInterval == 10) {
+                return isNinth ? "m7b5(add9)" : "m7b5";
+            }
+        }
+
+        if (thirdInterval == 4 && fifthInterval == 7) {
+            if (seventhInterval == 11) {
+                return isNinth ? "maj9" : "maj7";
+            }
+            if (seventhInterval == 10) {
+                return isNinth ? "9" : "7";
+            }
+        }
+
+        if (thirdInterval == 3 && fifthInterval == 7) {
+            if (seventhInterval == 11) {
+                return isNinth ? "m(maj9)" : "m(maj7)";
+            }
+            if (seventhInterval == 10) {
+                return isNinth ? "m9" : "m7";
+            }
+        }
+
+        if (thirdInterval == 4 && fifthInterval == 8) {
+            if (seventhInterval == 11) {
+                return isNinth ? "augmaj9" : "augmaj7";
+            }
+            if (seventhInterval == 10) {
+                return isNinth ? "aug9" : "aug7";
+            }
+        }
+
+        return quality + (isNinth ? "9" : "7");
     }
     
     /**
@@ -329,19 +371,14 @@ class ChordThing {
             return secondaryChord.getChordName();
         }
         
-        // Calculate the actual root note
-        var rootNote = calculateRootNote();
+        var chordNotes = getUninvertedChordNotes();
+        if (chordNotes.length == 0) return "";
+
+        var rootNote = chordNotes[0];
         var rootName = midiToNoteName(rootNote);
         
-        // Determine chord quality based on the actual intervals
-        var quality = determineChordQuality();
-        
         // Build the chord name
-        var chordName = rootName + quality;
-        
-        // Add extensions
-        var extension = determineExtension();
-        chordName += extension;
+        var chordName = rootName + determineChordSuffix();
         
         // Add inversion if present (using slash notation)
         if (this.inversion > 0) {
