@@ -6,5 +6,6 @@ ChordParser
 Mode
 ScoreUtilities
 GoldenData  
+Exports
  
 -python out/python/goldenpond.py

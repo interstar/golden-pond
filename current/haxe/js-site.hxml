@@ -6,9 +6,9 @@ ChordParser
 Mode
 ScoreUtilities
 GoldenData
+Exports
 
 -js out/js/goldenpond.js
 -D js-classic
 -D shallow-expose
 --dce no
-

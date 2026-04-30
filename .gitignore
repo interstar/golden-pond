@@ -7,4 +7,5 @@ for-distribution/fl/goldenpond.pyscript
 *mid
 for-distribution/pypi/dist/*
 for-distribution/web-app/goldenpond.js
-
+for-distribution/strudel/strudel
+for-distribution/java/goldenpond.jar

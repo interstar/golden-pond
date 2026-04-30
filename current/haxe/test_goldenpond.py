@@ -32,9 +32,9 @@ PROGRAMS = {
 def create_golden_data():
     # Create a GoldenData instance
     data = GoldenData()
-    data.root = 44  # C4
+    data.root = 48  
     data.mode = 0   # Major
-    data.chordSequence = "7(1!1),7(1!2),7(1!3),7(1!4),7(1!5),7(1!6),7(1!7),!mm,7(1!1),7(1!2),7(1!3),7(1!4),7(1!5),7(1!6),7(1!7)"
+    data.chordSequence = "7(1!1),7(1!2),7(3!3),7(4!4),7(1!5),7(2!6),7(5!7),!mm,7(1!1),7(1!2),7(2!3),7(5!4),7(4!5),7(6!6),7(7!7)"
     data.stutter = 0
     data.bpm = 120
     data.chordDuration = 8
