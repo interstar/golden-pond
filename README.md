@@ -34,9 +34,9 @@ The status of the Haxe->Python code is that :
 
 The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
-- it runs in the browser, and there's an online version you can play with in the browser at [https://gilbertlisterresearch.com/assets/goldenpond/index.html](https://gilbertlisterresearch.com/assets/goldenpond/index.html) It's still work in progress. 
-- it doesn't pass all the unit tests, but this seems to be to do with quirks of Javascript equality testing.
-- you can see haxe/for-distribution/web-app/ for where we develop the web-app, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html
+- it runs in the browser and I have experimental integrations with the Signal online studio (play with a fork that integrates Goldenpond here : https://gilbertlisterresearch.com/assets/signal/index.html )
+- I also have an experimental integration with the Strudel live-coding environment which will be visible soon 
+- you can see haxe/for-distribution/web-app/ for where we develop an example web-app, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
@@ -46,7 +46,7 @@ The status of the Haxe->Java code is that :
 - it now transpiles to Java and passes all the unit tests
 - and bundles this into a JAR file
 - you can build and run an example Java program ( /haxe/for-distribution/java/Example.java ) that uses the library
-- Eventually there'll be an Android app featuring the library. That's also a 2025 or 2026 goal.
+- Eventually there'll be an Android app featuring the library. That's a longer term goal.
 
 
 ### History
