@@ -1,0 +1,91 @@
+/**
+ * Scoped styles for fenced-block Goldenpond embeds (.goldenpond-embed).
+ */
+.goldenpond-embed {
+  position: relative;
+  margin: 1em auto;
+  max-width: min(1100px, 92vw);
+  width: 100%;
+  text-align: center;
+  padding: 1.25rem 1.5rem;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  color: #e8e8e8;
+  box-sizing: border-box;
+}
+.goldenpond-meta {
+  text-align: left;
+  margin-bottom: 1rem;
+  font-size: 1em;
+  line-height: 1.5;
+  padding-right: clamp(5.25rem, 22vw, 14rem);
+}
+.goldenpond-row {
+  margin: 0.5em 0;
+}
+.goldenpond-label {
+  display: inline-block;
+  min-width: 8.5rem;
+  margin-right: 0.6em;
+  font-size: 0.95em;
+  color: #aaa;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  vertical-align: top;
+}
+.goldenpond-chord-seq,
+.goldenpond-rhythm-code {
+  font-family: Consolas, Monaco, Menlo, Ubuntu Mono, monospace;
+  font-size: 1em;
+  color: #e8e8e8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.goldenpond-chord-names {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 1em;
+  color: #cde9c8;
+}
+.goldenpond-embed--error {
+  color: #f88;
+  border-color: #633;
+}
+.goldenpond-roll {
+  min-height: 280px;
+  margin: 12px 0;
+}
+.goldenpond-roll svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+.goldenpond-toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 3;
+  margin: 0;
+}
+.goldenpond-toolbar .goldenpond-play {
+  background: #2a4a2a;
+  color: #fff;
+  border: 1px solid #3d6a3d;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 1.1em;
+  cursor: pointer;
+}
+.goldenpond-toolbar .goldenpond-play:hover {
+  background: #356a35;
+}
+.goldenpond-error {
+  color: #f88;
+  margin: 8px 0 0;
+  font-size: 1em;
+  clear: both;
+}
+.goldenpond-embed .goldenpond-hidden {
+  display: none !important;
+}
