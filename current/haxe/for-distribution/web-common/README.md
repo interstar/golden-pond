@@ -26,4 +26,7 @@ Suggested load order (embed only):
 
 Add for the form (+ MIDI download): `@tonejs/midi`, `goldenpond-form.css`, `goldenpond-form.js`.
 
-Python fences live in **`../py/goldenpond_fences.py`** (`process_goldenpond_embeds`), shared by PianoSlides and the Gilbert Lister site builder.
+**Python:** the canonical fence helper is **`../py/goldenpond_fences.py`**. Consumers (e.g. PianoSlides and the Gilbert Lister site) vendor it beside their `generate.py` / `build.py` via their **shell build script**, then plain `from goldenpond_fences import …` — no hard-coded repo paths in Python.
+
+Fenced blocks emit a `.goldenpond-meta` area whose rows (`Global`, progression, chord names, rhythm) are controlled by **`display=a,b,...`** on the fence line (`global`, `progression`, `chordnames`, `rhythm`; case-insensitive; comma-separated order). Omit `display=` to show all rows. The `<script type="application/json" class="goldenpond-data">` payload includes **`embedDisplay`** as the canonical row list used at build time; `GoldenpondEmbed` tolerates omitted rows.
+

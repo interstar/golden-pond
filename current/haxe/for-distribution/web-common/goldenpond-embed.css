@@ -42,10 +42,18 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
-.goldenpond-chord-names {
+.goldenpond-chord-names,
+.goldenpond-global-summary {
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.goldenpond-chord-names {
   color: #cde9c8;
+}
+.goldenpond-global-summary {
+  color: #e8e8e8;
 }
 .goldenpond-embed--error {
   color: #f88;

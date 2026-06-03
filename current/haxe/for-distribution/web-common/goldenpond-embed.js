@@ -154,7 +154,6 @@
 
     var showPianoRoll = opts.showPianoRoll !== false;
     var showChordNames = opts.showChordNames !== false;
-    var instrumentPreset = cfg.instrumentPreset || opts.instrumentPreset || "acoustic_grand_piano";
     var gh = opts.keyboardHighlight || {};
     /** @type {any} */
     var cfg;
@@ -167,6 +166,8 @@
       }
       return;
     }
+
+    var instrumentPreset = cfg.instrumentPreset || opts.instrumentPreset || "acoustic_grand_piano";
 
     goldenpondFillMeta(embed, cfg, showChordNames);
     try {
