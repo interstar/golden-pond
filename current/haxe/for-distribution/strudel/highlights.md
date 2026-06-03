@@ -69,14 +69,14 @@ This lists what exists **in this repo** for the Goldenpond Strudel integration (
 
 | Path | Role |
 |------|------|
-| `gp4strudel/strudel/website/src/repl/goldenpond.mjs` (master) → `strudel/website/src/repl/goldenpond.mjs` | Strudel-native adapter: `gpond`, `gpline`, tick/Fraction-based `Pattern` construction, `import` of Haxe bundle. |
+| `gp4strudel/strudel/website/src/repl/goldenpond.mjs` (master) → `strudel/website/src/repl/goldenpond.mjs` | Strudel-native adapter: `gpond`, `gpline`, tick/Fraction-based `Pattern` construction; side-effect import `./goldenpond-runtime.js`. |
 | `gp4strudel/standalone/goldenpond-strudel.js` (master) → `goldenpond-strudel.js` | Standalone adapter + global `goldenpondStrudel` for the older Goldenpond `index.html` demo (no monorepo bundler). |
 
 ### Generated / copied artifact (not hand-edited)
 
 | Path | Role |
 |------|------|
-| `goldenpond.js` | Haxe JS output; copied here by `current/haxe/makeall.sh` so the website repl can resolve `../../../../goldenpond.js` from `goldenpond.mjs`. |
+| `goldenpond.js` | Output from **`current/haxe/makeall.sh`** in `for-distribution/strudel/`. **`build-strudel.sh`** copies it to `strudel/website/src/repl/goldenpond-runtime.js` so `goldenpond.mjs` can `import './goldenpond-runtime.js'`. |
 
 ### Modified upstream files (fork / local Strudel tree)
 
@@ -96,6 +96,7 @@ This lists what exists **in this repo** for the Goldenpond Strudel integration (
 | Path | Role |
 |------|------|
 | `current/haxe/makeall.sh` | Copies `out/js/goldenpond.js` to `for-distribution/strudel/goldenpond.js` (and other targets). |
-| `gp4strudel/patch.sh` | Copies masters from `gp4strudel/` into `for-distribution/strudel/strudel/` (and `goldenpond-strudel.js` beside it). Run after editing integration files. |
+| `build-strudel.sh` | **Deploy helper**: patch Strudel, vendor `goldenpond-runtime.js`, build website, emit `./strudel-dist/` for rsync. Lives next to `gp4strudel/`. |
+| `gp4strudel/patch.sh` | Copies masters from `gp4strudel/` into `for-distribution/strudel/strudel/` (**`goldenpond.mjs`**, **`util.mjs`**, **`website/astro.config.mjs`**, **`jsdoc.config.json`**) and `goldenpond-strudel.js` beside it. Run after editing integration files (also invoked by `build-strudel.sh`). |
 
 Chord highlighting would add at least **one new transpiler plugin file** (under `strudel/packages/transpiler/` or loaded from the website bundle if you keep patches minimal) and **edits to `gp4strudel/strudel/website/src/repl/goldenpond.mjs`** (then run `gp4strudel/patch.sh`; and possibly `registerTranspilerPlugin` wiring in the transpiler entry).

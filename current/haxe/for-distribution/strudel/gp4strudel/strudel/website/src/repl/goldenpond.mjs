@@ -2,14 +2,28 @@
  * GoldenPond (Haxe JS) + Strudel bridge: `gpond` / `gpline`.
  * GoldenPond score time → Strudel cycles via a fixed beats-per-cycle (quarter notes per cycle).
  * Tempo is Strudel CPS only; GoldenPond bpm/ppq affect note timing *within* the score, not the global clock.
+ *
+ * `./goldenpond-runtime.js` is the Haxe bundle (copy of `goldenpond.js`). Produced by `build-strudel.sh`
+ * or `cp goldenpond.js …/goldenpond-runtime.js` — see `gp4strudel/README.md`.
  */
-import '../../../../goldenpond.js';
+import './goldenpond-runtime.js';
 import { Fraction, Pattern, Hap, TimeSpan } from '@strudel/core';
 
 export const packageName = '@goldenpond/strudel';
 
 /** Quarter-note beats per Strudel cycle (fixed; matches typical 4/4 bar). */
 export const GOLDENPOND_BEATS_PER_CYCLE = 4;
+
+function strudelDoubleQuoteHint() {
+  return `In the Strudel REPL, "double-quoted" strings are transpiled to mini notation (not plain JS strings). Use single-quoted strings for GoldenPond text, e.g. gpond(60, 'major', '1,5,6,4', 4) — see transpiler plugin-mini (doublequotes).`;
+}
+
+function assertPlainStringParam(paramLabel, value) {
+  if (typeof value === 'string') return;
+  if (typeof value === 'object' && value !== null) {
+    throw new Error(`GoldenPond: ${paramLabel} must be a JavaScript string. ${strudelDoubleQuoteHint()}`);
+  }
+}
 
 function modeFromString(s) {
   const m = String(s ?? 'major').toLowerCase();
@@ -68,6 +82,8 @@ function instrumentContextForGpline(options = {}) {
  * @param {object} [extra] - optional: bpm, ppq, stutter (GoldenPond defaults apply if omitted)
  */
 export function gpond(root, modeStr, chordSequence, chordDuration, extra = {}) {
+  assertPlainStringParam('mode (2nd argument)', modeStr);
+  assertPlainStringParam('chordSequence (3rd argument)', chordSequence);
   const { GoldenData } = getGpClasses();
   const gd = new GoldenData();
   gd.root = root;
@@ -181,6 +197,7 @@ function lineFromGoldenData(goldenData, lineIndex, options = {}) {
  *   `instrumentContext`, `loopBeats`, etc.
  */
 export function gpline(goldenData, rhythmPattern, third, fourth) {
+  assertPlainStringParam('rhythmPattern (2nd argument)', rhythmPattern);
   const options =
     typeof third === 'number'
       ? { ...(typeof fourth === 'object' && fourth !== null ? fourth : {}), octave: third }

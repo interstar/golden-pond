@@ -4,9 +4,11 @@ This note is for anyone maintaining the Goldenpond fork of Strudel or preparing 
 
 **Masters and patching:** integration source files live in **`gp4strudel/`**. Run `gp4strudel/patch.sh` after cloning Strudel into `for-distribution/strudel/strudel/` (see `gp4strudel/README.md`).
 
+**Static deploy bundle:** from `for-distribution/strudel/`, after **`current/haxe/makeall.sh`** has produced **`goldenpond.js`** here, run **`./build-strudel.sh`** to patch, copy **`goldenpond.js` → `website/src/repl/goldenpond-runtime.js`**, build the site, and produce **`./strudel-dist/`** for rsync. The patched **`website/astro.config.mjs`** sets **`vite.ssr.noExternal: ['superdough']`** so Astro can finish static generation (see `gp4strudel/README.md`).
+
 ## What “principled” means here
 
-1. **Goldenpond stays a separate library** (Haxe → JS). Strudel does not reimplement chord theory; it loads `goldenpond.js` as a dependency.
+1. **Goldenpond stays a separate library** (Haxe → JS). Strudel does not reimplement chord theory; the REPL loads it via **`goldenpond-runtime.js`** (same bits as **`goldenpond.js`**, copied next to **`goldenpond.mjs`** — see **`build-strudel.sh`**).
 
 2. **The adapter is a thin Strudel layer**: build `Pattern` values that implement Strudel’s query model (`queryArc` → `Hap`s with correct `whole` / `part` / `Fraction` timing). No long mini-notation stringification for sequences.
 
@@ -79,3 +81,5 @@ That is enough for Goldenpond to remain modular without core Strudel knowing abo
 | Upstream? | **Worth asking** with an optional package / dynamic import story; expect **fork or external package** unless maintainers explicitly want it in-tree. |
 
 For chord highlighting specifically, see **`highlights.md`** in this directory.
+
+**Using GoldenPond in the browser REPL:** see **`GOLDENPOND_STRUDEL_REPL.md`** (`gpond`, `gpline`, and related exports).
