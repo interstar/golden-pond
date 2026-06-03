@@ -24,6 +24,7 @@ import RhythmGenerator;
 import TestSuite1;
 import TestSuite2;
 import TestExports;
+import TestPianoRollSVG;
 
 class TestGoldenPond {
   	
@@ -32,6 +33,7 @@ class TestGoldenPond {
         TestSuite1.allTests(tester);
         TestSuite2.allTests(tester);
         TestExports.allTests(tester);
+        TestPianoRollSVG.allTests(tester);
         tester.printSummary();
     }
 }
