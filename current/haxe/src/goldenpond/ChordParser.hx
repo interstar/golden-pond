@@ -115,21 +115,7 @@ class ChordParser {
 
             
             var chord = new ChordThing(this.key, this.mode, degree);
-            
-            // Set the mode based on the current mode and mode number
-            var newMode:Mode;
-            if (this.mode == Mode.getMajorMode()) {
-                newMode = Mode.constructNthMajorMode(modeNumber);
-            } else if (this.mode == Mode.getHarmonicMinorMode()) {
-                newMode = Mode.constructNthHarmonicMinorMode(modeNumber);
-            } else if (this.mode == Mode.getMelodicMinorMode()) {
-                newMode = Mode.constructNthMelodicMinorMode(modeNumber);
-            } else if (this.mode == Mode.getMinorMode()) {
-                newMode = Mode.constructNthMinorMode(modeNumber);
-            } else {
-                throw "Cannot get nth mode of unknown scale";
-            }
-            chord.set_mode(newMode);
+            chord.set_mode(Mode.nthModeOf(this.mode, modeNumber));
             
             if (extension != null) {
                 if (extension == 7) {
@@ -206,31 +192,31 @@ class ChordParser {
             inputString = inputString.substr(1);
         }
         var modeString = StringTools.trim(modeChars.toString());
-        
-        // Check if there's a mode specifier after the !
+
         if (modeString.length < 2) {
-            throw "Expected mode specifier after '!'. Use !M, !m, !hm, or !mm";
+            throw "Expected mode specifier after '!'. Use !M, !m, !hm, !mm, !HM, !hu, or !H2";
         }
-        
-        var modeSpec = modeString.charAt(1);
+
+        var modeSpec = modeString.substr(1);
         switch (modeSpec) {
             case 'M':
                 this.mode = Mode.getMajorMode();
             case 'm':
-                if (modeString.length >= 3 && modeString.charAt(2) == 'm') {
-                    this.mode = Mode.getMelodicMinorMode();
-                } else {
-                    this.mode = Mode.getMinorMode();
-                }
-            case 'h':
-                if (modeString.length < 3 || modeString.charAt(2) != 'm') {
-                    throw "Expected 'hm' for harmonic minor mode";
-                }
+                this.mode = Mode.getMinorMode();
+            case 'hm':
                 this.mode = Mode.getHarmonicMinorMode();
+            case 'mm':
+                this.mode = Mode.getMelodicMinorMode();
+            case 'HM':
+                this.mode = Mode.getHarmonicMajorMode();
+            case 'hu':
+                this.mode = Mode.getHungarianMinorMode();
+            case 'H2':
+                this.mode = Mode.getDoubleHarmonicMajorMode();
             default:
-                throw "Invalid mode specifier: " + modeSpec + ". Use !M, !m, !hm, or !mm";
+                throw "Invalid mode specifier: " + modeSpec + ". Use !M, !m, !hm, !mm, !HM, !hu, or !H2";
         }
-        
+
         return inputString;
     }
 

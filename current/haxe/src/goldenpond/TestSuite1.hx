@@ -72,6 +72,29 @@ class TestSuite1 {
         // Test mode construction for new modes
         tester.testit("modes33", Mode.constructNthHarmonicMinorMode(1).intervals, [2, 1, 2, 2, 1, 3, 1], "Harmonic Minor mode construction");
         tester.testit("modes34", Mode.constructNthMelodicMinorMode(1).intervals, [2, 1, 2, 2, 2, 2, 1], "Melodic Minor mode construction");
+
+        // Test Harmonic Major Mode
+        tester.testit("modes35", Mode.getHarmonicMajorMode() == Mode.getHarmonicMajorMode(), true, "Harmonic Major Mode not singleton");
+        tester.testit("modes36", Mode.getHarmonicMajorMode().intervals, [2, 2, 1, 2, 1, 3, 1], "Harmonic Major intervals");
+        tester.testit("modes37", Mode.getHarmonicMajorMode().nth_from(60, 6), 68, "Harmonic Major lowered 6th degree");
+        tester.testit("modes38", Mode.constructNthHarmonicMajorMode(1).intervals, [2, 2, 1, 2, 1, 3, 1], "Harmonic Major mode construction");
+
+        // Test Hungarian Minor Mode
+        tester.testit("modes39", Mode.getHungarianMinorMode() == Mode.getHungarianMinorMode(), true, "Hungarian Minor Mode not singleton");
+        tester.testit("modes40", Mode.getHungarianMinorMode().intervals, [2, 1, 3, 1, 1, 3, 1], "Hungarian Minor intervals");
+        tester.testit("modes41", Mode.getHungarianMinorMode().nth_from(60, 4), 66, "Hungarian Minor raised 4th degree");
+        tester.testit("modes42", Mode.constructNthHungarianMinorMode(1).intervals, [2, 1, 3, 1, 1, 3, 1], "Hungarian Minor mode construction");
+
+        // Test Double Harmonic Major Mode
+        tester.testit("modes43", Mode.getDoubleHarmonicMajorMode() == Mode.getDoubleHarmonicMajorMode(), true, "Double Harmonic Major Mode not singleton");
+        tester.testit("modes44", Mode.getDoubleHarmonicMajorMode().intervals, [1, 3, 1, 2, 1, 3, 1], "Double Harmonic Major intervals");
+        tester.testit("modes45", Mode.getDoubleHarmonicMajorMode().nth_from(60, 2), 61, "Double Harmonic Major lowered 2nd degree");
+        tester.testit("modes46", Mode.constructNthDoubleHarmonicMajorMode(1).intervals, [1, 3, 1, 2, 1, 3, 1], "Double Harmonic Major mode construction");
+
+        tester.testit("modes47", Mode.nthModeOf(Mode.getMajorMode(), 3).intervals, Mode.constructNthMajorMode(3).intervals, "nthModeOf major family");
+        tester.testit("modes48", Mode.nthModeOf(Mode.getHarmonicMajorMode(), 4).intervals, Mode.constructNthHarmonicMajorMode(4).intervals, "nthModeOf harmonic major family");
+        tester.testit("modes49", Mode.nthModeOf(Mode.getHungarianMinorMode(), 5).intervals, Mode.constructNthHungarianMinorMode(5).intervals, "nthModeOf hungarian minor family");
+        tester.testit("modes50", Mode.nthModeOf(Mode.getDoubleHarmonicMajorMode(), 6).intervals, Mode.constructNthDoubleHarmonicMajorMode(6).intervals, "nthModeOf double harmonic major family");
     }	
     
     
@@ -210,11 +233,14 @@ class TestSuite1 {
              new ChordThing(60, MAJOR, 5)],
             "ChordParsing extended chords");
 
-        tester.testit("Mode specifiers", cp.parse("1,!m,4,!mm,6,!hm,5,!M,1"),
+        tester.testit("Mode specifiers", cp.parse("1,!m,4,!mm,6,!hm,5,!HM,1,!hu,4,!H2,5,!M,1"),
             [new ChordThing(60, Mode.getMajorMode(), 1),
              new ChordThing(60, Mode.getMinorMode(), 4),
              new ChordThing(60, Mode.getMelodicMinorMode(), 6),
              new ChordThing(60, Mode.getHarmonicMinorMode(), 5),
+             new ChordThing(60, Mode.getHarmonicMajorMode(), 1),
+             new ChordThing(60, Mode.getHungarianMinorMode(), 4),
+             new ChordThing(60, Mode.getDoubleHarmonicMajorMode(), 5),
              new ChordThing(60, Mode.getMajorMode(), 1)],
             "ChordParsing mode specifiers");
 
@@ -246,6 +272,28 @@ class TestSuite1 {
              new ChordThing(60, Mode.constructNthMelodicMinorMode(3), 5),
              new ChordThing(60, Mode.constructNthMelodicMinorMode(4), 7)],
             "Bracket mode selection in melodic minor");
+
+
+        tester.testit("Bracket mode selection in harmonic major", new ChordParser(60, Mode.getHarmonicMajorMode()).parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getHarmonicMajorMode(), 1),
+             new ChordThing(60, Mode.constructNthHarmonicMajorMode(2), 3),
+             new ChordThing(60, Mode.constructNthHarmonicMajorMode(3), 5),
+             new ChordThing(60, Mode.constructNthHarmonicMajorMode(4), 7)],
+            "Bracket mode selection in harmonic major");
+
+        tester.testit("Bracket mode selection in hungarian minor", new ChordParser(60, Mode.getHungarianMinorMode()).parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getHungarianMinorMode(), 1),
+             new ChordThing(60, Mode.constructNthHungarianMinorMode(2), 3),
+             new ChordThing(60, Mode.constructNthHungarianMinorMode(3), 5),
+             new ChordThing(60, Mode.constructNthHungarianMinorMode(4), 7)],
+            "Bracket mode selection in hungarian minor");
+
+        tester.testit("Bracket mode selection in double harmonic major", new ChordParser(60, Mode.getDoubleHarmonicMajorMode()).parse("1,(3!2),(5!3),(7!4)"),
+            [new ChordThing(60, Mode.getDoubleHarmonicMajorMode(), 1),
+             new ChordThing(60, Mode.constructNthDoubleHarmonicMajorMode(2), 3),
+             new ChordThing(60, Mode.constructNthDoubleHarmonicMajorMode(3), 5),
+             new ChordThing(60, Mode.constructNthDoubleHarmonicMajorMode(4), 7)],
+            "Bracket mode selection in double harmonic major");
 
         tester.testit("Major Triads", new ChordProgression(60, MAJOR, "1|4|5|6").toNotes(),
             [[60, 64, 67], [65, 69, 72], [67, 71, 74], [69, 72, 76]],
@@ -496,7 +544,7 @@ class TestSuite1 {
             
         // Test toString output
         var summary = goldenData.toString();
-        var modeNames = ["major", "minor", "harmonic minor", "melodic minor"];
+        var modeNames = ["major", "minor", "harmonic minor", "melodic minor", "harmonic major", "hungarian minor", "double harmonic major"];
         var modeName = modeNames[goldenData.mode];
         
         tester.testit("GoldenData toString",
@@ -507,6 +555,18 @@ class TestSuite1 {
             true,
             "toString should contain expected information");
             
+        var harmonicMajorData = new GoldenData();
+        harmonicMajorData.mode = 4;
+        tester.testit("GoldenData harmonic major mode mapping", harmonicMajorData.makeMode().intervals, Mode.getHarmonicMajorMode().intervals, "GoldenData should map mode 4 to harmonic major");
+
+        var hungarianMinorData = new GoldenData();
+        hungarianMinorData.mode = 5;
+        tester.testit("GoldenData hungarian minor mode mapping", hungarianMinorData.makeMode().intervals, Mode.getHungarianMinorMode().intervals, "GoldenData should map mode 5 to hungarian minor");
+
+        var doubleHarmonicMajorData = new GoldenData();
+        doubleHarmonicMajorData.mode = 6;
+        tester.testit("GoldenData double harmonic major mode mapping", doubleHarmonicMajorData.makeMode().intervals, Mode.getDoubleHarmonicMajorMode().intervals, "GoldenData should map mode 6 to double harmonic major");
+
         // Test PPQ functionality
         trace("Testing GoldenData PPQ");
         var goldenDataWithPPQ = new GoldenData();

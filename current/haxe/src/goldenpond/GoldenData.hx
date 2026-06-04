@@ -42,7 +42,7 @@ typedef GoldenDataJson = {
 class GoldenData {
     // Core progression parameters
     public var root:Int;
-    public var mode:Int; // 0=major, 1=minor, 2=harmonic minor, 3=melodic minor
+    public var mode:Int; // 0=major, 1=minor, 2=harmonic minor, 3=melodic minor, 4=harmonic major, 5=hungarian minor, 6=double harmonic major
     public var chordSequence:String;
     public var stutter:Int;
     
@@ -84,7 +84,7 @@ class GoldenData {
     
     /**
      * Set the mode by index
-     * @param modeIndex 0=major, 1=minor, 2=harmonic minor, 3=melodic minor
+     * @param modeIndex 0=major, 1=minor, 2=harmonic minor, 3=melodic minor, 4=harmonic major, 5=hungarian minor, 6=double harmonic major
      * @return This GoldenData instance for chaining
      */
     @:expose
@@ -115,6 +115,9 @@ class GoldenData {
             case 1: return Mode.getMinorMode();
             case 2: return Mode.getHarmonicMinorMode();
             case 3: return Mode.getMelodicMinorMode();
+            case 4: return Mode.getHarmonicMajorMode();
+            case 5: return Mode.getHungarianMinorMode();
+            case 6: return Mode.getDoubleHarmonicMajorMode();
             default: return Mode.getMajorMode();
         }
     }
@@ -181,7 +184,7 @@ class GoldenData {
      */
     @:expose
     public function toString():String {
-        var modeNames = ["major", "minor", "harmonic minor", "melodic minor"];
+        var modeNames = ["major", "minor", "harmonic minor", "melodic minor", "harmonic major", "hungarian minor", "double harmonic major"];
         var modeName = modeNames[this.mode];
         
         var result = 'GoldenPond Project\n';

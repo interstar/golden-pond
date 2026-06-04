@@ -21,6 +21,7 @@ class TestSuite2 {
         testRhythmLanguage(tester);
         testBjorklundPatterns(tester);
         testLineGeneratorWithRhythmGenerator(tester);
+        testRatioDensities(tester);
     }
 
     static function testMenuHelper(tester:UnitTester) {
@@ -834,6 +835,72 @@ class TestSuite2 {
             true,
             "Random scale note should be within C major scale"
         );
+    }
+
+    static function testRatioDensities(tester:UnitTester) {
+        trace("\n=== Testing Ratio Densities ===");
+        var startCount = tester.getTestCount();
+
+        var ratioPattern = RhythmLanguage.parse("1.t. 1/2");
+        tester.testit("Ratio density explicit pattern parses",
+            !ratioPattern.parseFailed(),
+            true,
+            "Should parse explicit ratio density"
+        );
+        tester.testit("Ratio density step length in chords",
+            ratioPattern.getStepLengthInChords(),
+            0.5,
+            "1/2 density should make each of 4 steps last half a chord"
+        );
+
+        var ti = new TimeManipulator();
+        ti.setPPQ(960).setChordDuration(4).setBPM(120);
+
+        var twoChordSeq = new ChordProgression(60, MAJOR, "1,4");
+        var halfSpeedLine = LineGenerator.createFromPattern(ti, twoChordSeq, "1.t. 1/2", new MidiInstrumentContext(0, 64, 1.0, 0));
+        var halfSpeedNotes = halfSpeedLine.generateNotes(0);
+        tester.testit("Ratio density 1/2 stretches pattern across two chords",
+            halfSpeedNotes.map(note -> note.getMidiNoteValue()),
+            [60, 72],
+            "Should play root of first chord then top note of second chord"
+        );
+        tester.testit("Ratio density 1/2 note timings",
+            halfSpeedNotes.map(note -> note.getStartTime()),
+            [0.0, 3840.0],
+            "Half-speed pattern should place the second note on the second chord boundary"
+        );
+
+        var continuedArpLine = LineGenerator.createFromPattern(ti, twoChordSeq, ">.>. 1/2", new MidiInstrumentContext(0, 64, 1.0, 0));
+        var continuedArpNotes = continuedArpLine.generateNotes(0);
+        tester.testit("Ascending selector continues across chord boundaries",
+            continuedArpNotes.map(note -> note.getMidiNoteValue()),
+            [60, 69],
+            "Arpeggio should continue to the next chord position instead of resetting"
+        );
+
+        var repeatLine = LineGenerator.createFromPattern(ti, twoChordSeq, ">.=. 1/2", new MidiInstrumentContext(0, 64, 1.0, 0));
+        var repeatNotes = repeatLine.generateNotes(0);
+        tester.testit("Repeat selector uses chord-relative position across chord boundaries",
+            repeatNotes.map(note -> note.getMidiNoteValue()),
+            [60, 65],
+            "Repeat should reuse the prior chord position in the new chord"
+        );
+
+        var threeChordSeq = new ChordProgression(60, MAJOR, "1,4,5");
+        var twoOverThreeLine = LineGenerator.createFromPattern(ti, threeChordSeq, "1.t. 2/3", new MidiInstrumentContext(0, 64, 1.0, 0));
+        var twoOverThreeNotes = twoOverThreeLine.generateNotes(0);
+        tester.testit("Ratio density 2/3 repeats twice across three chords",
+            twoOverThreeNotes.map(note -> note.getMidiNoteValue()),
+            [60, 67, 65, 74],
+            "Two cycles over three chords should follow the global timeline across harmony changes"
+        );
+        tester.testit("Ratio density 2/3 note timings",
+            twoOverThreeNotes.map(note -> note.getStartTime()),
+            [0.0, 2880.0, 5760.0, 8640.0],
+            "2/3 density should place notes on 3/8-chord step boundaries"
+        );
+
+        trace('Ratio Densities: ${tester.getTestCount() - startCount} tests run\n');
     }
 
     static function runScoreUtils() {   

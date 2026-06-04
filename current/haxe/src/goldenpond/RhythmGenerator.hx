@@ -31,9 +31,29 @@ interface IRhythmGenerator {
     function next():SelectorType;
     function reset():Void;
     function getPatternLength():Int;  // Original pattern length
-    function getTotalSteps():Int;     // Total steps including density
+    function getTotalSteps():Int;     // Total steps across one density window
+    function getStepLengthInChords():Float;
     function parseFailed():Bool;      // New method to check if parsing failed
     function getSteps():Array<SelectorType>;
+}
+
+@:expose
+class DensityRatio {
+    public var numerator:Int;
+    public var denominator:Int;
+
+    public function new(numerator:Int, denominator:Int = 1) {
+        this.numerator = numerator;
+        this.denominator = denominator;
+    }
+
+    public function getCycleLengthInChords():Float {
+        return denominator / numerator;
+    }
+
+    public function getStepLengthInChords(patternLength:Int):Float {
+        return getCycleLengthInChords() / patternLength;
+    }
 }
 
 // Base class for explicit patterns
@@ -41,14 +61,16 @@ interface IRhythmGenerator {
 class ExplicitRhythmGenerator implements IRhythmGenerator {
     private var steps:Array<SelectorType>;
     private var index:Int;
-    private var density:Int;
+    private var densityRatio:DensityRatio;
     private var totalSteps:Int;
+    private var stepLengthInChords:Float;
 
-    public function new(steps:Array<SelectorType>, density:Int) {
+    public function new(steps:Array<SelectorType>, densityNumerator:Int, densityDenominator:Int = 1) {
         this.steps = steps;
         this.index = 0;
-        this.density = density;
-        this.totalSteps = steps.length * density;
+        this.densityRatio = new DensityRatio(densityNumerator, densityDenominator);
+        this.totalSteps = steps.length * densityNumerator;
+        this.stepLengthInChords = this.densityRatio.getStepLengthInChords(steps.length);
     }
 
     public function hasNext():Bool {
@@ -56,8 +78,8 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
     }
 
     public function next():SelectorType {
-        var selector = steps[index % steps.length];
-        index = (index + 1) % totalSteps;
+        var selector = steps[index];
+        index = (index + 1) % steps.length;
         return selector;
     }
 
@@ -72,6 +94,10 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
     public function getTotalSteps():Int {
         return totalSteps;
     }
+
+    public function getStepLengthInChords():Float {
+        return stepLengthInChords;
+    }
     
     public function parseFailed():Bool {
         return false;  // Normal generators never fail
@@ -85,7 +111,7 @@ class ExplicitRhythmGenerator implements IRhythmGenerator {
 // Simple distribution algorithm
 @:expose
 class SimpleRhythmGenerator extends ExplicitRhythmGenerator {
-    public function new(k:Int, n:Int, selector:SelectorType, density:Int, offset:Int = 0) {
+    public function new(k:Int, n:Int, selector:SelectorType, densityNumerator:Int, offset:Int = 0, densityDenominator:Int = 1) {
         var steps = [];
         for (i in 0...n) steps.push(Rest);
         
@@ -117,14 +143,14 @@ class SimpleRhythmGenerator extends ExplicitRhythmGenerator {
             }
         }
         
-        super(steps, density);
+        super(steps, densityNumerator, densityDenominator);
     }
 }
 
 // Bjorklund's algorithm implementation
 @:expose
 class BjorklundRhythmGenerator extends ExplicitRhythmGenerator {
-    public function new(k:Int, n:Int, selector:SelectorType, density:Int, offset:Int = 0) {
+    public function new(k:Int, n:Int, selector:SelectorType, densityNumerator:Int, offset:Int = 0, densityDenominator:Int = 1) {
         // Ensure k and n are valid
         k = Std.int(Math.max(0, Math.min(k, n)));
         n = Std.int(Math.max(1, n));
@@ -163,7 +189,7 @@ class BjorklundRhythmGenerator extends ExplicitRhythmGenerator {
             });
         }
         
-        super(pattern, density);
+        super(pattern, densityNumerator, densityDenominator);
     }
     
     // Implementation of Bjorklund's algorithm for traditional rhythms
@@ -256,6 +282,10 @@ class ParseFailedRhythmGenerator implements IRhythmGenerator {
     public function getTotalSteps():Int {
         return patternLength;  // For failed patterns, total steps equals pattern length
     }
+
+    public function getStepLengthInChords():Float {
+        return 1.0;
+    }
     
     public function parseFailed():Bool {
         return true;  // This generator always indicates parsing failed
@@ -300,36 +330,51 @@ class RhythmLanguage {
         return new ParseFailedRhythmGenerator();
     }
     
+    private static function parseDensityRatio(input:String):Null<DensityRatio> {
+        var ratioRegex = ~/^([0-9]+)(?:\/([0-9]+))?$/;
+        if (!ratioRegex.match(input)) return null;
+
+        var numerator = Std.parseInt(ratioRegex.matched(1));
+        var denominatorMatch = ratioRegex.matched(2);
+        var denominator = denominatorMatch != null ? Std.parseInt(denominatorMatch) : 1;
+
+        if (numerator == null || denominator == null || numerator <= 0 || denominator <= 0) {
+            return null;
+        }
+
+        return new DensityRatio(numerator, denominator);
+    }
+
     private static function parseEuclidean(input:String):IRhythmGenerator {
-        // Match patterns like "3/8 > 4" or "3%8 > 4" or "3/8+1 > 4" or "3%8+1 > 4"
-        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rcbdtR]|[0-9])\\s+([0-9]+)$", "");
+        // Match patterns like "3/8 > 4" or "3%8 > 4" or "3/8+1 > 1/2" or "3%8+1 > 2/3"
+        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rcbdtR]|[0-9])\\s+([0-9]+(?:/[0-9]+)?)$", "");
         if (!regex.match(input)) return new ParseFailedRhythmGenerator();
-        
+
         var k = Std.parseInt(regex.matched(1));
         var separator = regex.matched(2);
         var n = Std.parseInt(regex.matched(3));
-        var offsetStr = regex.matched(5);  // This will be null if no offset was specified
+        var offsetStr = regex.matched(5);
         var offset = offsetStr != null ? Std.parseInt(offsetStr) : 0;
         var selector = parseSelectorType(regex.matched(6));
-        var density = Std.parseInt(regex.matched(7));  // Parse density as an integer
-        
-        if (k == null || n == null || selector == null || density == null) return new ParseFailedRhythmGenerator();
-        if (k <= 0 || n <= 0 || density <= 0) return new ParseFailedRhythmGenerator();  // Validate k, n, and density are positive
-        
-        return separator == "%" 
-            ? new BjorklundRhythmGenerator(k, n, selector, density, offset)
-            : new SimpleRhythmGenerator(k, n, selector, density, offset);
+        var densityRatio = parseDensityRatio(regex.matched(7));
+
+        if (k == null || n == null || selector == null || densityRatio == null) return new ParseFailedRhythmGenerator();
+        if (k <= 0 || n <= 0) return new ParseFailedRhythmGenerator();
+
+        return separator == "%"
+            ? new BjorklundRhythmGenerator(k, n, selector, densityRatio.numerator, offset, densityRatio.denominator)
+            : new SimpleRhythmGenerator(k, n, selector, densityRatio.numerator, offset, densityRatio.denominator);
     }
-    
+
     private static function parseExplicit(input:String):IRhythmGenerator {
-        // Match pattern like "1.1. 8" or ">.>.=.>. 4"
-        var parts = input.split(" ");
-        if (parts.length != 2) return new ParseFailedRhythmGenerator();
-        
-        var stepsStr = parts[0];
-        var density = Std.parseInt(parts[1]);  // Parse density as an integer
-        if (density == null || density <= 0) return new ParseFailedRhythmGenerator();
-        
+        // Match pattern like "1.1. 8" or ">.>.=.>. 1/2"
+        var regex = new EReg("^(\\S+)\\s+([0-9]+(?:/[0-9]+)?)$", "");
+        if (!regex.match(input)) return new ParseFailedRhythmGenerator();
+
+        var stepsStr = regex.matched(1);
+        var densityRatio = parseDensityRatio(regex.matched(2));
+        if (densityRatio == null) return new ParseFailedRhythmGenerator();
+
         var steps = new Array<SelectorType>();
         for (i in 0...stepsStr.length) {
             var char = stepsStr.charAt(i);
@@ -341,10 +386,10 @@ class RhythmLanguage {
                 steps.push(selector);
             }
         }
-        
-        return new ExplicitRhythmGenerator(steps, density);
+
+        return new ExplicitRhythmGenerator(steps, densityRatio.numerator, densityRatio.denominator);
     }
-    
+
     private static function parseSelectorType(input:String):Null<SelectorType> {
         return switch (input) {
             case ">": Ascending;

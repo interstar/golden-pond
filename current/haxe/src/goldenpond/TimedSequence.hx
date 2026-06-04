@@ -302,13 +302,15 @@ class DeserializationHelper implements IDeserializationHelper {
 
 @:expose
 class LineGenerator implements ILineGenerator {
+    private static inline var TIME_EPSILON:Float = 0.0001;
+
     private var timeManipulator: TimeManipulator;
     private var seq: IChordProgression;
     private var rhythmGenerator: IRhythmGenerator;
     private var instrumentContext: IInstrumentContext;
     private var cachedNotes: Array<INote>;
-    private var lastNoteIndex: Int;  // Track last index for Ascending/Descending
-    private var lastNoteValue: Int;  // Track last actual note for Repeat
+    private var lastNoteIndex: Int;  // Track chord-relative position across chord changes
+    private var lastNoteValue: Int;  // Fallback for selectors without a chord-relative position
 
     public function new(timeManipulator: TimeManipulator, 
                       seq: IChordProgression, 
@@ -319,8 +321,25 @@ class LineGenerator implements ILineGenerator {
         this.rhythmGenerator = rhythmGenerator;
         this.instrumentContext = instrumentContext;
         this.cachedNotes = null;
+        resetSelectorState();
+    }
+
+    private function resetSelectorState():Void {
         this.lastNoteIndex = -1;
         this.lastNoteValue = -1;
+    }
+
+    private function rememberChordNote(chord:Array<Int>, index:Int):Int {
+        if (chord.length == 0) {
+            lastNoteIndex = -1;
+            lastNoteValue = -1;
+            return -1;
+        }
+
+        var normalizedIndex = ((index % chord.length) + chord.length) % chord.length;
+        lastNoteIndex = normalizedIndex;
+        lastNoteValue = chord[normalizedIndex];
+        return lastNoteValue;
     }
 
     /**
@@ -355,24 +374,25 @@ class LineGenerator implements ILineGenerator {
         return switch(selector) {
             case Ascending:
                 var chord = chordThing.generateChordNotes();
-                lastNoteIndex = (lastNoteIndex == -1) ? 0 : (lastNoteIndex + 1) % chord.length;
-                lastNoteValue = chord[lastNoteIndex];
-                [lastNoteValue];
+                var nextIndex = (lastNoteIndex == -1) ? 0 : lastNoteIndex + 1;
+                [rememberChordNote(chord, nextIndex)];
                 
             case Descending:
                 var chord = chordThing.generateChordNotes();
-                lastNoteIndex = (lastNoteIndex == -1) ? chord.length - 1 : 
-                    (lastNoteIndex - 1 + chord.length) % chord.length;
-                lastNoteValue = chord[lastNoteIndex];
-                [lastNoteValue];
+                var nextIndex = (lastNoteIndex == -1) ? chord.length - 1 : lastNoteIndex - 1;
+                [rememberChordNote(chord, nextIndex)];
                 
             case Repeat:
-                if (lastNoteValue == -1) {
-                    var chord = chordThing.generateChordNotes();
-                    lastNoteIndex = 0;
-                    lastNoteValue = chord[0];
+                var chord = chordThing.generateChordNotes();
+                if (chord.length == 0) {
+                    [];
+                } else if (lastNoteIndex != -1) {
+                    [rememberChordNote(chord, lastNoteIndex)];
+                } else if (lastNoteValue != -1) {
+                    [lastNoteValue];
+                } else {
+                    [rememberChordNote(chord, 0)];
                 }
-                [lastNoteValue];
                 
             case FullChord:
                 chordThing.generateChordNotes();
@@ -380,8 +400,7 @@ class LineGenerator implements ILineGenerator {
             case ChordWithBass:
                 var chord = chordThing.generateChordNotes();
                 if (chord.length > 0) {
-                    // Add the root note one octave lower
-                    var rootNote = chord[0]; // First note is always the root
+                    var rootNote = chord[0];
                     var bassNote = rootNote - 12;
                     return [bassNote].concat(chord);
                 }
@@ -390,18 +409,11 @@ class LineGenerator implements ILineGenerator {
             case Drop2:
                 var chord = chordThing.generateChordNotes();
                 if (chord.length >= 2) {
-                    // Sort notes by pitch (highest to lowest)
                     var sortedChord = chord.copy();
                     sortedChord.sort(function(a, b) return b - a);
-                    
-                    // Drop the second highest note down an octave
                     var secondHighest = sortedChord[1];
                     var droppedNote = secondHighest - 12;
-                    
-                    // Replace the second highest note with the dropped version
                     sortedChord[1] = droppedNote;
-                    
-                    // Sort back to maintain original order if possible
                     sortedChord.sort(function(a, b) return a - b);
                     return sortedChord;
                 }
@@ -409,19 +421,16 @@ class LineGenerator implements ILineGenerator {
                 
             case Random:
                 var chord = chordThing.generateChordNotes();
-                lastNoteIndex = Std.int(Math.floor(Math.random() * chord.length));
-                lastNoteValue = chord[lastNoteIndex];
-                [lastNoteValue];
+                var randomIndex = Std.int(Math.floor(Math.random() * chord.length));
+                [rememberChordNote(chord, randomIndex)];
                 
             case SpecificNote(n):
                 var chord = chordThing.generateChordNotes();
-                lastNoteIndex = Std.int(Math.min(n - 1, chord.length - 1));
-                lastNoteValue = chord[lastNoteIndex];
-                [lastNoteValue];
+                [rememberChordNote(chord, Std.int(Math.min(n - 1, chord.length - 1)))];
                 
             case ScaleDegree(n):
                 if (n < 1 || n > 7) {
-                    [];  // Invalid scale degree
+                    [];
                 } else {
                     var mode = chordThing.get_mode();
                     lastNoteValue = mode.nth_from(chordThing.key, n);
@@ -436,9 +445,7 @@ class LineGenerator implements ILineGenerator {
                 
             case TopNote:
                 var chord = chordThing.generateChordNotes();
-                lastNoteIndex = chord.length - 1;
-                lastNoteValue = chord[lastNoteIndex];
-                [lastNoteValue];
+                [rememberChordNote(chord, chord.length - 1)];
                 
             case Rest:
                 [];
@@ -447,29 +454,36 @@ class LineGenerator implements ILineGenerator {
 
     private function generateCachedNotes(): Array<INote> {
         var notes = new Array<INote>();
-        var currentTime = 0.0;
-        var totalSteps = rhythmGenerator.getTotalSteps();
-        var stepSize = timeManipulator.chordTicks / totalSteps;
+        var chordThings = seq.toChordThings();
+        if (chordThings.length == 0) {
+            return notes;
+        }
 
-        for (ct in seq.toChordThings()) {
-            lastNoteIndex = -1;
-            lastNoteValue = -1;
-            rhythmGenerator.reset();
-            
-            for (step in 0...totalSteps) {
-                var selector = rhythmGenerator.next();
-                if (selector != Rest) {
-                    var notesToAdd = selectNotesFromChord(selector, ct);
-                    for (note in notesToAdd) {
-                        notes.push(this.instrumentContext.makeNote(
-                            note,
-                            currentTime,
-                            stepSize
-                        ));
-                    }
-                }
-                currentTime += stepSize;
+        var currentTime = 0.0;
+        var stepSize = timeManipulator.chordTicks * rhythmGenerator.getStepLengthInChords();
+        var totalDuration = chordThings.length * timeManipulator.chordTicks;
+
+        rhythmGenerator.reset();
+        resetSelectorState();
+
+        while (currentTime < totalDuration - TIME_EPSILON) {
+            var chordIndex = Std.int(Math.floor(currentTime / timeManipulator.chordTicks));
+            if (chordIndex >= chordThings.length) {
+                chordIndex = chordThings.length - 1;
             }
+
+            var selector = rhythmGenerator.next();
+            if (selector != Rest) {
+                var notesToAdd = selectNotesFromChord(selector, chordThings[chordIndex]);
+                for (note in notesToAdd) {
+                    notes.push(this.instrumentContext.makeNote(
+                        note,
+                        currentTime,
+                        stepSize
+                    ));
+                }
+            }
+            currentTime += stepSize;
         }
         return notes;
     }

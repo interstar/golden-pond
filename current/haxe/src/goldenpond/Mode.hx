@@ -31,6 +31,9 @@ private enum BaseScale {
     MAJOR;
     MELODIC_MINOR;
     HARMONIC_MINOR;
+    HARMONIC_MAJOR;
+    HUNGARIAN_MINOR;
+    DOUBLE_HARMONIC_MAJOR;
 }
 
 @:expose
@@ -39,58 +42,62 @@ class Mode {
     public static var minor_intervals = [2, 1, 2, 2, 1, 2, 2];
     public static var harmonic_minor_intervals = [2, 1, 2, 2, 1, 3, 1];
     public static var melodic_minor_intervals = [2, 1, 2, 2, 2, 2, 1];
+    public static var harmonic_major_intervals = [2, 2, 1, 2, 1, 3, 1];
+    public static var hungarian_minor_intervals = [2, 1, 3, 1, 1, 3, 1];
+    public static var double_harmonic_major_intervals = [1, 3, 1, 2, 1, 3, 1];
 
     // Map to store all modes for each base scale
     private static var modeMap:Map<BaseScale, Array<Mode>>;
-    
-    private static function constructMajorMode(offset:Int):Mode {
+
+    private static function constructModeFromIntervals(sourceIntervals:Array<Int>, offset:Int, ?baseScale:BaseScale):Mode {
         var intervals = [];
         for (i in 0...7) {
-            intervals.push(major_intervals[(i + offset - 1) % 7]);
+            intervals.push(sourceIntervals[(i + offset - 1) % 7]);
         }
-        return new Mode(intervals);
+        return new Mode(intervals, baseScale);
+    }
+    
+    private static function constructMajorMode(offset:Int):Mode {
+        return constructModeFromIntervals(major_intervals, offset, BaseScale.MAJOR);
     }
 
     private static function constructMelodicMinorMode(offset:Int):Mode {
-        var intervals = [];
-        for (i in 0...7) {
-            intervals.push(melodic_minor_intervals[(i + offset - 1) % 7]);
-        }
-        return new Mode(intervals);
+        return constructModeFromIntervals(melodic_minor_intervals, offset, BaseScale.MELODIC_MINOR);
     }
 
     private static function constructHarmonicMinorMode(offset:Int):Mode {
-        var intervals = [];
-        for (i in 0...7) {
-            intervals.push(harmonic_minor_intervals[(i + offset - 1) % 7]);
+        return constructModeFromIntervals(harmonic_minor_intervals, offset, BaseScale.HARMONIC_MINOR);
+    }
+
+    private static function constructHarmonicMajorMode(offset:Int):Mode {
+        return constructModeFromIntervals(harmonic_major_intervals, offset, BaseScale.HARMONIC_MAJOR);
+    }
+
+    private static function constructHungarianMinorMode(offset:Int):Mode {
+        return constructModeFromIntervals(hungarian_minor_intervals, offset, BaseScale.HUNGARIAN_MINOR);
+    }
+
+    private static function constructDoubleHarmonicMajorMode(offset:Int):Mode {
+        return constructModeFromIntervals(double_harmonic_major_intervals, offset, BaseScale.DOUBLE_HARMONIC_MAJOR);
+    }
+
+    private static function buildModeFamily(builder:Int->Mode):Array<Mode> {
+        var modes = [];
+        for (i in 1...8) {
+            modes.push(builder(i));
         }
-        return new Mode(intervals);
+        return modes;
     }
 
     private static function initializeModeMap() {
         if (modeMap == null) {
             modeMap = new Map<BaseScale, Array<Mode>>();
-            
-            // Initialize major modes
-            var majorModes = [];
-            for (i in 1...8) {
-                majorModes.push(constructMajorMode(i));
-            }
-            modeMap.set(BaseScale.MAJOR, majorModes);
-            
-            // Initialize melodic minor modes
-            var melodicMinorModes = [];
-            for (i in 1...8) {
-                melodicMinorModes.push(constructMelodicMinorMode(i));
-            }
-            modeMap.set(BaseScale.MELODIC_MINOR, melodicMinorModes);
-            
-            // Initialize harmonic minor modes
-            var harmonicMinorModes = [];
-            for (i in 1...8) {
-                harmonicMinorModes.push(constructHarmonicMinorMode(i));
-            }
-            modeMap.set(BaseScale.HARMONIC_MINOR, harmonicMinorModes);
+            modeMap.set(BaseScale.MAJOR, buildModeFamily(constructMajorMode));
+            modeMap.set(BaseScale.MELODIC_MINOR, buildModeFamily(constructMelodicMinorMode));
+            modeMap.set(BaseScale.HARMONIC_MINOR, buildModeFamily(constructHarmonicMinorMode));
+            modeMap.set(BaseScale.HARMONIC_MAJOR, buildModeFamily(constructHarmonicMajorMode));
+            modeMap.set(BaseScale.HUNGARIAN_MINOR, buildModeFamily(constructHungarianMinorMode));
+            modeMap.set(BaseScale.DOUBLE_HARMONIC_MAJOR, buildModeFamily(constructDoubleHarmonicMajorMode));
         }
     }
 
@@ -102,10 +109,42 @@ class Mode {
         return modeMap.get(baseScale)[modeNumber - 1];
     }
 
-    public var intervals:Array<Int>;
+    private static function getBaseScaleOf(original:Mode):BaseScale {
+        initializeModeMap();
+        if (original.baseScale != null) {
+            return original.baseScale;
+        }
+        var families = [
+            BaseScale.MAJOR,
+            BaseScale.MELODIC_MINOR,
+            BaseScale.HARMONIC_MINOR,
+            BaseScale.HARMONIC_MAJOR,
+            BaseScale.HUNGARIAN_MINOR,
+            BaseScale.DOUBLE_HARMONIC_MAJOR
+        ];
 
-    public function new(intervals:Array<Int>) {
+        for (baseScale in families) {
+            var family = modeMap.get(baseScale);
+            for (mode in family) {
+                if (mode.valueEquals(original)) {
+                    return baseScale;
+                }
+            }
+        }
+
+        throw "Cannot get nth mode of unknown scale";
+    }
+
+    public var intervals:Array<Int>;
+    private var baseScale:Null<BaseScale>;
+
+    public function new(intervals:Array<Int>, ?baseScale:BaseScale) {
         this.intervals = intervals;
+        this.baseScale = baseScale;
+    }
+
+    public static function nthModeOf(original:Mode, n:Int):Mode {
+        return getMode(getBaseScaleOf(original), n);
     }
 
     public static function getMajorMode():Mode {
@@ -126,6 +165,21 @@ class Mode {
     public static function getMelodicMinorMode():Mode {
         initializeModeMap();
         return getMode(BaseScale.MELODIC_MINOR, 1);
+    }
+
+    public static function getHarmonicMajorMode():Mode {
+        initializeModeMap();
+        return getMode(BaseScale.HARMONIC_MAJOR, 1);
+    }
+
+    public static function getHungarianMinorMode():Mode {
+        initializeModeMap();
+        return getMode(BaseScale.HUNGARIAN_MINOR, 1);
+    }
+
+    public static function getDoubleHarmonicMajorMode():Mode {
+        initializeModeMap();
+        return getMode(BaseScale.DOUBLE_HARMONIC_MAJOR, 1);
     }
 
     public static function getDorianMode():Mode {
@@ -171,6 +225,21 @@ class Mode {
     public static function constructNthMelodicMinorMode(offset:Int):Mode {
         initializeModeMap();
         return getMode(BaseScale.MELODIC_MINOR, offset);
+    }
+
+    public static function constructNthHarmonicMajorMode(offset:Int):Mode {
+        initializeModeMap();
+        return getMode(BaseScale.HARMONIC_MAJOR, offset);
+    }
+
+    public static function constructNthHungarianMinorMode(offset:Int):Mode {
+        initializeModeMap();
+        return getMode(BaseScale.HUNGARIAN_MINOR, offset);
+    }
+
+    public static function constructNthDoubleHarmonicMajorMode(offset:Int):Mode {
+        initializeModeMap();
+        return getMode(BaseScale.DOUBLE_HARMONIC_MAJOR, offset);
     }
 
     public static function constructNthMinorMode(n:Int):Mode {
@@ -239,4 +308,9 @@ var MINOR = Mode.getMinorMode();
 var HARMONIC_MINOR = Mode.getHarmonicMinorMode();
 @:expose
 var MELODIC_MINOR = Mode.getMelodicMinorMode();
-
+@:expose
+var HARMONIC_MAJOR = Mode.getHarmonicMajorMode();
+@:expose
+var HUNGARIAN_MINOR = Mode.getHungarianMinorMode();
+@:expose
+var DOUBLE_HARMONIC_MAJOR = Mode.getDoubleHarmonicMajorMode();
