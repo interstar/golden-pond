@@ -396,6 +396,9 @@ class LineGenerator implements ILineGenerator {
                 
             case FullChord:
                 chordThing.generateChordNotes();
+
+            case WrappedChord:
+                wrapChordIntoWindow(chordThing);
                 
             case ChordWithBass:
                 var chord = chordThing.generateChordNotes();
@@ -442,6 +445,20 @@ class LineGenerator implements ILineGenerator {
                 var degree = Std.int(Math.floor(Math.random() * 7) + 1);
                 lastNoteValue = mode.nth_from(chordThing.key, degree);
                 [lastNoteValue];
+
+            case RandomFromPentatonic:
+                var mode = chordThing.get_mode();
+                var pentatonicDegrees = mode.isMinorScale() ? [1, 3, 4, 5, 7] : [1, 2, 3, 5, 6];
+                var degree = pentatonicDegrees[Std.int(Math.floor(Math.random() * pentatonicDegrees.length))];
+                lastNoteValue = mode.nth_from(chordThing.key, degree);
+                [lastNoteValue];
+
+            case RandomFromSpicyPentatonic:
+                var mode = chordThing.get_mode();
+                var pitchClasses = mode.isMinorScale() ? [0, 3, 4, 5, 7, 10] : [0, 2, 3, 4, 7, 9];
+                var offset = pitchClasses[Std.int(Math.floor(Math.random() * pitchClasses.length))];
+                lastNoteValue = chordThing.key + offset;
+                [lastNoteValue];
                 
             case TopNote:
                 var chord = chordThing.generateChordNotes();
@@ -450,6 +467,41 @@ class LineGenerator implements ILineGenerator {
             case Rest:
                 [];
         }
+    }
+
+    private function wrapChordIntoWindow(chordThing:ChordThing):Array<Int> {
+        var chord = chordThing.generateChordNotes();
+        if (chord.length == 0) {
+            return chord;
+        }
+
+        var ceiling = chordThing.key + 8;
+        var wrapped = chord.copy();
+
+        for (i in 0...wrapped.length) {
+            while (wrapped[i] > ceiling) {
+                wrapped[i] -= 12;
+            }
+        }
+
+        wrapped.sort(function(a, b) return a - b);
+
+        var changed = true;
+        while (changed) {
+            changed = false;
+            for (i in 0...wrapped.length - 1) {
+                var lower = wrapped[i];
+                var upper = wrapped[i + 1];
+                if ((upper - lower) <= 2) {
+                    wrapped[i + 1] = upper + 12;
+                    wrapped.sort(function(a, b) return a - b);
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        return wrapped;
     }
 
     private function generateCachedNotes(): Array<INote> {

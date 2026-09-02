@@ -247,6 +247,10 @@ class Mode {
         return constructNthMajorMode(n);
     }
 
+    public function isMinorScale():Bool {
+        return nth_from(0, 3) == 3;
+    }
+
     public function nth_from(root:Int, n:Int):Int {
         if (n == 1) return root;
         var note = root;

@@ -15,10 +15,13 @@ enum SelectorType {
     Descending;       
     Repeat;           
     FullChord;        
+    WrappedChord;     // Chord wrapped into a compact window above the key root
     ChordWithBass;    // Chord with root doubled one octave lower
     Drop2;            // Drop 2 voicing - second highest note dropped an octave
     Random;           
-    RandomFromScale;   // New selector for random scale degree
+    RandomFromScale;   // Random scale degree from the full scale
+    RandomFromPentatonic; // Random scale degree from the pentatonic subset of the current mode
+    RandomFromSpicyPentatonic; // Pentatonic plus major/minor third color note
     SpecificNote(n:Int);
     Rest;
     TopNote;
@@ -347,7 +350,7 @@ class RhythmLanguage {
 
     private static function parseEuclidean(input:String):IRhythmGenerator {
         // Match patterns like "3/8 > 4" or "3%8 > 4" or "3/8+1 > 1/2" or "3%8+1 > 2/3"
-        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rcbdtR]|[0-9])\\s+([0-9]+(?:/[0-9]+)?)$", "");
+        var regex = new EReg("^([0-9]+)([/%])([0-9]+)(\\+([0-9]+))?\\s+([><rcCbdtRpP]|[0-9])\\s+([0-9]+(?:/[0-9]+)?)$", "");
         if (!regex.match(input)) return new ParseFailedRhythmGenerator();
 
         var k = Std.parseInt(regex.matched(1));
@@ -396,10 +399,13 @@ class RhythmLanguage {
             case "<": Descending;
             case "=": Repeat;
             case "c": FullChord;
+            case "C": WrappedChord;
             case "b": ChordWithBass;    // Chord with root doubled one octave lower
             case "d": Drop2;            // Drop 2 voicing
             case "r": Random;
-            case "R": RandomFromScale;  // New selector for random scale degree
+            case "R": RandomFromScale;
+            case "p": RandomFromPentatonic;
+            case "P": RandomFromSpicyPentatonic;
             case "t": TopNote;
             case n if (~/^[1-9]$/.match(n)): SpecificNote(Std.parseInt(n));
             default: null;

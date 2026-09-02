@@ -591,6 +591,29 @@ class TestSuite2 {
             [55, 60, 64, 71], // G, C, E, B (second highest note G dropped an octave)
             "Drop2 should drop the second highest note down an octave"
         );
+
+        // Test WrappedChord (C) - should wrap notes above key root + 8 down an octave
+        var wrappedTriadSeq = new ChordProgression(60, MAJOR, "5"); // G major triad
+        var wrappedTriadRhythm = new SimpleRhythmGenerator(1, 1, WrappedChord, 1, 0);
+        var wrappedTriadLine = LineGenerator.create(ti, wrappedTriadSeq, wrappedTriadRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var wrappedTriadNotes = wrappedTriadLine.generateNotes(0);
+
+        tester.testit("WrappedChord (C) - G major triad",
+            wrappedTriadNotes.slice(0, 3).map(note -> note.getMidiNoteValue()),
+            [59, 62, 67], // B, D, G
+            "WrappedChord should wrap notes above key root + 8 down an octave"
+        );
+
+        // Test WrappedChord cleanup heuristic on a seventh chord - should avoid low adjacent seconds
+        var wrappedSeventhRhythm = new SimpleRhythmGenerator(1, 1, WrappedChord, 1, 0);
+        var wrappedSeventhLine = LineGenerator.create(ti, seq, wrappedSeventhRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var wrappedSeventhNotes = wrappedSeventhLine.generateNotes(0);
+
+        tester.testit("WrappedChord (C) - C major 7th cleanup heuristic",
+            wrappedSeventhNotes.slice(0, 4).map(note -> note.getMidiNoteValue()),
+            [59, 64, 67, 72], // B, E, G, C after wrap and adjacent-second cleanup
+            "WrappedChord should keep wrapped sevenths musically spaced"
+        );
         
         trace('Chord Types: ${tester.getTestCount() - startCount} tests run\n');
     }
@@ -630,12 +653,35 @@ class TestSuite2 {
             true,
             "Should create rhythm generator with offset"
         );
+
+        var euclideanWrappedChord = RhythmLanguage.makeRhythmGenerator("3/8 C 2");
+        tester.testit("Euclidean wrapped chord selector",
+            !euclideanWrappedChord.parseFailed() && Std.isOfType(euclideanWrappedChord, SimpleRhythmGenerator),
+            true,
+            "Should create SimpleRhythmGenerator for wrapped chord selector"
+        );
+
+        var euclideanPentatonic = RhythmLanguage.makeRhythmGenerator("3/8 p 2");
+        tester.testit("Euclidean pentatonic selector",
+            !euclideanPentatonic.parseFailed() && Std.isOfType(euclideanPentatonic, SimpleRhythmGenerator),
+            true,
+            "Should create SimpleRhythmGenerator for pentatonic selector"
+        );
+
+        var euclideanSpicyPentatonic = RhythmLanguage.makeRhythmGenerator("3/8 P 2");
+        tester.testit("Euclidean spicy pentatonic selector",
+            !euclideanSpicyPentatonic.parseFailed() && Std.isOfType(euclideanSpicyPentatonic, SimpleRhythmGenerator),
+            true,
+            "Should create SimpleRhythmGenerator for spicy pentatonic selector"
+        );
         
         // Test various explicit patterns
         var patterns = [
             "1.1. 8",           // Root notes in positions 1 and 3
             "c... 2",           // Full chord then 3 gaps
             "r.r.r.r. 4",       // Random notes
+            "p... 2",           // Random pentatonic notes
+            "P... 2",           // Random spicy pentatonic notes
             ">.>.=.<.<. 4"      // Mix of ascending, descending, and repeat
         ];
         
@@ -834,6 +880,48 @@ class TestSuite2 {
             randomScaleNotes[0].getMidiNoteValue() >= 60 && randomScaleNotes[0].getMidiNoteValue() <= 71,
             true,
             "Random scale note should be within C major scale"
+        );
+
+        // Test RandomFromPentatonic selector
+        var randomPentatonicRhythm = new SimpleRhythmGenerator(1, 4, RandomFromPentatonic, 1, 0);
+        var randomPentatonicLine = LineGenerator.create(ti, seq, randomPentatonicRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var randomPentatonicNotes = randomPentatonicLine.generateNotes(0);
+
+        tester.testit("RandomFromPentatonic selector note in pentatonic",
+            [60, 62, 64, 67, 69].indexOf(randomPentatonicNotes[0].getMidiNoteValue()) >= 0,
+            true,
+            "Random pentatonic note should be within 1,2,3,5,6 of C major"
+        );
+
+        var randomSpicyMajorRhythm = new SimpleRhythmGenerator(1, 4, RandomFromSpicyPentatonic, 1, 0);
+        var randomSpicyMajorLine = LineGenerator.create(ti, seq, randomSpicyMajorRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var randomSpicyMajorNotes = randomSpicyMajorLine.generateNotes(0);
+
+        tester.testit("RandomFromSpicyPentatonic selector note in major spicy set",
+            [60, 62, 63, 64, 67, 69].indexOf(randomSpicyMajorNotes[0].getMidiNoteValue()) >= 0,
+            true,
+            "Random spicy pentatonic note should be within 1,2,b3,3,5,6 of C major"
+        );
+
+        var minorSeq = new ChordProgression(60, MINOR, "1,4,5,1");
+        var randomMinorPentatonicRhythm = new SimpleRhythmGenerator(1, 4, RandomFromPentatonic, 1, 0);
+        var randomMinorPentatonicLine = LineGenerator.create(ti, minorSeq, randomMinorPentatonicRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var randomMinorPentatonicNotes = randomMinorPentatonicLine.generateNotes(0);
+
+        tester.testit("RandomFromPentatonic selector note in minor pentatonic",
+            [60, 63, 65, 67, 70].indexOf(randomMinorPentatonicNotes[0].getMidiNoteValue()) >= 0,
+            true,
+            "Random pentatonic note should be within 1,b3,4,5,b7 of C minor"
+        );
+
+        var randomSpicyMinorRhythm = new SimpleRhythmGenerator(1, 4, RandomFromSpicyPentatonic, 1, 0);
+        var randomSpicyMinorLine = LineGenerator.create(ti, minorSeq, randomSpicyMinorRhythm, new MidiInstrumentContext(0, 64, 0.8, 0));
+        var randomSpicyMinorNotes = randomSpicyMinorLine.generateNotes(0);
+
+        tester.testit("RandomFromSpicyPentatonic selector note in minor spicy set",
+            [60, 63, 64, 65, 67, 70].indexOf(randomSpicyMinorNotes[0].getMidiNoteValue()) >= 0,
+            true,
+            "Random spicy pentatonic note should be within 1,b3,3,4,5,b7 of C minor"
         );
     }
 

@@ -95,6 +95,10 @@ class TestSuite1 {
         tester.testit("modes48", Mode.nthModeOf(Mode.getHarmonicMajorMode(), 4).intervals, Mode.constructNthHarmonicMajorMode(4).intervals, "nthModeOf harmonic major family");
         tester.testit("modes49", Mode.nthModeOf(Mode.getHungarianMinorMode(), 5).intervals, Mode.constructNthHungarianMinorMode(5).intervals, "nthModeOf hungarian minor family");
         tester.testit("modes50", Mode.nthModeOf(Mode.getDoubleHarmonicMajorMode(), 6).intervals, Mode.constructNthDoubleHarmonicMajorMode(6).intervals, "nthModeOf double harmonic major family");
+        tester.testit("modes51", Mode.getMajorMode().isMinorScale(), false, "Major mode should not have a flat third");
+        tester.testit("modes52", Mode.getMinorMode().isMinorScale(), true, "Minor mode should have a flat third");
+        tester.testit("modes53", Mode.getHarmonicMajorMode().isMinorScale(), false, "Harmonic major should not have a flat third");
+        tester.testit("modes54", Mode.getHungarianMinorMode().isMinorScale(), true, "Hungarian minor should have a flat third");
     }	
     
     
