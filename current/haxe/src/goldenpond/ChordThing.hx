@@ -80,36 +80,64 @@ class ChordThing {
         return this;
     }
 
+    private function removeModifier(modifier:Modifier) {
+        while (this.modifiers.indexOf(modifier) != -1) {
+            this.modifiers.splice(this.modifiers.indexOf(modifier), 1);
+        }
+    }
+
+    private function removeChordExtensions() {
+        removeModifier(Modifier.SIXTH);
+        removeModifier(Modifier.SEVENTH);
+        removeModifier(Modifier.NINTH);
+        removeModifier(Modifier.ELEVENTH);
+        removeModifier(Modifier.THIRTEENTH);
+    }
+
+    private function removeSuspensions() {
+        removeModifier(Modifier.SUS2);
+        removeModifier(Modifier.SUS4);
+    }
+
     public function seventh():ChordThing {
-        if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.NINTH), 1);
-        }
-        if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.SIXTH), 1);
-        }
+        removeChordExtensions();
         this.modifiers.push(Modifier.SEVENTH);
         return this;
     }
 
     public function ninth():ChordThing {
-        if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.SEVENTH), 1);
-        }
-        if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.SIXTH), 1);
-        }
+        removeChordExtensions();
         this.modifiers.push(Modifier.NINTH);
         return this;
     }
 
+    public function eleventh():ChordThing {
+        removeChordExtensions();
+        this.modifiers.push(Modifier.ELEVENTH);
+        return this;
+    }
+
+    public function thirteenth():ChordThing {
+        removeChordExtensions();
+        this.modifiers.push(Modifier.THIRTEENTH);
+        return this;
+    }
+
     public function sixth():ChordThing {
-        if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.SEVENTH), 1);
-        }
-        if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
-            this.modifiers.splice(this.modifiers.indexOf(Modifier.NINTH), 1);
-        }
+        removeChordExtensions();
         this.modifiers.push(Modifier.SIXTH);
+        return this;
+    }
+
+    public function sus2():ChordThing {
+        removeSuspensions();
+        this.modifiers.push(Modifier.SUS2);
+        return this;
+    }
+
+    public function sus4():ChordThing {
+        removeSuspensions();
+        this.modifiers.push(Modifier.SUS4);
         return this;
     }
 
@@ -146,7 +174,11 @@ class ChordThing {
     }
 
     public function has_extensions():Bool {
-        return this.modifiers.indexOf(Modifier.SEVENTH) != -1 || this.modifiers.indexOf(Modifier.NINTH) != -1;
+        return this.modifiers.indexOf(Modifier.SIXTH) != -1 ||
+            this.modifiers.indexOf(Modifier.SEVENTH) != -1 ||
+            this.modifiers.indexOf(Modifier.NINTH) != -1 ||
+            this.modifiers.indexOf(Modifier.ELEVENTH) != -1 ||
+            this.modifiers.indexOf(Modifier.THIRTEENTH) != -1;
     }
 
     public function get_mode():Mode {
@@ -161,8 +193,13 @@ class ChordThing {
         var new_tonic = this.mode.nth_from(this.key, this.degree);
         var ct = new ChordThing(new_tonic, Mode.getMajorMode(), this.secondary_degree, this.length);
 
+        if (this.modifiers.indexOf(Modifier.SUS2) != -1) ct.sus2();
+        if (this.modifiers.indexOf(Modifier.SUS4) != -1) ct.sus4();
+        if (this.modifiers.indexOf(Modifier.SIXTH) != -1) ct.sixth();
         if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) ct.seventh();
         if (this.modifiers.indexOf(Modifier.NINTH) != -1) ct.ninth();
+        if (this.modifiers.indexOf(Modifier.ELEVENTH) != -1) ct.eleventh();
+        if (this.modifiers.indexOf(Modifier.THIRTEENTH) != -1) ct.thirteenth();
         ct.set_inversion(this.inversion);
         return ct;
     }
@@ -178,14 +215,28 @@ class ChordThing {
         
         var chord:Array<Int>;
         
-        if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
+        if (this.modifiers.indexOf(Modifier.THIRTEENTH) != -1) {
+            chord = this.mode.make_thirteenth(this.key, this.degree);
+        } else if (this.modifiers.indexOf(Modifier.ELEVENTH) != -1) {
+            chord = this.mode.make_eleventh(this.key, this.degree);
+        } else if (this.modifiers.indexOf(Modifier.NINTH) != -1) {
             chord = this.mode.make_ninth(this.key, this.degree);
         } else if (this.modifiers.indexOf(Modifier.SEVENTH) != -1) {
             chord = this.mode.make_seventh(this.key, this.degree);
         } else if (this.modifiers.indexOf(Modifier.SIXTH) != -1) {
             chord = this.mode.make_sixth(this.key, this.degree);
+        } else if (this.modifiers.indexOf(Modifier.SUS2) != -1) {
+            chord = this.mode.make_sus2(this.key, this.degree);
+        } else if (this.modifiers.indexOf(Modifier.SUS4) != -1) {
+            chord = this.mode.make_sus4(this.key, this.degree);
         } else {
             chord = this.mode.make_triad(this.key, this.degree);
+        }
+
+        if (this.modifiers.indexOf(Modifier.SUS2) != -1 && chord.length > 2) {
+            chord[1] = this.mode.nth_from(this.key, this.degree + 1);
+        } else if (this.modifiers.indexOf(Modifier.SUS4) != -1 && chord.length > 2) {
+            chord[1] = this.mode.nth_from(this.key, this.degree + 3);
         }
 
         // Apply inversions
@@ -303,14 +354,18 @@ class ChordThing {
         var quality = determineChordQuality();
         var hasSeventh = this.modifiers.indexOf(Modifier.SEVENTH) != -1;
         var hasNinth = this.modifiers.indexOf(Modifier.NINTH) != -1;
+        var hasEleventh = this.modifiers.indexOf(Modifier.ELEVENTH) != -1;
+        var hasThirteenth = this.modifiers.indexOf(Modifier.THIRTEENTH) != -1;
         var hasSixth = this.modifiers.indexOf(Modifier.SIXTH) != -1;
+        var susSuffix = this.modifiers.indexOf(Modifier.SUS2) != -1 ? "sus2" :
+            (this.modifiers.indexOf(Modifier.SUS4) != -1 ? "sus4" : "");
 
         if (hasSixth) {
-            return quality == "" ? "6" : quality + "6";
+            return quality == "" ? susSuffix + "6" : quality + susSuffix + "6";
         }
 
-        if (!hasSeventh && !hasNinth) {
-            return quality;
+        if (!hasSeventh && !hasNinth && !hasEleventh && !hasThirteenth) {
+            return susSuffix != "" ? susSuffix : quality;
         }
 
         if (chordNotes.length < 4) {
@@ -319,44 +374,53 @@ class ChordThing {
 
         var seventhInterval = intervalFromRoot(chordNotes[3], root);
         var isNinth = hasNinth && chordNotes.length >= 5;
+        var isEleventh = hasEleventh && chordNotes.length >= 6;
+        var isThirteenth = hasThirteenth && chordNotes.length >= 7;
+
+        var extensionNumber = isThirteenth ? "13" : (isEleventh ? "11" : (isNinth ? "9" : "7"));
+        if (susSuffix != "") {
+            if (seventhInterval == 11) return susSuffix + "maj" + extensionNumber;
+            return susSuffix + extensionNumber;
+        }
+
 
         if (thirdInterval == 3 && fifthInterval == 6) {
             if (seventhInterval == 9) {
-                return isNinth ? "dim9" : "dim7";
+                return "dim" + extensionNumber;
             }
             if (seventhInterval == 10) {
-                return isNinth ? "m7b5(add9)" : "m7b5";
+                return extensionNumber == "7" ? "m7b5" : "m7b5(add" + extensionNumber + ")";
             }
         }
 
         if (thirdInterval == 4 && fifthInterval == 7) {
             if (seventhInterval == 11) {
-                return isNinth ? "maj9" : "maj7";
+                return "maj" + extensionNumber;
             }
             if (seventhInterval == 10) {
-                return isNinth ? "9" : "7";
+                return extensionNumber;
             }
         }
 
         if (thirdInterval == 3 && fifthInterval == 7) {
             if (seventhInterval == 11) {
-                return isNinth ? "m(maj9)" : "m(maj7)";
+                return extensionNumber == "7" ? "m(maj7)" : "m(maj" + extensionNumber + ")";
             }
             if (seventhInterval == 10) {
-                return isNinth ? "m9" : "m7";
+                return "m" + extensionNumber;
             }
         }
 
         if (thirdInterval == 4 && fifthInterval == 8) {
             if (seventhInterval == 11) {
-                return isNinth ? "augmaj9" : "augmaj7";
+                return "augmaj" + extensionNumber;
             }
             if (seventhInterval == 10) {
-                return isNinth ? "aug9" : "aug7";
+                return "aug" + extensionNumber;
             }
         }
 
-        return quality + (isNinth ? "9" : "7");
+        return quality + extensionNumber;
     }
     
     /**

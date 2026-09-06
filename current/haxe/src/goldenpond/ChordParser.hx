@@ -25,13 +25,83 @@ import haxe.ds.StringMap;
 import haxe.ds.IntMap;
 import StringTools;
 
-class Tuple2<T1, T2> {
-    public var _0:T1;
-    public var _1:T2;
+enum ChordToken {
+    ChordAtom(value:String);
+    ModeDirective(value:String);
+    TransposeDirective(value:String);
+    VoiceLeadNext;
+}
 
-    public function new(_0:T1, _1:T2) {
-        this._0 = _0;
-        this._1 = _1;
+class ChordTokenizer {
+    private static function isWhitespace(char:String):Bool {
+        return char == " " || char == "\t" || char == "\n" || char == "\r";
+    }
+
+    private static function isSoftSeparator(char:String):Bool {
+        return char == "," || char == "|" || isWhitespace(char);
+    }
+
+    private static function readDirective(inputString:String, start:Int):Int {
+        var pos = start + 1;
+        while (pos < inputString.length) {
+            var char = inputString.charAt(pos);
+            if (isSoftSeparator(char) || char == "&") {
+                break;
+            }
+            pos++;
+        }
+        return pos;
+    }
+
+    private static function readChordAtom(inputString:String, start:Int):Int {
+        var pos = start;
+        var insideParentheses = false;
+        while (pos < inputString.length) {
+            var char = inputString.charAt(pos);
+            if (char == "(") {
+                insideParentheses = true;
+            } else if (char == ")") {
+                insideParentheses = false;
+            }
+
+            if (!insideParentheses && (isSoftSeparator(char) || char == "&" || char == ">" || char == "<")) {
+                break;
+            }
+            pos++;
+        }
+        return pos;
+    }
+
+    public static function tokenize(inputString:String):Array<ChordToken> {
+        var tokens:Array<ChordToken> = [];
+        var pos = 0;
+
+        while (pos < inputString.length) {
+            var char = inputString.charAt(pos);
+            if (isSoftSeparator(char)) {
+                pos++;
+            } else if (char == "&") {
+                tokens.push(VoiceLeadNext);
+                pos++;
+            } else if (char == "!") {
+                var end = readDirective(inputString, pos);
+                tokens.push(ModeDirective(inputString.substr(pos, end - pos)));
+                pos = end;
+            } else if (char == ">" || char == "<") {
+                var end = readDirective(inputString, pos);
+                tokens.push(TransposeDirective(inputString.substr(pos, end - pos)));
+                pos = end;
+            } else {
+                var end = readChordAtom(inputString, pos);
+                var atom = StringTools.trim(inputString.substr(pos, end - pos));
+                if (atom.length > 0) {
+                    tokens.push(ChordAtom(atom));
+                }
+                pos = end;
+            }
+        }
+
+        return tokens;
     }
 }
 
@@ -44,50 +114,6 @@ class ChordParser {
         this.mode = mode;
     }
 
-    private function parseSeparator(inputString:String):Tuple2<Null<String>, String> {
-        var separators = ['|', ',', '&'];
-        if (inputString.length > 0 && separators.indexOf(inputString.charAt(0)) != -1) {
-            return new Tuple2(inputString.charAt(0), inputString.substr(1));
-        } else {
-            return new Tuple2(null, inputString);
-        }
-    }
-
-    private function parseTranspose(inputString:String):String {
-        var transposeChars = new StringBuf();
-        while (inputString.length > 0 && [',', '|'].indexOf(inputString.charAt(0)) == -1) {
-            transposeChars.add(inputString.charAt(0));
-            inputString = inputString.substr(1);
-        }
-        var transposeString = StringTools.trim(transposeChars.toString());
-        if (transposeString.charAt(0) != '>' && transposeString.charAt(0) != '<') {
-            throw "Expected '>' or '<' at the start of '" + transposeString + "'";
-        }
-        var transposeValue = Std.parseInt(transposeString.substr(1));
-        if (transposeString.charAt(0) == '>') {
-            this.key += transposeValue;
-        } else {
-            this.key -= transposeValue;
-        }
-        return inputString;
-    }
-
-    private function parseItem(inputString:String):Tuple2<String, String> {
-        var itemChars = new StringBuf();
-        var insideParentheses = false;
-        while (inputString.length > 0 && (insideParentheses || [',', '|', '&', '>', '<'].indexOf(inputString.charAt(0)) == -1)) {
-            var char = inputString.charAt(0);
-            if (char == '(') {
-                insideParentheses = true;
-            } else if (char == ')') {
-                insideParentheses = false;
-            }
-            itemChars.add(char);
-            inputString = inputString.substr(1);
-        }
-        return new Tuple2(StringTools.trim(itemChars.toString()), inputString);
-    }
-
     private function countOccurrences(str:String, char:String):Int {
         var count = 0;
         for (i in 0...str.length) {
@@ -98,12 +124,34 @@ class ChordParser {
         return count;
     }
 
-    private function parseBracket(itemString:String):ChordThing {
-        var extension = null;
-        var parts = itemString.split('(');
-        if (parts[0].length > 0) {
-            extension = Std.parseInt(parts[0]);
+    private function applyChordType(chord:ChordThing, chordType:String):ChordThing {
+        if (chordType == null || chordType.length == 0) return chord;
+
+        switch (chordType) {
+            case "6":
+                chord.sixth();
+            case "7":
+                chord.seventh();
+            case "9":
+                chord.ninth();
+            case "11":
+                chord.eleventh();
+            case "13":
+                chord.thirteenth();
+            case "s2", "sus2":
+                chord.sus2();
+            case "s4", "sus4":
+                chord.sus4();
+            default:
+                throw "Unexpected chord type: " + chordType;
         }
+
+        return chord;
+    }
+
+    private function parseBracket(itemString:String):ChordThing {
+        var parts = itemString.split('(');
+        var chordType = parts[0];
         
         // Check if this is a mode selection (degree!mode) or secondary chord (degree/degree)
         var bracketContent = parts[1].substr(0, parts[1].length - 1);
@@ -116,15 +164,7 @@ class ChordParser {
             
             var chord = new ChordThing(this.key, this.mode, degree);
             chord.set_mode(Mode.nthModeOf(this.mode, modeNumber));
-            
-            if (extension != null) {
-                if (extension == 7) {
-                    chord.seventh();
-                } else if (extension == 9) {
-                    chord.ninth();
-                }
-            }
-            return chord;
+            return applyChordType(chord, chordType);
         } else {
             // Handle secondary chord: (degree/degree)
             var secondaryParts = bracketContent.split('/');
@@ -132,15 +172,28 @@ class ChordParser {
             var degree = Std.parseInt(secondaryParts[1]);
             var chord = new ChordThing(this.key, this.mode, degree);
             chord.set_as_secondary(secondaryDegree);
-            if (extension != null) {
-                if (extension == 7) {
-                    chord.seventh();
-                } else if (extension == 9) {
-                    chord.ninth();
-                }
-            }
-            return chord;
+            return applyChordType(chord, chordType);
         }
+    }
+
+    private function parseTypedItem(itemString:String, modeToUse:Mode):ChordThing {
+        var parts = itemString.split(':');
+        if (parts.length != 2) {
+            throw "Expected chord type and target separated by ':' in: " + itemString;
+        }
+
+        var chordType = parts[0];
+        var target = parts[1];
+        if (target.indexOf('(') != -1 && target.indexOf(')') != -1) {
+            return parseBracket(chordType + target);
+        }
+
+        var degree = Std.parseInt(target);
+        if (degree == null || degree < 1 || degree > 7) {
+            throw "Unexpected chord target: " + target;
+        }
+
+        return applyChordType(new ChordThing(this.key, modeToUse, degree), chordType);
     }
 
     private function interpretItem(itemString:String):ChordThing {
@@ -156,6 +209,16 @@ class ChordParser {
             itemString = itemString.split('i').join('');
         }
 
+        var modeToUse = isModalInterchange ? 
+            ((this.mode == Mode.getMajorMode()) ? Mode.getMinorMode() : Mode.getMajorMode()) : 
+            this.mode;
+
+        if (itemString.indexOf(':') != -1) {
+            var chord = parseTypedItem(itemString, modeToUse);
+            chord.set_inversion(inversion);
+            return chord;
+        }
+
         if (itemString.indexOf('(') != -1 && itemString.indexOf(')') != -1) {
             var chord = parseBracket(itemString);
             chord.set_inversion(inversion);
@@ -163,9 +226,6 @@ class ChordParser {
         }
 
         var itemValue = Std.parseInt(itemString);
-        var modeToUse = isModalInterchange ? 
-            ((this.mode == Mode.getMajorMode()) ? Mode.getMinorMode() : Mode.getMajorMode()) : 
-            this.mode;
 
         var chord:ChordThing;
         if (1 <= itemValue && itemValue <= 7) {
@@ -185,14 +245,19 @@ class ChordParser {
         return chord;
     }
 
-    private function parseMode(inputString:String):String {
-        var modeChars = new StringBuf();
-        while (inputString.length > 0 && [',', '|'].indexOf(inputString.charAt(0)) == -1) {
-            modeChars.add(inputString.charAt(0));
-            inputString = inputString.substr(1);
+    private function interpretTranspose(transposeString:String) {
+        if (transposeString.charAt(0) != '>' && transposeString.charAt(0) != '<') {
+            throw "Expected '>' or '<' at the start of '" + transposeString + "'";
         }
-        var modeString = StringTools.trim(modeChars.toString());
+        var transposeValue = Std.parseInt(transposeString.substr(1));
+        if (transposeString.charAt(0) == '>') {
+            this.key += transposeValue;
+        } else {
+            this.key -= transposeValue;
+        }
+    }
 
+    private function interpretMode(modeString:String) {
         if (modeString.length < 2) {
             throw "Expected mode specifier after '!'. Use !M, !m, !hm, !mm, !HM, !hu, or !H2";
         }
@@ -216,44 +281,32 @@ class ChordParser {
             default:
                 throw "Invalid mode specifier: " + modeSpec + ". Use !M, !m, !hm, !mm, !HM, !hu, or !H2";
         }
-
-        return inputString;
     }
 
     public function parse(inputString:String):Array<ChordThing> {
         var chords:Array<ChordThing> = [];
         var voiceLeadNext = false;
 
-        while (inputString.length > 0) {
-            var sepResult = parseSeparator(inputString);
-            var separator = sepResult._0;
-            inputString = sepResult._1;
-
-            if (separator == '&') {
-                voiceLeadNext = true;
-            }
-
-            if (inputString.length > 0) {
-                if (inputString.charAt(0) == '!') {
-                    inputString = parseMode(inputString);
-                } else if (inputString.charAt(0) == '>' || inputString.charAt(0) == '<') {
-                    inputString = parseTranspose(inputString);
-                } else {
-                    var itemResult = parseItem(inputString);
-                    var itemString = itemResult._0;
-                    inputString = itemResult._1;
-                   
+        for (token in ChordTokenizer.tokenize(inputString)) {
+            switch (token) {
+                case VoiceLeadNext:
+                    voiceLeadNext = true;
+                case ModeDirective(modeString):
+                    interpretMode(modeString);
+                case TransposeDirective(transposeString):
+                    interpretTranspose(transposeString);
+                case ChordAtom(itemString):
                     var chord = interpretItem(itemString);
                     if (voiceLeadNext) {
                         chord.set_voice_leading();
                     }
                     chords.push(chord);
-                }
             }
         }
 
         return chords;
     }
+
 }
 
 @:expose

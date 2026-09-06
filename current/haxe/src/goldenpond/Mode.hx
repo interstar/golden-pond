@@ -22,7 +22,11 @@ package;
 enum Modifier {
     SEVENTH;
     NINTH;
+    ELEVENTH;
+    THIRTEENTH;
     SIXTH;
+    SUS2;
+    SUS4;
     SECONDARY;
     VOICE_LEADING;
 }
@@ -280,6 +284,22 @@ class Mode {
 
     public function make_ninth(root:Int, n:Int):Array<Int> {
         return make_chord_from_pattern(root, n, [1, 3, 5, 7, 9]);
+    }
+
+    public function make_eleventh(root:Int, n:Int):Array<Int> {
+        return make_chord_from_pattern(root, n, [1, 3, 5, 7, 9, 11]);
+    }
+
+    public function make_thirteenth(root:Int, n:Int):Array<Int> {
+        return make_chord_from_pattern(root, n, [1, 3, 5, 7, 9, 11, 13]);
+    }
+
+    public function make_sus2(root:Int, n:Int):Array<Int> {
+        return make_chord_from_pattern(root, n, [1, 2, 5]);
+    }
+
+    public function make_sus4(root:Int, n:Int):Array<Int> {
+        return make_chord_from_pattern(root, n, [1, 4, 5]);
     }
 
     public function valueEquals(other:Dynamic):Bool {

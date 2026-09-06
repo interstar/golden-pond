@@ -226,9 +226,32 @@ class TestSuite1 {
         tester.testit("ChordThing Construction ninth overrides sixth", cp.parse("61")[0].ninth(), cp.parse("91")[0], "ChordThing Construction ninth should override sixth");
 
 
+        tester.testit("Canonical seventh chord", cp.parse("7:1")[0], new ChordThing(60, Mode.getMajorMode(), 1).seventh(), "Canonical seventh chord syntax");
+        tester.testit("Canonical ninth chord", cp.parse("9:4")[0], new ChordThing(60, Mode.getMajorMode(), 4).ninth(), "Canonical ninth chord syntax");
+        tester.testit("Canonical eleventh chord", cp.parse("11:1")[0], new ChordThing(60, Mode.getMajorMode(), 1).eleventh(), "Canonical eleventh chord syntax");
+        tester.testit("Canonical thirteenth chord", cp.parse("13:5")[0], new ChordThing(60, Mode.getMajorMode(), 5).thirteenth(), "Canonical thirteenth chord syntax");
+        tester.testit("Canonical sus2 chord", cp.parse("s2:4")[0], new ChordThing(60, Mode.getMajorMode(), 4).sus2(), "Canonical sus2 chord syntax");
+        tester.testit("Canonical sus4 chord", cp.parse("s4:5")[0], new ChordThing(60, Mode.getMajorMode(), 5).sus4(), "Canonical sus4 chord syntax");
+        tester.testit("Canonical sus2 long spelling", cp.parse("sus2:4")[0], new ChordThing(60, Mode.getMajorMode(), 4).sus2(), "Canonical sus2 long syntax");
+        tester.testit("Canonical sus4 long spelling", cp.parse("sus4:5")[0], new ChordThing(60, Mode.getMajorMode(), 5).sus4(), "Canonical sus4 long syntax");
+        tester.testit("Canonical seventh matches legacy shorthand", cp.parse("7:1")[0], cp.parse("71")[0], "Canonical seventh should match compact legacy syntax");
+        tester.testit("Canonical ninth matches legacy shorthand", cp.parse("9:4")[0], cp.parse("94")[0], "Canonical ninth should match compact legacy syntax");
+        tester.testit("Canonical sixth matches legacy shorthand", cp.parse("6:2")[0], cp.parse("62")[0], "Canonical sixth should match compact legacy syntax");
+
         tester.testit("Simple chords", cp.parse("1,4,6,5"),
             [new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 4), new ChordThing(60, MAJOR, 6), new ChordThing(60, MAJOR, 5)],
             "ChordParsing simple chords");
+
+        tester.testit("Space-separated simple chords", cp.parse("1 4 6 5"),
+            [new ChordThing(60, MAJOR, 1), new ChordThing(60, MAJOR, 4), new ChordThing(60, MAJOR, 6), new ChordThing(60, MAJOR, 5)],
+            "ChordParsing should accept spaces as separators");
+
+        tester.testit("Repeated separators", cp.parse("  71   94,, 6ii | 5  "),
+            [new ChordThing(60, MAJOR, 1).seventh(),
+             new ChordThing(60, MAJOR, 4).ninth(),
+             new ChordThing(60, MAJOR, 6).set_inversion(2),
+             new ChordThing(60, MAJOR, 5)],
+            "ChordParsing should ignore repeated comma, pipe, and whitespace separators");
 
         tester.testit("Extended chords", cp.parse("71,94,6ii,5"),
             [new ChordThing(60, MAJOR, 1).seventh(),
@@ -328,9 +351,17 @@ class TestSuite1 {
             [[60, 64, 67], [65, 69, 72], [62, 66, 69], [67, 71, 74], [61, 65, 68], [66, 70, 73]],
             "Modulating basic triads by 2");
 
+        tester.testit("Modulate to new key with spaces", new ChordProgression(60, MAJOR, "1 4 >2 1 4 <1 1 4").toNotes(),
+            [[60, 64, 67], [65, 69, 72], [62, 66, 69], [67, 71, 74], [61, 65, 68], [66, 70, 73]],
+            "Modulating basic triads by 2 should accept spaces as separators");
+
         tester.testit("Modulate to new mode", new ChordProgression(60, MAJOR, "1|4|5|7|!m|1|4|5|7").toNotes(),
             new ChordProgression(60, MAJOR, "1|4|5|7|-1|-4|-5|-7").toNotes(),
             "Modulating mode");
+
+        tester.testit("Modulate to new mode with spaces", new ChordProgression(60, MAJOR, "1 4 5 7 !m 1 4 5 7").toNotes(),
+            new ChordProgression(60, MAJOR, "1 4 5 7 -1 -4 -5 -7").toNotes(),
+            "Modulating mode should accept spaces as separators");
 
         tester.testit("Secondary chords",
             new ChordProgression(60, MAJOR, "(5/4),4").toChordThings(),
@@ -378,6 +409,31 @@ class TestSuite1 {
             new ChordThing(57, Mode.getMinorMode(), 1).ninth().generateChordNotes(),
             [57, 60, 64, 67, 71],
             "Minor ninth A not correctly generated.");
+
+        tester.testit("Major Eleventh C",
+            new ChordThing(60, Mode.getMajorMode(), 1).eleventh().generateChordNotes(),
+            [60, 64, 67, 71, 74, 77],
+            "Major eleventh C not correctly generated.");
+
+        tester.testit("Major Thirteenth C",
+            new ChordThing(60, Mode.getMajorMode(), 1).thirteenth().generateChordNotes(),
+            [60, 64, 67, 71, 74, 77, 81],
+            "Major thirteenth C not correctly generated.");
+
+        tester.testit("Sus2 C",
+            new ChordThing(60, Mode.getMajorMode(), 1).sus2().generateChordNotes(),
+            [60, 62, 67],
+            "Sus2 C not correctly generated.");
+
+        tester.testit("Sus4 C",
+            new ChordThing(60, Mode.getMajorMode(), 1).sus4().generateChordNotes(),
+            [60, 65, 67],
+            "Sus4 C not correctly generated.");
+
+        tester.testit("Sus4 seventh C",
+            new ChordThing(60, Mode.getMajorMode(), 1).sus4().seventh().generateChordNotes(),
+            [60, 65, 67, 71],
+            "Sus4 seventh C should replace the third while preserving the seventh.");
 
         tester.testit("Secondary Dominant of iii chord in C",
             new ChordThing(60, Mode.getMajorMode(), 3).set_as_secondary(5).seventh().generateChordNotes(),
@@ -443,6 +499,21 @@ class TestSuite1 {
         var d9 = new ChordThing(60, Mode.getMajorMode(), 2).ninth();
         tester.testit("D9 chord name", d9.getChordName(), "Dm9", "D9 chord in C major should be named 'Dm9'");
         
+        var cMaj11 = new ChordThing(60, Mode.getMajorMode(), 1).eleventh();
+        tester.testit("Cmaj11 chord name", cMaj11.getChordName(), "Cmaj11", "C major eleventh chord should be named 'Cmaj11'");
+
+        var cMaj13 = new ChordThing(60, Mode.getMajorMode(), 1).thirteenth();
+        tester.testit("Cmaj13 chord name", cMaj13.getChordName(), "Cmaj13", "C major thirteenth chord should be named 'Cmaj13'");
+
+        var cSus2 = new ChordThing(60, Mode.getMajorMode(), 1).sus2();
+        tester.testit("Csus2 chord name", cSus2.getChordName(), "Csus2", "C sus2 chord should be named 'Csus2'");
+
+        var cSus4 = new ChordThing(60, Mode.getMajorMode(), 1).sus4();
+        tester.testit("Csus4 chord name", cSus4.getChordName(), "Csus4", "C sus4 chord should be named 'Csus4'");
+
+        var cSus4Maj7 = new ChordThing(60, Mode.getMajorMode(), 1).sus4().seventh();
+        tester.testit("Csus4maj7 chord name", cSus4Maj7.getChordName(), "Csus4maj7", "C sus4 major seventh chord should be named 'Csus4maj7'");
+
         // Test with inversions
         var fInv1 = new ChordThing(60, Mode.getMajorMode(), 4).set_inversion(1);
         tester.testit("F/A chord name", fInv1.getChordName(), "F/A", "F with first inversion should be named 'F/A'");
