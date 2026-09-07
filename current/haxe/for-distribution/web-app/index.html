@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GoldenPond</title>
-  <link rel="stylesheet" href="../web-common/goldenpond-form.css" />
+  <link rel="stylesheet" href="./goldenpond-form.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
   <script defer src="./goldenpond.js"></script>
-  <script defer src="../web-common/goldenpond-soundfont-presets.js"></script>
-  <script defer src="../web-common/goldenpond-playback.js"></script>
-  <script defer src="../web-common/goldenpond-form.js"></script>
+  <script defer src="./goldenpond-soundfont-presets.js"></script>
+  <script defer src="./goldenpond-playback.js"></script>
+  <script defer src="./goldenpond-form.js"></script>
 </head>
 <body>
   <h2 style="text-align:center; margin-top: 1rem">GoldenPond</h2>
@@ -21,7 +21,7 @@
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var el = document.getElementById("goldenpond-app");
-      GoldenpondFormWidget.mount(el, { lineCount: 3, showPianoRollPreview: false });
+      GoldenpondFormWidget.mount(el, { lineCount: 3, showPianoRollPreview: true });
     });
   </script>
 </body>

@@ -57,11 +57,25 @@ MODE_ALIASES: dict[str, int] = {
     "melodic_minor": 3,
     "mm": 3,
     "melodic": 3,
+    "4": 4,
+    "harmonic_major": 4,
+    "hmajor": 4,
+    "hmj": 4,
+    "harmonicmajor": 4,
+    "5": 5,
+    "hungarian_minor": 5,
+    "hungarian": 5,
+    "hu": 5,
+    "6": 6,
+    "double_harmonic_major": 6,
+    "doubleharmonicmajor": 6,
+    "byzantine": 6,
+    "h2": 6,
 }
 
 NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
-MODE_LABELS = ("Major", "Minor", "Harmonic minor", "Melodic minor")
+MODE_LABELS = ("Major", "Minor", "Harmonic minor", "Melodic minor", "Harmonic major", "Hungarian minor", "Double harmonic major")
 
 # Order of meta rows in the embed UI (subset keys)
 DEFAULT_EMBED_SECTIONS_ORDER = ("global", "progression", "chordnames", "rhythm")

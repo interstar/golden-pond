@@ -23,7 +23,7 @@ def createDialog():
     'GoldenPond is language for defining chord progressions.\r\nThis is the FL Studio version which also lets you create rhythmic patterns for arpeggios and melodies.\r\nSee http://gilbertlisterresearch.com/ for more information and documentation.')
     
     form.AddInputKnobInt('Root',65,32,96)
-    form.AddInputCombo('Mode',["major","minor","harmonic minor","melodic minor"],0)
+    form.AddInputCombo('Mode',["major","minor","harmonic minor","melodic minor","harmonic major","hungarian minor","double harmonic major"],0)
     form.AddInputText('ChordSeq', "1,6,4,5")
     
     form.AddInputCheckbox('Chords',False)

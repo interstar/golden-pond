@@ -47,7 +47,7 @@
 
 .goldenpond-form-widget .gpf-row {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 140px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   margin-bottom: 10px;
@@ -56,6 +56,57 @@
 .goldenpond-form-widget .gpf-row label {
   text-align: right;
   margin: 0;
+}
+
+.goldenpond-form-widget .gpf-row-root {
+  align-items: start;
+}
+
+.goldenpond-form-widget .gpf-row-compact {
+  grid-template-columns: 140px auto;
+}
+
+.goldenpond-form-widget .gpf-inline-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.goldenpond-form-widget .gpf-inline-control input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.goldenpond-form-widget .gpf-inline-value,
+.goldenpond-form-widget .gpf-root-midi {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  font-size: 13px;
+}
+
+.goldenpond-form-widget .gpf-root-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.goldenpond-form-widget .gpf-root-control select {
+  max-width: 90px;
+}
+
+.goldenpond-form-widget .gpf-root-control .gpf-inline-control {
+  width: 200px;
+}
+
+.goldenpond-form-widget .gpf-mode-select {
+  max-width: 240px;
 }
 
 .goldenpond-form-widget textarea.gpf-chords {
@@ -80,6 +131,21 @@
   color: #444;
 }
 
+.goldenpond-form-widget .gpf-line-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.goldenpond-form-widget .gpf-line-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .goldenpond-form-widget .gpf-line-panel .gpf-line-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -95,8 +161,25 @@
 .goldenpond-form-widget .gpf-line-panel input.pattern-input[type="text"] {
   width: 100%;
   padding: 6px;
+  margin-bottom: 12px;
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+}
+
+.goldenpond-form-widget .gpf-line-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goldenpond-form-widget .gpf-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goldenpond-form-widget .gpf-slider-row label {
+  text-align: left;
 }
 
 .goldenpond-form-widget .gpf-preview {

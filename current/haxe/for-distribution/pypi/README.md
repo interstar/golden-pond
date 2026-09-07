@@ -18,7 +18,7 @@ from goldenpond import GoldenData, Mode, TimeManipulator, MidiInstrumentContext
 # Create a GoldenData instance
 data = GoldenData()
 data.root = 48  # C3
-data.mode = 1  # Minor mode (0=major, 1=minor, 2=harmonic minor, 3=melodic minor)
+data.mode = 1  # Minor mode (0=major, 1=minor, 2=harmonic minor, 3=melodic minor, 4=harmonic major, 5=hungarian minor, 6=double harmonic major)
 data.chordSequence = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
 data.stutter = 0  # No stuttering
 data.bpm = 120
@@ -57,6 +57,17 @@ print(data.toString())
 
 GoldenPond is a library for creating musical patterns using a simple text-based language. It helps you define chord progressions and rhythmic patterns (like arpeggios and basslines) that follow music theory rules.
 
+GoldenPond currently ships these standard mode ids and chord-language mode tokens:
+
+- `0` / `!M`: major
+- `1` / `!m`: minor
+- `2` / `!hm`: harmonic minor
+- `3` / `!mm`: melodic minor
+- `4` / `!HM`: harmonic major
+- `5` / `!hu`: hungarian minor
+- `6` / `!H2`: double harmonic major
+
+
 ### Understanding the Example Code
 
 Let's break down what the example code does:
@@ -65,7 +76,7 @@ Let's break down what the example code does:
    ```python
    data = GoldenData()
    data.root = 48  # C3
-   data.mode = 1   # Minor mode
+   data.mode = 1   # Minor mode (try 4=harmonic major, 5=hungarian minor, 6=double harmonic major)
    data.chordSequence = "71,76,72,-75,71,76,72,-75i,77,73,76,<12,77ii,>12,71,96,74ii,75"
    data.bpm = 120
    data.chordDuration = 4
