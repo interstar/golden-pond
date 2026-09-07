@@ -10,9 +10,9 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# --- edit these ---
-SITE_URL="https://gilbertlisterresearch.com/"
-BASE_PATH="/apps/strudel/"
+# --- copy this file to build-strudel-site.sh and edit these ---
+SITE_URL="https://YOUR_DOMAIN.example/"
+BASE_PATH="/your/path/"
 # --- end edit ---
 
 exec "$SCRIPT_DIR/build-strudel.sh" --site-url "$SITE_URL" --base-path "$BASE_PATH" "$@"
