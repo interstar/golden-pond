@@ -1,0 +1,28 @@
+# Copied next to goldenpond.mjs by build-strudel.sh / patch workflow (same bytes as goldenpond.js)
+strudel/website/src/repl/goldenpond-runtime.js
+
+# The Strudel monorepo is a separate checkout, patched from gp4strudel/.
+/strudel/
+
+# Generated Haxe bundle and standalone adapter copied by the build/patch workflow.
+goldenpond.js
+goldenpond-strudel.js
+gp4strudel/strudel/website/src/repl/goldenpond-runtime.js
+
+# Static site snapshot from build-strudel.sh (rsync this folder to your server)
+strudel-dist/
+
+# npm lockfile for the local helper package.
+package-lock.json
+
+# Local dependencies for the helper or build tooling.
+node_modules/
+
+# Local/legacy standalone experiments, not part of the gp4strudel integration.
+attic/
+package.json
+strudel.js
+styles.css
+
+# Personal wrapper — copy build-strudel-site.example.sh to build-strudel-site.sh (local SITE_URL/BASE_PATH)
+build-strudel-site.sh
