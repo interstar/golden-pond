@@ -35,10 +35,25 @@ copy "website/src/repl/goldenpond.mjs"
 copy "website/src/repl/util.mjs"
 copy "website/astro.config.mjs"
 copy "jsdoc/jsdoc.config.json"
+copy "packages/transpiler/plugin-goldenpond-vis.mjs"
 
 STANDALONE_DST="$ROOT/../goldenpond-strudel.js"
 cp "$ROOT/standalone/goldenpond-strudel.js" "$STANDALONE_DST"
 echo "  cp -> $STANDALONE_DST (standalone adapter next to this Goldenpond distribution folder)"
+
+
+if ! grep -q "plugin-goldenpond-vis.mjs" "$STRUDEL/packages/transpiler/index.mjs"; then
+  python3 - "$STRUDEL/packages/transpiler/index.mjs" <<'PYEDIT'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+needle = "import './plugin-widgets.mjs';\n"
+text = text.replace(needle, needle + "import './plugin-goldenpond-vis.mjs';\n")
+path.write_text(text)
+PYEDIT
+  echo "  patched -> $STRUDEL/packages/transpiler/index.mjs"
+fi
 
 echo "Done. goldenpond.js should already exist here from current/haxe/makeall.sh. For the REPL, copy it beside goldenpond.mjs:"
 echo "  cp \"$(cd "$ROOT/.." && pwd)/goldenpond.js\" \"$STRUDEL/website/src/repl/goldenpond-runtime.js\""
