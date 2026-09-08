@@ -4,8 +4,17 @@ current/haxe/out/*
 .venv
 for-distribution/fl/generated.py
 for-distribution/fl/goldenpond.pyscript
+for-distribution/fl/make-dialog-test.sh 
+for-distribution/fl/make-test.sh
+for-distribution/fl/post-dialog-test.py
+for-distribution/fl/summary.md
+for-distribution/fl/post-test.py
 *mid
 for-distribution/pypi/dist/*
 for-distribution/web-app/goldenpond.js
 for-distribution/strudel/strudel
 for-distribution/java/goldenpond.jar
+attic/
+current/haxe/for-distribution/java/out/
+current/haxe/for-distribution/java/goldenpond.jar
+tmp/

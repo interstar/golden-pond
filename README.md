@@ -82,11 +82,13 @@ from goldenpond import (
 # Create a GoldenData instance
 data = GoldenData()
 data.root = 48  # C3
-data.mode = 0   # Major
+data.mode = 0   # Major (0=major, 1=minor, 2=harmonic minor, 3=melodic minor, 4=harmonic major, 5=hungarian minor, 6=double harmonic major)
 data.chordSequence = "71,74,-94,73,9(5/2),72,-75,91,!m,71,74,-94,73,9(5/2),72,-75,-95,!M,"*2
 data.stutter = 0
 data.bpm = 120
 data.chordDuration = 4
+
+# Mode tokens inside chord sequences: !M, !m, !hm, !mm, !HM, !hu, !H2
 
 # Add lines with their instrument contexts
 data.addLine("1/4 c 1", MidiInstrumentContext(0, 64, 0.75, 0))  # Play full chord on note in a 4 step pattern, 

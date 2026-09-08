@@ -15,9 +15,9 @@ import json
 LINES = [
     ("5/8 c 1", MidiInstrumentContext(0, 64, 0.8, 0)),    # Chord line
     ("1/1 1 16", MidiInstrumentContext(1, 80, 0.8, -12)),  # Bass line (transposed down an octave)
-    ("4/8 R 4", MidiInstrumentContext(2, 72, 0.6, 24)),    # Top line (transposed up two octaves)
+    ("r.r.r1R.r.r.Rr.t 1/2", MidiInstrumentContext(2, 72, 0.6, 24)),    # Top line (transposed up two octaves)
     ("6/12 > 2", MidiInstrumentContext(3, 68, 0.5, 0)),   # Arp line
-    ("5%8 r 4", MidiInstrumentContext(4, 60, 0.5, 0))     # Random line
+    ("15%18 r 1/4", MidiInstrumentContext(4, 60, 0.5, 0))     # Random line
 ]
 
 # MIDI program numbers

@@ -6,4 +6,9 @@ for-distribution/pypi/hint.txt
 for-distribution/pypi/goldenpond/goldenpond.py
 for-distribution/fl/generated.py
 for-distribution/fl/install.sh
+for-distribution/fl/make-dialog-test.sh
+for-distribution/fl/make-test.sh
+for-distribution/fl/post-dialog-test.py
+for-distribution/fl/post-test.py
+for-distribution/fl/summary.md
 for-distribution/web-app/goldenpond.js
