@@ -18,3 +18,7 @@ attic/
 current/haxe/for-distribution/java/out/
 current/haxe/for-distribution/java/goldenpond.jar
 tmp/
+
+current/haxe/for-distribution/xen2/
+current/haxe/for-distribution/xenwich/
+current/haxe/for-distribution/audiotool/

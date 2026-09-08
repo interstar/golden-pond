@@ -20,23 +20,23 @@ GoldenPond has gone through a number of iterations in a number of different lang
 
 **The most up-to-date and current version of the library, which defines the GoldenPond language, is the version written in [Haxe](https://haxe.org).** 
 
-It's in the haxe/src subdirectory of this repo.
+It's in the `current/haxe/src` subdirectory of this repo.
 
 All other versions of the library you may find are either a) deprecated or b) automatically derived from the Haxe version. We are now transpiling this Haxe code into Python, Javascript, C++ and Java.
 
 The status of the Haxe->Python code is that :
 
 - it successfully transpiles, runs and passes all the tests as Python code.
-- it can be built into a working pyscript for use in FL Studio's Piano Roll ([Python scripting for Piano Roll](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/pianoroll_scripting_api.htm)). See the haxe/for_distribution/fl subdirectory for more about this.
+- it can be built into a working pyscript for use in FL Studio's Piano Roll ([Python scripting for Piano Roll](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/pianoroll_scripting_api.htm)). See `current/haxe/for-distribution/fl/` for more about this.
 - it is available on PyPI at [https://pypi.org/project/goldenpond/](https://pypi.org/project/goldenpond/) so you can just download it for your own projects 
-- you can see a couple of scripts in haxe/for-distribution/examples/ which use the build Python library. Including for generating MIDI files.
+- you can see a couple of scripts in `current/haxe/for-distribution/examples/` which use the generated Python library, including examples for generating MIDI files.
 - I am trying to get it working with [Renardo](https://renardo.org/), a Python based live-coding environment. I've not succeeded yet.
 
 The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
-- it runs in the browser and I have experimental integrations with the Signal online studio (play with a fork that integrates Goldenpond here : https://gilbertlisterresearch.com/assets/signal/index.html )
-- I also have an experimental integration with the Strudel live-coding environment which will be visible soon 
-- you can see haxe/for-distribution/web-app/ for where we develop an example web-app, but note you'll have to build the js version of the library with Haxe and place it in the same directory as index.html
+- it runs in the browser and is integrated into the Signal online studio (play with the fork that integrates GoldenPond here: https://gilbertlisterresearch.com/assets/signal/index.html)
+- it has an integration with the Strudel live-coding environment, including optional source visualisation for GoldenPond chord and rhythm patterns
+- `current/haxe/for-distribution/web-app/` contains a static example web app; the build scripts copy the current Haxe JavaScript output and supporting files into it
 
 The status of the Haxe->C++ code is that :
 - it successfully transpiles to C++, compiles and runs the tests
@@ -45,7 +45,7 @@ The status of the Haxe->C++ code is that :
 The status of the Haxe->Java code is that :
 - it now transpiles to Java and passes all the unit tests
 - and bundles this into a JAR file
-- you can build and run an example Java program ( /haxe/for-distribution/java/Example.java ) that uses the library
+- you can build and run an example Java program in `current/haxe/for-distribution/java/` that uses the library
 - Eventually there'll be an Android app featuring the library. That's a longer term goal.
 
 

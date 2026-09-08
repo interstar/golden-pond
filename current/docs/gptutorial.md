@@ -188,7 +188,7 @@ Eg.
 
 
 ```goldenpond root=57 mode=minor bpm=120 chordDuration=4 gate=0.75 octave=0 display=Global,Progression,Rhythm,Chordnames
-71,76,72,75,91i,7(4/3)i,73i,!M,6(4!1),73i,67,<2,74,7(3!4),>2,71,!m,73,72,75
+7:1 7:6 7:2 7:5 9:1i 7(4/3)i 7:3i !M 6(4!1) 7:3i 6:7 <2 7:4 7(3!4) >2 7:1 !m 7:3 7:2 7:5
 1.td.2c.<<<< 1/2
 ```
 
@@ -214,9 +214,23 @@ You can set the sequencer playing in a loop and keep updating the chord progress
 
 Two new functions have been added to Strudel :
 
-`gpond()` takes as arguments the root note, the mode ("major","minor","melodic minor","harmonic minor"), the actual chord progression in the Goldenpond chord language. And finally the number of Strudel "cycles" that each chord takes up. It returns a GoldenData object ie. and object with all information about the chord progression, that we need to generate the lines.
+`gpond()` takes as arguments the root note, the mode (`"major"`, `"minor"`,
+`"melodic minor"`, `"harmonic minor"`, `"harmonic major"`,
+`"hungarian minor"`, or `"double harmonic major"`), the chord progression in
+the Goldenpond chord language, and finally the number of Strudel cycles that
+each chord takes up. It returns a GoldenData object containing the chord
+progression and the information needed to generate lines.
 
-`gpline()` takes the golden data object, the rhythm language string, and an octave offset. And generates a Strudel pattern of notes which can be treated just as any other note pattern within Strudel.
+`gpline()` takes the GoldenData object, a rhythm-language string, and an octave
+offset. It generates a Strudel pattern of notes which can be treated like any
+other note pattern within Strudel.
+
+For optional source-code visualisation, wrap the chord progression in `vc()`
+and the rhythm pattern in `vis()`. Without these wrappers the same code still
+plays normally, but Strudel will not highlight the corresponding GoldenPond
+source text. `vc()` highlights the currently playing chord token. `vis()`
+highlights the currently playing rhythm element; for Euclidean and
+pseudo-Euclidean patterns it highlights the numerator when a hit plays.
 
 For example :
 ```
@@ -226,14 +240,15 @@ setcpm(120)
 $0: s("<bd hh x hh sd <x x x bd>> *3").bank("tr606");
 
 // chord definition
-const gdata = gpond(50, 'minor','74,64,73,63,74,64,73,63,>3,74,62,9(3!2),63,<3,74,64,72i,6(1!4)',16);
+const gdata = gpond(50, 'minor', vc('7:4 6:4 7:3 6:3 7:4 6:4 7:3 6:3 >3 7:4 6:2 9(3!2) 6:3 <3 7:4 6:4 7:2i 6(1!4)'), 16);
 
 // lines
-$1: gpline(gdata,'b..t<< 1',0).sound("piano").gain(slider(0.424,0,1)); // chords/arpeggio
-$2: gpline(gdata,'9/12 r 1',1).sound("gm_flute").gain(slider(0.564,0,1));// random euclidean flute
-$3: gpline(gdata,'...1.....1.> 1',-2).sound("gm_electric_bass_pick").gain(slider(0.777,0,1)); // bass
+$1: gpline(gdata,vis('b..t<< 1'),0).sound("piano").gain(slider(0.424,0,1)); // chords/arpeggio
+$2: gpline(gdata,vis('9/12 r 1'),1).sound("gm_flute").gain(slider(0.564,0,1));// random euclidean flute
+$3: gpline(gdata,vis('...1.....1.> 1'),-2).sound("gm_electric_bass_pick").gain(slider(0.777,0,1)); // bass
 ```
 
 This will create the chord progression. And three Strudel patterns. A piano playing the chord then a downward arpeggio. A flute playing random notes from the chords in a "euclidean" rhythm, and a bassline. 
  
-Be careful that you should put the chord and rhythm language strings in single quotes. Otherwise Strudel will try to interpret them as Strudel patterns. 
+Be careful that you should put the chord and rhythm language strings in single
+quotes. Otherwise Strudel will try to interpret them as Strudel patterns.

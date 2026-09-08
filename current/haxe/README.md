@@ -16,11 +16,38 @@ So I've been trying it.
 
 And it does seem to work. (Almost)
 
-At least, this current Haxe version of GoldenPond is successfully transpiling to, and passing the unit tests in, Python, Javascript, C++ and Java.
+At least, this current Haxe version of GoldenPond is successfully transpiling to, and passing the unit tests in, Python, JavaScript, C++ and Java.
 
 ### How to run this
 
-The build information for each target language is in the respective build file
+The individual target configurations are in the respective `.hxml` files. The
+convenience scripts below run the common workflows from any directory.
+
+#### Test all targets
+
+    ./test_all_languages.sh
+
+This runs the Haxe interpreter tests and the Python, JavaScript, C++, and Java
+target tests.
+
+#### Rebuild the library and distribution copies
+
+    ./makeall.sh
+
+This builds the Python, JavaScript, and Java outputs and refreshes the copies
+used by the PyPI package, FL Studio, the web app, Signal, Strudel, and Xenwich.
+It also installs the generated Python package into the active environment in
+editable mode. To opt out:
+
+    ./makeall.sh --skip-local-python
+
+#### Build and deploy the web products
+
+    ./build-and-deploy.sh
+
+This runs the tests, rebuilds the library, builds Signal and Strudel, verifies
+the web output directories, and uploads the web app, Signal, and Strudel
+bundles. Use `--skip-upload` to build without deploying.
 
 #### Haxe Native 
 
@@ -58,7 +85,7 @@ transpile and run the unit tests in C++
 #### Java
 
     haxe build-java.hxml
-    ./run-java.sh
+    ./test-on-java.sh
 
 The Java build works via the helper scripts in this directory, and the unit tests pass.
 
@@ -69,7 +96,7 @@ I know and understand very little about Haxe (and Java and C++) building at the 
 
 I'm hoping that the Haxe version of GoldenPond is now the definitive one. And everything else can be easily and painlessly derived from it.
 
-Despite my initial pessimism, it seems even FL Studio can work with the transpilation from Haxe, though we have some custom scripts to kludge the FL specific code together with the python library. The PyPI version of goldenpond (as of 0.3.0) is also now derived from the Haxe code-base. All other python code is therefore deprecated.
+Despite my initial pessimism, it seems even FL Studio can work with the transpilation from Haxe, though we have some custom scripts to assemble the FL-specific code with the Python library. The PyPI-style package is also derived from the Haxe code-base. All other Python code is therefore deprecated.
 
 JS is fine. And when you see Goldenpond on the web, that will come from Haxe.
 
