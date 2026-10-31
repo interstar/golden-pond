@@ -1,0 +1,198 @@
+% ------------------------------------------------------------------
+% Goldenpond grammar (Instaparse)
+%
+% This file is kept in sync with the hand-written Haxe parsers:
+%   * chord progressions   -> ChordParser.hx (ChordTokenizer + interpretItem)
+%   * rhythm patterns      -> RhythmGenerator.hx (RhythmLanguage)
+%
+% The composite "goldenpiece" document shape (one chord header line
+% followed by numbered channel lines) is retained here as the codegen
+% source-of-truth shape. The live Haxe runtime selects the initial root/mode
+% through GoldenData (JSON), so the textual header form is descriptive.
+% ------------------------------------------------------------------
+
+goldenpiece = <ows> chord-header (<linebreak> channel-line)* <ows>
+
+chord-only = <ows> chord-header <ows>
+
+chord-header = midi-root <S> baseline-mode <S> chord-progression
+
+midi-root = #"[0-9]+"
+
+% Header baseline mode. Mirrors the inline !-directive vocabulary in
+% ChordParser.interpretMode (M, m, mm, hm, HM, hu, H2).
+baseline-mode = major-m | melodic-min | harmonic-min | minor-m
+              | harmonic-major | hungarian-min | double-harmonic-major
+major-m        = <'M'>
+melodic-min    = <'mm'>
+harmonic-min   = <'hm'>
+minor-m        = <'m'>
+harmonic-major = <'HM'>
+hungarian-min  = <'hu'>
+double-harmonic-major = <'H2'>
+
+% ------------------------------------------------------------------
+% Chord progression (ChordParser-shaped)
+% ------------------------------------------------------------------
+
+chord-progression = chord-seq
+
+chord-seq = chord-unit*
+
+% A chord-unit is an optional separator/voice-lead prefix followed by a
+% statement. ChordParser's tokenizer treats spaces, tabs, commas and pipes as
+% separators (and, for a standalone progression string, also newlines). The
+% composite format keeps the header on one line, so only spaces/tabs are
+% allowed here.
+chord-unit = chord-sep? voice-lead-next? chord-stmt
+
+chord-sep = <comma> | pipe | <OWS>
+comma     = ','
+pipe      = '|'
+
+% '&' flags the NEXT chord for voice-leading. ChordParser carries the flag
+% across any intervening mode/transpose directives, so it does not have to be
+% immediately followed by a chord-item.
+voice-lead-next = '&'
+
+chord-stmt = inline-mode | transpose | chord-item
+
+% Inline mode switch: !<mode>. Matches ChordParser.interpretMode exactly.
+% Ordering matters in Instaparse (PEG): longer tokens first where they share a
+% prefix ("mm" before "m").
+inline-mode = <'!'> ( <'hm'> | <'mm'> | <'HM'> | <'H2'> | <'hu'> | <'M'> | <'m'> )
+
+% Semitone transpose of the current key. Only a single '>' or '<' plus a
+% semitone count is implemented (ChordParser.interpretTranspose).
+transpose   = transp-up | transp-down
+transp-up   = <'>'> #'[0-9]+'
+transp-down = <'<'> #'[0-9]+'
+
+% Chord item: optional modal interchange ('-', swaps major<->minor), then the
+% chord core, then optional inversion markers ('i'*). ChordParser strips '-'
+% and every 'i' before interpreting the remaining core; the conventional
+% spelling is '-' prefix and 'i'* suffix (e.g. -6ii, 74iii).
+chord-item = modal-swap? chord-core inversion-is?
+modal-swap = '-'
+inversion-is = #'i*'
+
+chord-core = typed-chord | bracket-chord | encoded-degree
+
+% Canonical typed form: <type>:<degree> or <type>:(<inner>).
+% e.g. 11:1, 13:5, sus2:4, s4:5, 9:4, 6:2, 7:(2/5).
+typed-chord = chord-type <':'> ( degree-digit | <'('> bracket-inner <')'> )
+
+% Bracket form with optional type prefix: [<type>](<inner>).
+% e.g. (5/2), 7(5/2), 11(3!2), sus4(5), 9(5!3).
+bracket-chord = bracket-open bracket-inner <')'>
+bracket-open = chord-type? <'('>
+
+bracket-inner = secondary-chord | mode-degree
+secondary-chord = integer <'/'> integer
+mode-degree     = integer <'!'> integer
+
+% Chord type prefixes. Hidden leaves; mapped to ChordThing modifiers.
+% Mutual exclusivity is handled in ChordThing (extensions and suspensions
+% replace earlier ones).
+chord-type = sixth-type | seventh-type | ninth-type | eleventh-type
+           | thirteenth-type | sus2-type | sus4-type
+sixth-type      = <'6'>
+seventh-type    = <'7'>
+ninth-type      = <'9'>
+eleventh-type   = <'11'>
+thirteenth-type = <'13'>
+sus2-type       = <'sus2'> | <'s2'>
+sus4-type       = <'sus4'> | <'s4'>
+
+% Compact numeric encodings. Only 6d/7d/9d have numeric shorthands; 11th,
+% 13th, sus2 and sus4 are written with the typed or bracket forms above.
+encoded-degree = sixth | seventh | ninth | plain-degree
+sixth           = <'6'> degree-digit
+seventh         = <'7'> degree-digit
+ninth           = <'9'> degree-digit
+plain-degree    = degree-digit
+degree-digit    = #'[1-7]'
+integer         = #'[0-9]+'
+
+chord-progression-alone = <ows> chord-progression <ows>
+
+% ------------------------------------------------------------------
+% Body lines (start: goldenpiece consumes these after header)
+% ------------------------------------------------------------------
+
+channel-line = <ows> channel-index <colon> OWS rhythm-pattern <ows>
+
+channel-index = #"[0-9]+"
+colon = ':'
+
+rhythm-pattern = rhythm-line
+
+rhythm-line = euclidean-pattern | explicit-pattern
+
+% Euclidean / simple-grid — RhythmLanguage.parseEuclidean
+%   k <'/'>|'%' n [<'+'> offset] <space> selector <space> density
+% '/' uses the simple even-distribution grid; '%' uses Bjorklund's algorithm.
+euclidean-pattern =
+  k-num sep-slash-or-percent n-num optional-offset
+  <mandatory-space>
+  euclidean-selector
+  <mandatory-space>
+  density
+  <ows>
+
+k-num       = #'[0-9]+'
+n-num       = #'[0-9]+'
+sep-slash-or-percent = <'/'> | <'%'>
+
+% Optional rotation offset (e.g. 3/8+1 > 4). If your Instaparse build rejects
+% ? on a group, split euclidean-pattern into with/without +offset variants.
+optional-offset = (<'+'> #'[0-9]+')?
+
+% Density is an integer or a ratio n/d (RhythmLanguage.parseDensityRatio).
+% Ordered choice: try the ratio first, otherwise "4/2" would be read as "4"
+% followed by an unconsumed "/2".
+density = density-ratio | density-num
+density-ratio = density-num <'/'> density-num
+density-num = #'[0-9]+'
+
+% Explicit rhythm — RhythmLanguage.parseExplicit
+%   steps <space> density
+explicit-pattern = explicit-steps <S> density <ows>
+
+explicit-steps = step+
+step = rhythm-selector | dotted-rest
+dotted-rest = <'.'>
+
+% Selector vocabulary (RhythmLanguage.parseSelectorType).
+% Euclidean selectors are one character and exclude '=' (Repeat), which is
+% only available in explicit step sequences.
+euclidean-selector = asc | dsc | full-ch | wrapped-ch | ch-bass | drop2-sel
+                   | rnd | rnd-scale | rnd-pent | rnd-spicy-pent
+                   | top-n | voiced-digit
+
+rhythm-selector = asc | dsc | repeat-sel | full-ch | wrapped-ch | ch-bass
+                | drop2-sel | rnd | rnd-scale | rnd-pent | rnd-spicy-pent
+                | top-n | voiced-digit
+asc          = <'>'>
+dsc          = <'<'>
+repeat-sel   = <'='>
+full-ch      = <'c'>
+wrapped-ch   = <'C'>
+ch-bass      = <'b'>
+drop2-sel    = <'d'>
+rnd          = <'r'>
+rnd-scale    = <'R'>
+rnd-pent     = <'p'>
+rnd-spicy-pent = <'P'>
+top-n        = <'t'>
+voiced-digit = #'[1-9]'
+
+% ------------------------------------------------------------------
+% Whitespace
+% ------------------------------------------------------------------
+
+S               = #"[ \t]+"
+OWS             = #"[ \t]*"
+mandatory-space = #"[ \t]+"
+ows             = #"[ \t\n\r]*"
+linebreak       = #"(\r\n|\n|\r)"
