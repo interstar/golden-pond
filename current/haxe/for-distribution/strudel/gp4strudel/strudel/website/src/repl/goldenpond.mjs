@@ -1,5 +1,5 @@
 /**
- * GoldenPond (Haxe JS) + Strudel bridge: `gpond` / `gpline`.
+ * GoldenPond (Haxe JS) + Strudel bridge: `gpond` / `gpline` / `gpfit`.
  * GoldenPond score time → Strudel cycles via a fixed beats-per-cycle (quarter notes per cycle).
  * Tempo is Strudel CPS only; GoldenPond bpm/ppq affect note timing *within* the score, not the global clock.
  *
@@ -7,7 +7,7 @@
  * or `cp goldenpond.js …/goldenpond-runtime.js` — see `gp4strudel/README.md`.
  */
 import './goldenpond-runtime.js';
-import { Fraction, Pattern, Hap, TimeSpan } from '@strudel/core';
+import { Fraction, Pattern, Hap, TimeSpan, register, noteToMidi } from '@strudel/core';
 
 export const packageName = '@goldenpond/strudel';
 
@@ -359,3 +359,61 @@ export function gpline(goldenData, rhythmPattern, third, fourth) {
   const lineIndex = goldenData.lines.length - 1;
   return lineFromGoldenData(goldenData, lineIndex, options);
 }
+
+/** MIDI note number of a hap value, or null if it has no numeric pitch we can correct. */
+function hapMidi(value) {
+  const note = typeof value === 'object' && value !== null ? value.note : value;
+  if (typeof note === 'number' && Number.isFinite(note)) return Math.round(note);
+  if (typeof note === 'string') {
+    try {
+      return noteToMidi(note);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function withMidi(value, midi) {
+  return typeof value === 'object' && value !== null ? { ...value, note: midi } : midi;
+}
+
+/**
+ * Corrects the notes of any pattern to the GoldenPond harmony active at each note's start:
+ * `note("60 62 64 65").gpfit(gd)` / `note(irand(24).add(48).segment(8)).gpfit(gd)`.
+ *
+ * - `goldenData` is what `gpond()` returns. Its chords are laid out on Strudel cycles exactly as
+ *   `gpline` lays out its notes (GOLDENPOND_BEATS_PER_CYCLE beats per cycle), so corrected notes
+ *   line up with GoldenPond lines.
+ * - Each note is corrected once, at the start of its event (`whole.begin`), like Rack's correction
+ *   tables; a note that lasts across a chord change keeps its pitch.
+ * - Works on haps whose value is a number, or an object with a numeric or note-name `note`
+ *   (`note` becomes a MIDI number). Other haps pass through unchanged. Use `note(...)` rather than
+ *   `n(...)` with samples: `n` selects a sample, it isn't a pitch.
+ * - Previous note (melodic direction for melodic-minor-style correction): a hap may carry
+ *   `value.prevNote` (e.g. World of Cake lines fill it from their full timeline); otherwise the
+ *   previous onset in the same query is used, or none for the first.
+ */
+export const gpfit = register('gpfit', (goldenData, pat) => {
+  if (!goldenData || typeof goldenData.correct !== 'function') {
+    throw new Error('gpfit: argument must be a GoldenPond GoldenData, as returned by gpond(...)');
+  }
+  const ppq = Math.round(Number(goldenData.makeTimeManipulator().ppq)) || 960;
+  const ticksPerCycle = GOLDENPOND_BEATS_PER_CYCLE * ppq;
+  return pat.withHaps((haps) => {
+    const out = haps.slice();
+    const start = (h) => Number((h.whole ?? h.part).begin);
+    const order = haps.map((_, i) => i).sort((a, b) => start(haps[a]) - start(haps[b]));
+    let previous = null;
+    for (const i of order) {
+      const hap = haps[i];
+      const midi = hapMidi(hap.value);
+      if (midi == null) continue;
+      const prev = hap.value?.prevNote ?? previous;
+      const corrected = goldenData.correct(midi, start(hap) * ticksPerCycle, prev ?? null);
+      out[i] = hap.withValue((v) => withMidi(v, corrected));
+      previous = midi;
+    }
+    return out;
+  });
+});

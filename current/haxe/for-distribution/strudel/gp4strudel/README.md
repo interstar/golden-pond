@@ -6,14 +6,26 @@ This directory is the **source of truth** for JavaScript (and related) changes t
 
 | Path | Purpose |
 |------|---------|
-| `patch.sh` | Copies masters into the Strudel checkout (and the standalone adapter beside this folder). |
-| `strudel/website/src/repl/goldenpond.mjs` | `gpond` / `gpline` adapter (imports `./goldenpond-runtime.js`, a copy of `goldenpond.js` beside this file). |
-| `strudel/website/src/repl/util.mjs` | Fork of Strudel’s `util.mjs` including `modules.push(import('./goldenpond.mjs'))`. **Re-merge when upgrading Strudel.** |
-| `strudel/website/astro.config.mjs` | Adds **`vite.ssr.noExternal: ['superdough']`** so Astro’s static build bundles superdough (Node otherwise rejects named imports through its `export *` barrel). **Re-merge when upgrading Strudel.** |
-| `strudel/jsdoc/jsdoc.config.json` | JSDoc config fix for this path layout (`doc.json` generation). |
+| `patch.sh` | Copies the new files below into the Strudel checkout, and makes small **anchored insertions** into existing Strudel files (and copies the standalone adapter beside this folder). Safe to re-run. |
+| `strudel_patch.py` | The insertion helper (`insert-before` / `insert-after` an exact anchor line, `json-set`). Idempotent; stops with an error if an anchor is missing, i.e. upstream Strudel changed. Other integrations (e.g. World of Cake's `wocstrudel`) reuse it. |
+| `strudel/website/src/repl/goldenpond.mjs` | `gpond` / `gpline` / `gpfit` adapter (imports `./goldenpond-runtime.js`, a copy of `goldenpond.js` beside this file). |
+| `strudel/packages/transpiler/plugin-goldenpond-vis.mjs` | Transpiler plugin for chord/rhythm highlighting. |
 | `standalone/goldenpond-strudel.js` | IIFE adapter for the legacy `index.html` stack (global `strudel` + `goldenpondStrudel`). |
 
 Paths under `strudel/` are **relative to the Strudel monorepo root** (the directory that contains `website/` and `package.json`).
+
+### Insertions into upstream files
+
+Existing Strudel files are never replaced, so upstream changes to them are kept and other integrations can patch the same files. `patch.sh` inserts:
+
+| File | Insertion | Anchor |
+|------|-----------|--------|
+| `website/src/repl/util.mjs` | `modules.push(import('./goldenpond.mjs'));` | before `return evalScope(settingPatterns, ...modules);` |
+| `packages/transpiler/index.mjs` | `import './plugin-goldenpond-vis.mjs';` | after `import './plugin-widgets.mjs';` |
+| `website/astro.config.mjs` | `noExternal: ['superdough'],` (Astro's static build must bundle superdough: Node rejects named imports through its `export *` barrel) | after `ssr: {` |
+| `jsdoc/jsdoc.config.json` | `source.excludePattern` and `plugins` set for this layout (`doc.json` generation) | JSON keys |
+
+If upstream ever sets `ssr.noExternal` itself, `patch.sh` stops and asks for a manual merge.
 
 ## Prerequisites
 

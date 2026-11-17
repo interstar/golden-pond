@@ -4,7 +4,7 @@ This note is for anyone maintaining the Goldenpond fork of Strudel or preparing 
 
 **Masters and patching:** integration source files live in **`gp4strudel/`**. Run `gp4strudel/patch.sh` after cloning Strudel into `for-distribution/strudel/strudel/` (see `gp4strudel/README.md`).
 
-**Static deploy bundle:** from `for-distribution/strudel/`, after **`current/haxe/makeall.sh`** has produced **`goldenpond.js`** here, run **`./build-strudel.sh`** to patch, copy **`goldenpond.js` → `website/src/repl/goldenpond-runtime.js`**, build the site, and produce **`./strudel-dist/`** for rsync. The patched **`website/astro.config.mjs`** sets **`vite.ssr.noExternal: ['superdough']`** so Astro can finish static generation (see `gp4strudel/README.md`).
+**Static deploy bundle:** from `for-distribution/strudel/`, after **`current/haxe/makeall.sh`** has produced **`goldenpond.js`** here, run **`./build-strudel.sh`** to patch, copy **`goldenpond.js` → `website/src/repl/goldenpond-runtime.js`**, build the site, and produce **`./strudel-dist/`** for rsync. `patch.sh` inserts **`vite.ssr.noExternal: ['superdough']`** into **`website/astro.config.mjs`** so Astro can finish static generation (see `gp4strudel/README.md`).
 
 ## What “principled” means here
 
@@ -18,7 +18,7 @@ This note is for anyone maintaining the Goldenpond fork of Strudel or preparing 
 
 ### REPL / global scope (`evalScope`)
 
-The website REPL loads a list of ES modules and exposes their exports to user code. Adding `import('./goldenpond.mjs')` in `website/src/repl/util.mjs` is the same mechanism Strudel uses for other user-facing packages. That is the **primary** hook for “make `gpond` / `gpline` available in the editor.” In this repo, the patched `util.mjs` is mastered under `gp4strudel/strudel/website/src/repl/util.mjs` and copied in by `gp4strudel/patch.sh`.
+The website REPL loads a list of ES modules and exposes their exports to user code. Adding `import('./goldenpond.mjs')` in `website/src/repl/util.mjs` is the same mechanism Strudel uses for other user-facing packages. That is the **primary** hook for “make `gpond` / `gpline` available in the editor.” `gp4strudel/patch.sh` adds that one line to upstream's `util.mjs` as an anchored insertion (it never replaces the file), so upstream changes are kept and other integrations can add their own modules the same way.
 
 ### Transpiler plugins
 
@@ -82,4 +82,4 @@ That is enough for Goldenpond to remain modular without core Strudel knowing abo
 
 For chord highlighting specifically, see **`highlights.md`** in this directory.
 
-**Using GoldenPond in the browser REPL:** see **`GOLDENPOND_STRUDEL_REPL.md`** (`gpond`, `gpline`, and related exports).
+**Using GoldenPond in the browser REPL:** see **`GOLDENPOND_STRUDEL_REPL.md`** (`gpond`, `gpline`, `gpfit` and related exports).

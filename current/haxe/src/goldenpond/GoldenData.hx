@@ -18,6 +18,7 @@ To understand the GNU Affero General Public License see <https://www.gnu.org/lic
 package;
 
 import ChordParser;
+import ChordThing;
 import Mode;
 import TimedSequence;
 import ScoreUtilities;
@@ -31,6 +32,7 @@ typedef GoldenDataJson = {
     var bpm: Int;
     var chordDuration: Int;
     var ppq: Int;
+    var correctionTarget: Null<Int>;
     var lines: Array<LineDataJson>;
 }
 
@@ -43,6 +45,7 @@ class GoldenData {
     // Core progression parameters
     public var root:Int;
     public var mode:Int; // 0=major, 1=minor, 2=harmonic minor, 3=melodic minor, 4=harmonic major, 5=hungarian minor, 6=double harmonic major
+    public var correctionTarget:Int; // 0=scale (default), 1=pentatonic (key), 2=chord tones only, 3=pentatonic (per-chord)
     public var chordSequence:String;
     public var stutter:Int;
     
@@ -57,10 +60,26 @@ class GoldenData {
     // Track if data has changed
     private var lastSerializedString:String;
     
+    // Correction cache: immutable after build, rebuilt lazily when relevant state changes.
+    private var corrector:GoldenCorrector;
+    private var correctionBuildCount:Int;
+
+    // Cached copies of the correction-relevant fields. ensureCorrector() compares these
+    // directly (no string serialization) to detect changes without allocating.
+    private var cacheRoot:Int;
+    private var cacheMode:Int;
+    private var cacheCorrectionTarget:Int;
+    private var cacheChordSequence:String;
+    private var cacheStutter:Int;
+    private var cacheBpm:Int;
+    private var cacheChordDuration:Int;
+    private var cachePpq:Int;
+    
     @:expose
     public function new() {
         this.root = 60; // Default to C4
         this.mode = 0;  // Default to major
+        this.correctionTarget = 0; // Default to scale correction
         this.chordSequence = "1,4,5,1";
         this.stutter = 0;
         this.bpm = 120;
@@ -68,6 +87,16 @@ class GoldenData {
         this.ppq = 960;
         this.lines = [];
         this.lastSerializedString = "";
+        this.corrector = null;
+        this.correctionBuildCount = 0;
+        this.cacheRoot = 0;
+        this.cacheMode = 0;
+        this.cacheCorrectionTarget = 0;
+        this.cacheChordSequence = "";
+        this.cacheStutter = 0;
+        this.cacheBpm = 0;
+        this.cacheChordDuration = 0;
+        this.cachePpq = 0;
     }
     
     /**
@@ -90,6 +119,17 @@ class GoldenData {
     @:expose
     public function setMode(modeIndex:Int):GoldenData {
         this.mode = modeIndex;
+        return this;
+    }
+    
+    /**
+     * Set the correction target.
+     * @param target 0=scale (default), 1=pentatonic (key), 2=chord tones only, 3=pentatonic (per-chord)
+     * @return This GoldenData instance for chaining
+     */
+    @:expose
+    public function setCorrectionTarget(target:Int):GoldenData {
+        this.correctionTarget = target;
         return this;
     }
     
@@ -186,6 +226,8 @@ class GoldenData {
     public function toString():String {
         var modeNames = ["major", "minor", "harmonic minor", "melodic minor", "harmonic major", "hungarian minor", "double harmonic major"];
         var modeName = modeNames[this.mode];
+        var correctionTargetNames = ["scale", "pentatonic", "chord tones", "chord pentatonic"];
+        var correctionTargetName = (this.correctionTarget >= 0 && this.correctionTarget < correctionTargetNames.length) ? correctionTargetNames[this.correctionTarget] : "scale";
         
         var result = 'GoldenPond Project\n';
         result += '-------------------------------------------\n';
@@ -196,6 +238,7 @@ class GoldenData {
         result += 'BPM: ${this.bpm}\n';
         result += 'Chord Duration: ${this.chordDuration}\n';
         result += 'PPQ: ${this.ppq}\n';
+        result += 'Correction Target: ${correctionTargetName} (${this.correctionTarget})\n';
         result += 'Lines:\n';
         
         for (i in 0...this.lines.length) {
@@ -221,6 +264,7 @@ class GoldenData {
             bpm: this.bpm,
             chordDuration: this.chordDuration,
             ppq: this.ppq,
+            correctionTarget: this.correctionTarget,
             lines: this.lines.map(function(line) {
                 return {
                     pattern: line.pattern,
@@ -251,6 +295,7 @@ class GoldenData {
         result.bpm = data.bpm;
         result.chordDuration = data.chordDuration;
         result.ppq = data.ppq;
+        result.correctionTarget = (data.correctionTarget == null) ? 0 : data.correctionTarget;
         
         // Recreate lines using the helper
         result.lines = [];
@@ -268,8 +313,9 @@ class GoldenData {
     }
     
     /**
-     * Corrects an incoming MIDI note to the nearest note of the scale 
-     * that is active at a specific time in the progression.
+     * Corrects an incoming MIDI note to the nearest allowed note for the chord active at a
+     * specific time in the progression, according to the correction target (scale, pentatonic,
+     * or chord tones only).
      * @param noteToCorrect The incoming MIDI note value.
      * @param timeInTicks The time of the note event in ticks.
      * @param previousNote Optional: The previously played note, used to determine melodic direction for melodic minor scales.
@@ -277,142 +323,110 @@ class GoldenData {
      */
     @:expose
     public function correct(noteToCorrect:Int, timeInTicks:Float, ?previousNote:Null<Int>):Int {
-        // Determine melodic direction (0=none, 1=ascending, -1=descending).
-        var direction = 0; 
-        if (previousNote != null) {
-            if (noteToCorrect > previousNote) direction = 1;
-            else if (noteToCorrect < previousNote) direction = -1;
-        }
-
-        // 1. Get the correct scale for the given time and melodic direction.
-        var scaleNotes = getScaleForChordAtTime(timeInTicks, noteToCorrect, previousNote);
-
-        // 2. If we couldn't determine a scale (e.g., empty progression), return the original note.
-        if (scaleNotes == null || scaleNotes.length == 0) {
-            return noteToCorrect;
-        }
-
-        // 3. Map the note to the nearest note in the determined scale.
-        return mapToNearestInScale(noteToCorrect, scaleNotes, direction);
+        ensureCorrector();
+        return corrector.correct(noteToCorrect, timeInTicks, previousNote);
     }
-    
+
     /**
-     * Determines which scale is active at a specific time in ticks.
-     * Includes special handling for melodic minor scales based on direction.
+     * Corrects an incoming MIDI note using an explicit progression chord index rather than
+     * a time. Hosts that already track chord boundaries can use this to skip the time -> chord
+     * conversion. The index wraps around the progression length.
      */
-    private function getScaleForChordAtTime(timeInTicks:Float, noteToCorrect:Int, ?previousNote:Null<Int>):Array<Int> {
-        var timeManipulator = this.makeTimeManipulator();
-        var progression = this.makeChordProgression();
-
-        var chordDurationInTicks = timeManipulator.chordTicks;
-        if (chordDurationInTicks <= 0) return null;
-
-        // Find the index of the chord playing at the given time.
-        var chordIndex = Math.floor(timeInTicks / chordDurationInTicks);
-        
-        var chordThings = progression.toChordThings();
-        if (chordThings == null || chordThings.length == 0) return null;
-
-        // Get the active chord, looping the progression if it has finished.
-        var activeChord = chordThings[chordIndex % chordThings.length];
-
-        // Determine melodic direction (0=none, 1=ascending, -1=descending).
-        var direction = 0; 
-        if (previousNote != null) {
-            if (noteToCorrect > previousNote) direction = 1;
-            else if (noteToCorrect < previousNote) direction = -1;
-        }
-
-        var tonic = activeChord.key;
-        var intervals = activeChord.mode.intervals;
-
-        // Special handling for Melodic Minor: use natural minor on descent.
-        if (activeChord.mode.valueEquals(Mode.getMelodicMinorMode()) && direction == -1) {
-            intervals = Mode.getMinorMode().intervals;
-        }
-
-        // Generate the 7 notes of the active scale.
-        var scale = [tonic];
-        var currentNote = tonic;
-        for (i in 0...6) {
-            currentNote += intervals[i % intervals.length];
-            scale.push(currentNote);
-        }
-        return scale;
+    @:expose
+    public function correctAtChordIndex(noteToCorrect:Int, chordIndex:Int, ?previousNote:Null<Int>):Int {
+        ensureCorrector();
+        return corrector.correctAtChordIndex(noteToCorrect, chordIndex, previousNote);
     }
-    
+
     /**
-     * Maps an incoming note to the nearest pitch in a given scale.
+     * Returns a correction key for the chord active at the given time. The key changes when
+     * either the correction-relevant project state changes or the active chord changes, so a
+     * host can poll it cheaply (e.g. at control rate) to decide when to refresh a previously
+     * published 128-entry correction table. When nothing relevant has changed, computing the
+     * key does not reparse the progression or rebuild correction data, and it allocates nothing.
+     *
+     * The key is a single Int: bits 0..15 hold a chord slot (0 = invalid input,
+     * 1..65535 = chord indices 0..65534), and bits 16..30 hold the revision (build count,
+     * masked to 15 bits). This bounds the progression to 65535 chords and the revision to
+     * 32767 distinct values before the key would wrap.
      */
-    private function mapToNearestInScale(noteIn:Int, scaleNotes:Array<Int>, direction:Int):Int {
-        if (scaleNotes == null || scaleNotes.length == 0) return noteIn;
+    @:expose
+    public function getCorrectionKey(timeInTicks:Float):Int {
+        ensureCorrector();
+        var slot = corrector.getChordIndexAtTime(timeInTicks) + 1;
+        return ((correctionBuildCount & 0x7FFF) << 16) | slot;
+    }
 
-        var noteInClass = noteIn % 12;
-        var minDistance = 12;
-        var candidates:Array<Int> = [];
+    /**
+     * Builds a 128-entry lookup table (MIDI note 0..127 -> corrected note) for the chord
+     * active at the given time. Intended to be generated on a control thread and then read,
+     * without further GoldenPond calls or allocation, on a realtime path such as an audio thread.
+     */
+    @:expose
+    public function makeCorrectionTable(timeInTicks:Float, ?previousNote:Null<Int>):Array<Int> {
+        ensureCorrector();
+        return corrector.makeNoteTable(timeInTicks, previousNote);
+    }
 
-        // First, find the minimum distance
-        for (scaleNote in scaleNotes) {
-            var scaleNoteClass = scaleNote % 12;
-            var distance = Std.int(Math.abs(noteInClass - scaleNoteClass));
-            if (distance > 6) distance = 12 - distance;
-            if (distance < minDistance) {
-                minDistance = distance;
-            }
+    /**
+     * Builds a 128-entry lookup table for an explicit progression chord index.
+     */
+    @:expose
+    public function makeCorrectionTableAtChordIndex(chordIndex:Int, ?previousNote:Null<Int>):Array<Int> {
+        ensureCorrector();
+        return corrector.makeNoteTableAtChordIndex(chordIndex, previousNote);
+    }
+
+    /**
+     * Builds a bidirectional (two-column) 256-entry correction table for the chord active at the
+     * given time. Entries [0..127] assume an ascending phrase (incoming note higher than the
+     * previous note); entries [128..255] assume a descending phrase (incoming note lower than the
+     * previous note). The host selects the column by comparing the incoming note to the previous
+     * note, so no rebuild is needed as a phrase changes direction. Repeated notes (equal to the
+     * previous note) are already in the target set, so either column yields the identity.
+     */
+    @:expose
+    public function makeBidirectionalCorrectionTable(timeInTicks:Float):Array<Int> {
+        ensureCorrector();
+        return corrector.makeBidirectionalNoteTable(timeInTicks);
+    }
+
+    /**
+     * Builds a bidirectional (two-column) 256-entry correction table for an explicit progression
+     * chord index.
+     */
+    @:expose
+    public function makeBidirectionalCorrectionTableAtChordIndex(chordIndex:Int):Array<Int> {
+        ensureCorrector();
+        return corrector.makeBidirectionalNoteTableAtChordIndex(chordIndex);
+    }
+
+    /**
+     * Rebuilds the correction cache lazily, only when a value relevant to correction has
+     * changed. The change check compares the current fields against cached copies directly
+     * (Int == Int, String == String), so unchanged-state polls allocate nothing.
+     */
+    private function ensureCorrector():Void {
+        if (corrector == null
+            || this.root != cacheRoot
+            || this.mode != cacheMode
+            || this.correctionTarget != cacheCorrectionTarget
+            || this.chordSequence != cacheChordSequence
+            || this.stutter != cacheStutter
+            || this.bpm != cacheBpm
+            || this.chordDuration != cacheChordDuration
+            || this.ppq != cachePpq) {
+            corrector = new GoldenCorrector(this.makeTimeManipulator(), this.makeChordProgression(), this.correctionTarget);
+            cacheRoot = this.root;
+            cacheMode = this.mode;
+            cacheCorrectionTarget = this.correctionTarget;
+            cacheChordSequence = this.chordSequence;
+            cacheStutter = this.stutter;
+            cacheBpm = this.bpm;
+            cacheChordDuration = this.chordDuration;
+            cachePpq = this.ppq;
+            correctionBuildCount++;
         }
-
-        // Now, collect all candidates with that minimum distance
-        for (scaleNote in scaleNotes) {
-            var scaleNoteClass = scaleNote % 12;
-            var distance = Std.int(Math.abs(noteInClass - scaleNoteClass));
-            if (distance > 6) distance = 12 - distance;
-            
-            if (distance == minDistance) {
-                if (candidates.indexOf(scaleNoteClass) == -1) {
-                    candidates.push(scaleNoteClass);
-                }
-            }
-        }
-
-        if (candidates.length == 0) return noteIn;
-
-        var closestNoteClass = -1;
-
-        if (candidates.length == 1) {
-            closestNoteClass = candidates[0];
-        } else {
-            // Tie-breaking logic
-            if (direction == 1) { // Ascending, prefer the higher note
-                var higherNote = -1;
-                for (c in candidates) {
-                    var diff = c - noteInClass;
-                    if (diff < -6) diff += 12; // e.g. C(0) is higher than B(11)
-                    if (diff > 0) { // It's a note above
-                        if (higherNote == -1) higherNote = c;
-                    }
-                }
-                if (higherNote != -1) closestNoteClass = higherNote;
-                else closestNoteClass = candidates[0]; // Fallback
-            } else { // Descending or no direction, prefer the lower note (which is the old behavior)
-                closestNoteClass = candidates[0];
-            }
-        }
-        
-        if (closestNoteClass == -1) return noteIn;
-
-        var originalOctaveBase = noteIn - noteInClass;
-        var correctedNote = originalOctaveBase + closestNoteClass;
-
-        // Adjust octave if the correction crossed the halfway point (6 semitones).
-        if (Math.abs(correctedNote - noteIn) > 6.0) {
-            if (noteIn < correctedNote) {
-                correctedNote -= 12;
-            } else {
-                correctedNote += 12;
-            }
-        }
-        
-        return correctedNote;
     }
 }
 
@@ -442,5 +456,301 @@ class LineData implements ISerializable {
 
     public function getCode():String {
         return 'LineData';
+    }
+}
+
+/**
+ * Immutable correction cache. Built from a snapshot of the GoldenData harmonic/timing state,
+ * so repeated correction queries never reparse the chord progression.
+ */
+class GoldenCorrector {
+    private var chordTicks:Float;
+    private var chords:Array<CorrectionChord>;
+
+    public function new(timeManipulator:TimeManipulator, progression:IChordProgression, correctionTarget:Int) {
+        this.chordTicks = timeManipulator.chordTicks;
+
+        var chordThings = progression.toChordThings();
+        this.chords = [for (ct in chordThings) CorrectionChord.fromChordThing(ct, correctionTarget)];
+    }
+
+    /**
+     * Corrects a note at a tick position. Returns the original note for invalid input.
+     */
+    public function correct(noteToCorrect:Int, timeInTicks:Float, previousNote:Null<Int>):Int {
+        var chordIndex = getChordIndexAtTime(timeInTicks);
+        if (chordIndex < 0) return noteToCorrect;
+        return correctAtChordIndex(noteToCorrect, chordIndex, previousNote);
+    }
+
+    /**
+     * Returns the progression chord index active at the given tick position, or -1 for
+     * invalid input (non-finite/negative time, empty progression, or chordTicks <= 0).
+     * The index wraps around the progression length.
+     */
+    public function getChordIndexAtTime(timeInTicks:Float):Int {
+        if (!Math.isFinite(timeInTicks) || timeInTicks < 0) return -1;
+        if (chordTicks <= 0 || chords.length == 0) return -1;
+
+        var chordCount:Float = chords.length;
+        var chordIndex = Std.int(Math.floor(timeInTicks / chordTicks) % chordCount);
+        if (chordIndex < 0) chordIndex += chords.length;
+        return chordIndex;
+    }
+
+    /**
+     * Returns the correction chord for a wrapped progression chord index, or null if the
+     * progression is empty.
+     */
+    private function chordAt(chordIndex:Int):Null<CorrectionChord> {
+        if (chords.length == 0) return null;
+        var index = chordIndex % chords.length;
+        if (index < 0) index += chords.length;
+        return chords[index];
+    }
+
+    /**
+     * Corrects a note at an explicit progression chord index.
+     */
+    public function correctAtChordIndex(noteToCorrect:Int, chordIndex:Int, previousNote:Null<Int>):Int {
+        var chord = chordAt(chordIndex);
+        if (chord == null) return noteToCorrect;
+        return chord.correct(noteToCorrect, previousNote);
+    }
+
+    /**
+     * Builds a 128-entry correction table for the chord active at the given time.
+     */
+    public function makeNoteTable(timeInTicks:Float, previousNote:Null<Int>):Array<Int> {
+        var table = [for (i in 0...128) 0];
+        for (note in 0...128) {
+            table[note] = correct(note, timeInTicks, previousNote);
+        }
+        return table;
+    }
+
+    /**
+     * Builds a 128-entry correction table for an explicit chord index.
+     */
+    public function makeNoteTableAtChordIndex(chordIndex:Int, previousNote:Null<Int>):Array<Int> {
+        var table = [for (i in 0...128) 0];
+        for (note in 0...128) {
+            table[note] = correctAtChordIndex(note, chordIndex, previousNote);
+        }
+        return table;
+    }
+
+    /**
+     * Builds a 256-entry bidirectional correction table for the chord active at the given time.
+     * Entries [0..127] assume an ascending phrase (incoming note higher than the previous note);
+     * entries [128..255] assume a descending phrase (incoming note lower than the previous note).
+     * The host selects the column by comparing the incoming note to the previous note, so the
+     * table does not need rebuilding as a melody changes direction.
+     */
+    public function makeBidirectionalNoteTable(timeInTicks:Float):Array<Int> {
+        var table = [for (i in 0...256) 0];
+        var chordIndex = getChordIndexAtTime(timeInTicks);
+        if (chordIndex < 0) {
+            for (note in 0...128) {
+                table[note] = note;
+                table[128 + note] = note;
+            }
+            return table;
+        }
+        var chord = chords[chordIndex];
+        for (note in 0...128) {
+            table[note] = chord.correctWithDirection(note, 1);
+            table[128 + note] = chord.correctWithDirection(note, -1);
+        }
+        return table;
+    }
+
+    /**
+     * Builds a 256-entry bidirectional correction table for an explicit progression chord index.
+     */
+    public function makeBidirectionalNoteTableAtChordIndex(chordIndex:Int):Array<Int> {
+        var table = [for (i in 0...256) 0];
+        var chord = chordAt(chordIndex);
+        if (chord == null) {
+            for (note in 0...128) {
+                table[note] = note;
+                table[128 + note] = note;
+            }
+            return table;
+        }
+        for (note in 0...128) {
+            table[note] = chord.correctWithDirection(note, 1);
+            table[128 + note] = chord.correctWithDirection(note, -1);
+        }
+        return table;
+    }
+}
+
+/**
+ * Scale data for a single chord in the progression, precomputed so queries are cheap.
+ */
+class CorrectionChord {
+    private var ascendingScale:Array<Int>;
+    private var descendingScale:Array<Int>;
+    private var isMelodicMinor:Bool;
+
+    public function new(ascendingScale:Array<Int>, descendingScale:Array<Int>, isMelodicMinor:Bool) {
+        this.ascendingScale = ascendingScale;
+        this.descendingScale = descendingScale;
+        this.isMelodicMinor = isMelodicMinor;
+    }
+
+    public static function fromChordThing(ct:ChordThing, correctionTarget:Int):CorrectionChord {
+        switch (correctionTarget) {
+            case 1: // Pentatonic (key): 5-note scale rooted at the key centre, major/minor flavour from the mode.
+                var penta = buildPentatonic(ct.key, ct.mode.isMinorScale());
+                return new CorrectionChord(penta, penta, false);
+            case 2: // Chord tones only: the actual notes of the chord (root/3rd/5th + extensions).
+                var tones = ct.generateChordNotes();
+                return new CorrectionChord(tones, tones, false);
+            case 3: // Pentatonic (per-chord): pentatonic rooted at the chord's own root, flavour from the chord's third.
+                var chordPenta = buildChordPentatonic(ct);
+                return new CorrectionChord(chordPenta, chordPenta, false);
+            default: // 0 (or anything else): full 7-note scale (original behaviour).
+                var ascending = buildScale(ct.key, ct.mode.intervals);
+                var melodic = ct.mode.valueEquals(Mode.getMelodicMinorMode());
+                var descending = melodic ? buildScale(ct.key, Mode.getMinorMode().intervals) : ascending;
+                return new CorrectionChord(ascending, descending, melodic);
+        }
+    }
+
+    private static function buildScale(tonic:Int, intervals:Array<Int>):Array<Int> {
+        var scale = [tonic];
+        var currentNote = tonic;
+        for (i in 0...intervals.length - 1) {
+            currentNote += intervals[i % intervals.length];
+            scale.push(currentNote);
+        }
+        return scale;
+    }
+
+    /**
+     * Builds a 5-note pentatonic scale rooted at tonic. Minor pentatonic (1,b3,4,5,b7)
+     * uses steps [3,2,2,3,2]; major pentatonic (1,2,3,5,6) uses [2,2,3,2,3].
+     */
+    private static function buildPentatonic(tonic:Int, isMinor:Bool):Array<Int> {
+        var steps = isMinor ? [3, 2, 2, 3, 2] : [2, 2, 3, 2, 3];
+        return buildScale(tonic, steps);
+    }
+
+    /**
+     * Builds a per-chord pentatonic: rooted at the chord's own root (not the key centre),
+     * with major/minor flavour taken from the chord's third. Secondary chords are resolved
+     * to their actual sounding chord first.
+     */
+    private static function buildChordPentatonic(ct:ChordThing):Array<Int> {
+        var actual = (ct.modifiers.indexOf(Modifier.SECONDARY) != -1 && ct.secondary_degree != null)
+            ? ct.calculateAsSecondaryChord()
+            : ct;
+        var root = actual.mode.nth_from(actual.key, actual.degree);
+        var third = actual.mode.nth_from(actual.key, actual.degree + 2);
+        var thirdInterval = (third - root) % 12;
+        if (thirdInterval < 0) thirdInterval += 12;
+        return buildPentatonic(root, thirdInterval == 3);
+    }
+
+    public function correct(noteIn:Int, previousNote:Null<Int>):Int {
+        var direction = 0;
+        if (previousNote != null) {
+            if (noteIn > previousNote) direction = 1;
+            else if (noteIn < previousNote) direction = -1;
+        }
+        return correctWithDirection(noteIn, direction);
+    }
+
+    /**
+     * Corrects a note given an explicit melodic direction: 1 = ascending (note above the
+     * previous note), -1 = descending (note below), 0 = neutral (no previous note). Direction
+     * selects the melodic-minor ascending/descending scale and the ascending/descending
+     * tie-break preference.
+     */
+    public function correctWithDirection(noteIn:Int, direction:Int):Int {
+        var scale = (isMelodicMinor && direction == -1) ? descendingScale : ascendingScale;
+        return mapToNearestInScale(noteIn, scale, direction);
+    }
+
+    private static function mapToNearestInScale(noteIn:Int, scaleNotes:Array<Int>, direction:Int):Int {
+        if (scaleNotes == null || scaleNotes.length == 0) return noteIn;
+
+        var noteInClass = noteIn % 12;
+
+        // First pass: find the minimum pitch-class distance.
+        var minDistance = 12;
+        for (scaleNote in scaleNotes) {
+            var scaleNoteClass = scaleNote % 12;
+            var distance = Std.int(Math.abs(noteInClass - scaleNoteClass));
+            if (distance > 6) distance = 12 - distance;
+            if (distance < minDistance) {
+                minDistance = distance;
+            }
+        }
+
+        // Second pass: collect the (at most two) nearest pitch classes into fixed locals,
+        // so this hot path allocates nothing. On the 12-note circle a note can be
+        // equidistant from at most two distinct pitch classes.
+        var candidate0 = -1;
+        var candidate1 = -1;
+        for (scaleNote in scaleNotes) {
+            var scaleNoteClass = scaleNote % 12;
+            var distance = Std.int(Math.abs(noteInClass - scaleNoteClass));
+            if (distance > 6) distance = 12 - distance;
+
+            if (distance == minDistance) {
+                if (candidate0 == -1) {
+                    candidate0 = scaleNoteClass;
+                } else if (candidate1 == -1 && scaleNoteClass != candidate0) {
+                    candidate1 = scaleNoteClass;
+                }
+            }
+        }
+
+        if (candidate0 == -1) return noteIn;
+
+        var closestNoteClass = -1;
+
+        if (candidate1 == -1) {
+            closestNoteClass = candidate0;
+        } else {
+            if (direction == 1) { // Ascending, prefer the higher note
+                var higherNote = -1;
+                var diff = candidate0 - noteInClass;
+                if (diff < -6) diff += 12; // e.g. C(0) is higher than B(11)
+                if (diff > 0) {
+                    higherNote = candidate0;
+                }
+
+                diff = candidate1 - noteInClass;
+                if (diff < -6) diff += 12;
+                if (diff > 0 && higherNote == -1) {
+                    higherNote = candidate1;
+                }
+
+                if (higherNote != -1) closestNoteClass = higherNote;
+                else closestNoteClass = candidate0; // Fallback
+            } else { // Descending or no direction, prefer the lower note (which is the old behavior)
+                closestNoteClass = candidate0;
+            }
+        }
+
+        if (closestNoteClass == -1) return noteIn;
+
+        var originalOctaveBase = noteIn - noteInClass;
+        var correctedNote = originalOctaveBase + closestNoteClass;
+
+        // Adjust octave if the correction crossed the halfway point (6 semitones).
+        if (Math.abs(correctedNote - noteIn) > 6.0) {
+            if (noteIn < correctedNote) {
+                correctedNote -= 12;
+            } else {
+                correctedNote += 12;
+            }
+        }
+
+        return correctedNote;
     }
 } 

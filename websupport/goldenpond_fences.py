@@ -1,9 +1,10 @@
 """
 Shared build-time helpers for Goldenpond fenced blocks in Markdown.
 
-**Source of truth** in this repository. Sites vend a copy of this file beside their
-``generate.py`` / ``build.py`` from their shell build script (Python imports locally only).
-See ``web-common/README.md``.
+**Source of truth** in this repository, in ``goldenpond/websupport/``. The conjunto kit
+beside it (``conjunto_kit.py``) uses it in place. Sites with their own scripts (e.g.
+PianoSlides) copy it beside their ``generate.py`` from their shell build script.
+See ``current/haxe/for-distribution/web-common/README.md``.
 
 Fenced syntax::
 

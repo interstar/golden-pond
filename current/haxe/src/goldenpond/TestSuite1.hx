@@ -7,6 +7,7 @@ import ScoreUtilities;
 import GoldenData;
 import TimedSequence;
 
+@:access(GoldenData)
 class TestSuite1 {
 
     public static function allTests(tester:UnitTester) {
@@ -650,6 +651,12 @@ class TestSuite1 {
         goldenDataWithPPQ.setPPQ(480);
         tester.testit("GoldenData setPPQ", goldenDataWithPPQ.ppq, 480, "setPPQ should update the ppq value");
 
+        // Test the new setCorrectionTarget method
+        var targetSetterData = new GoldenData();
+        var setterReturn = targetSetterData.setCorrectionTarget(1);
+        tester.testit("GoldenData setCorrectionTarget", targetSetterData.correctionTarget, 1, "setCorrectionTarget should update the correctionTarget value");
+        tester.testit("GoldenData setCorrectionTarget chains", setterReturn == targetSetterData, true, "setCorrectionTarget should return the instance for chaining");
+
         // Test that makeTimeManipulator uses the new ppq
         var timeManipulator = goldenDataWithPPQ.makeTimeManipulator();
         tester.testit("GoldenData makeTimeManipulator uses custom PPQ", timeManipulator.ppq, 480, "makeTimeManipulator should use the ppq from GoldenData");
@@ -695,6 +702,298 @@ class TestSuite1 {
         var noteIn4 = 78; // F# (the raised 6th)
         var corrected4 = data.correct(noteIn4, 100, 80); // Descending from G#(80)
         tester.testit("Correction: Melodic Minor Descending", corrected4, 77, "Should correct F# down to F (the natural 6th)");
+
+        // --- Correction targets: scale / pentatonic / chord tones ---
+        var targetData = new GoldenData();
+        targetData.root = 60;
+        targetData.mode = 0;
+        targetData.chordSequence = "1";
+        targetData.chordDuration = 4;
+        targetData.ppq = 960;
+
+        // Scale (default, target 0): A4 is a C major scale note, so it stays.
+        targetData.correctionTarget = 0;
+        tester.testit("Correction: scale keeps A4 in C major", targetData.correct(69, 100), 69, "A4 is in the C major scale and should stay");
+
+        // Pentatonic (target 1): C major pentatonic = C D E G A.
+        targetData.correctionTarget = 1;
+        tester.testit("Correction: pentatonic keeps A4", targetData.correct(69, 100), 69, "A4 is in the C major pentatonic and should stay");
+        tester.testit("Correction: pentatonic maps F4 to E4", targetData.correct(65, 100), 64, "F4 is not in C major pentatonic; nearest is E4");
+        tester.testit("Correction: pentatonic maps F#4 to G4", targetData.correct(66, 100), 67, "F#4 is not in C major pentatonic; nearest is G4");
+
+        // Minor pentatonic: A minor pentatonic = A C D E G.
+        targetData.root = 69;
+        targetData.mode = 1; // A natural minor
+        targetData.correctionTarget = 1;
+        tester.testit("Correction: minor pentatonic maps A#4 to A4", targetData.correct(70, 100), 69, "A#4 is not in A minor pentatonic; nearest is A4");
+        tester.testit("Correction: minor pentatonic maps B4 to C5", targetData.correct(71, 100), 72, "B4 is not in A minor pentatonic; nearest is C5");
+
+        // Chord tones (target 2): C major triad = C E G.
+        targetData.root = 60;
+        targetData.mode = 0;
+        targetData.chordSequence = "1";
+        targetData.correctionTarget = 2;
+        tester.testit("Correction: chord tones keeps E4", targetData.correct(64, 100), 64, "E4 is a chord tone and should stay");
+        tester.testit("Correction: chord tones maps D4 to C4", targetData.correct(62, 100), 60, "D4 is not a chord tone; nearest is C4");
+        tester.testit("Correction: chord tones maps A4 to G4", targetData.correct(69, 100), 67, "A4 is not a C major chord tone; nearest is G4");
+
+        // Chord tones with a 7th: Cmaj7 = C E G B.
+        targetData.chordSequence = "7:1";
+        tester.testit("Correction: maj7 chord tones maps A4 to G4", targetData.correct(69, 100), 67, "A4 is not in Cmaj7; nearest is G4");
+        tester.testit("Correction: maj7 chord tones keeps B4", targetData.correct(71, 100), 71, "B4 is in Cmaj7 and should stay");
+
+        // Per-chord pentatonic (target 3): pentatonic rooted at each chord's own root.
+        // A harmonic minor, chord 5 = E major: per-chord pentatonic = E F# G# B C#.
+        var perChordData = new GoldenData();
+        perChordData.root = 69; // A
+        perChordData.mode = 2;  // harmonic minor
+        perChordData.chordSequence = "5";
+        perChordData.chordDuration = 4;
+        perChordData.ppq = 960;
+
+        perChordData.correctionTarget = 1; // key pentatonic = A minor pentatonic
+        tester.testit("Correction: key pentatonic maps F#5 to G5", perChordData.correct(78, 100), 79, "In A minor pentatonic, F# is not a note; nearest is G");
+
+        perChordData.correctionTarget = 3; // per-chord pentatonic = E major pentatonic
+        tester.testit("Correction: chord pentatonic keeps F#5", perChordData.correct(78, 100), 78, "F# is in E major pentatonic and should stay");
+        tester.testit("Correction: chord pentatonic maps C5 to B4", perChordData.correct(72, 100), 71, "C is not in E major pentatonic; nearest is B");
+
+        // Chord 1 of A harmonic minor = A minor: per-chord pentatonic = A minor pentatonic.
+        perChordData.chordSequence = "1";
+        perChordData.correctionTarget = 3;
+        tester.testit("Correction: chord pentatonic minor maps A#4 to A4", perChordData.correct(70, 100), 69, "A# is not in A minor pentatonic; nearest is A");
+
+        // --- Caching / invalidation behaviour ---
+        var cacheData = new GoldenData();
+        cacheData.root = 60;
+        cacheData.mode = 0;
+        cacheData.chordSequence = "1,4,5,1";
+        cacheData.chordDuration = 4;
+        cacheData.ppq = 960;
+
+        // First correction builds the cache exactly once.
+        var buildsBefore = cacheData.correctionBuildCount;
+        var firstResult = cacheData.correct(61, 100);
+        var buildsAfterFirst = cacheData.correctionBuildCount;
+        tester.testit("Correction: first call builds the cache", buildsAfterFirst, buildsBefore + 1, "First correction should build the cache exactly once");
+        tester.testit("Correction: first call result", firstResult, 60, "C# should correct to C in C major");
+
+        // Repeated calls must not rebuild.
+        cacheData.correct(62, 100);
+        cacheData.correct(63, 100);
+        cacheData.correct(64, 200);
+        tester.testit("Correction: repeated calls do not rebuild", cacheData.correctionBuildCount, buildsAfterFirst, "Repeated correction queries must not rebuild the progression");
+
+        // Each harmonic/timing-relevant field change must trigger exactly one rebuild.
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.root = 61;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: root change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing root should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.mode = 1;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: mode change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing mode should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.chordSequence = "1,6,2,5";
+        cacheData.correct(61, 100);
+        tester.testit("Correction: chord sequence change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing chordSequence should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.stutter = 2;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: stutter change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing stutter should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.bpm = 90;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: bpm change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing bpm should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.chordDuration = 2;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: chord duration change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing chordDuration should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.ppq = 480;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: ppq change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing ppq should rebuild the cache");
+
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.correctionTarget = 1;
+        cacheData.correct(61, 100);
+        tester.testit("Correction: correctionTarget change rebuilds", cacheData.correctionBuildCount, buildsBefore + 1, "Changing correctionTarget should rebuild the cache");
+
+        // Unrelated part data (lines) must not rebuild.
+        buildsBefore = cacheData.correctionBuildCount;
+        cacheData.addLine("1/4 c 1", new MidiInstrumentContext(0, 64, 0.75, 0));
+        cacheData.correct(61, 100);
+        tester.testit("Correction: line change does not rebuild", cacheData.correctionBuildCount, buildsBefore, "Changing lines should not rebuild the correction cache");
+
+        // --- Time wrapping across the progression boundary ---
+        var wrapData = new GoldenData();
+        wrapData.root = 60;
+        wrapData.mode = 0;
+        wrapData.chordSequence = "1,6";
+        wrapData.chordDuration = 4;
+        wrapData.ppq = 960; // chordTicks = 3840, progression length = 7680
+        var atStart = wrapData.correct(61, 100);
+        var wrapped = wrapData.correct(61, 100 + 7680);
+        tester.testit("Correction: time wraps across progression", wrapped, atStart, "Time should wrap modulo the progression length");
+
+        // --- Invalid / empty input ---
+        var emptyData = new GoldenData();
+        emptyData.chordSequence = ""; // empty progression
+        tester.testit("Correction: empty progression returns original", emptyData.correct(61, 100), 61, "Empty progression should return the original note");
+
+        var validData = new GoldenData();
+        tester.testit("Correction: negative time returns original", validData.correct(61, -10), 61, "Negative time should return the original note");
+        tester.testit("Correction: NaN time returns original", validData.correct(61, Math.NaN), 61, "NaN time should return the original note");
+        tester.testit("Correction: infinity time returns original", validData.correct(61, Math.POSITIVE_INFINITY), 61, "Infinite time should return the original note");
+
+        // --- Deserialization creates a fresh, working cache ---
+        var srcData = new GoldenData();
+        srcData.root = 60;
+        srcData.mode = 0;
+        srcData.chordSequence = "1,6";
+        srcData.chordDuration = 4;
+        srcData.ppq = 960;
+        var restoredData = GoldenData.makeFromJSON(srcData.toJSON(), new DeserializationHelper());
+        tester.testit("Correction: deserialized cache starts fresh", restoredData.correctionBuildCount, 0, "Deserialized object should start with no correction cache");
+        var restoredResult = restoredData.correct(61, 100);
+        tester.testit("Correction: deserialized correct works", restoredResult, 60, "Deserialized object should correct notes correctly");
+        tester.testit("Correction: deserialized builds once", restoredData.correctionBuildCount, 1, "First correction on deserialized object should build once");
+
+        // --- Correction target serialization ---
+        var targetSerData = new GoldenData();
+        targetSerData.correctionTarget = 2;
+        var targetRestored = GoldenData.makeFromJSON(targetSerData.toJSON(), new DeserializationHelper());
+        tester.testit("Correction: target survives serialization", targetRestored.correctionTarget, 2, "Correction target should round-trip through JSON");
+
+        var legacyJson = '{"root":60,"mode":0,"chordSequence":"1","stutter":0,"bpm":120,"chordDuration":4,"ppq":960,"lines":[]}';
+        var legacyData = GoldenData.makeFromJSON(legacyJson, new DeserializationHelper());
+        tester.testit("Correction: legacy JSON defaults target to scale", legacyData.correctionTarget, 0, "JSON without correctionTarget should default to 0 (scale)");
+
+        // --- 128-note lookup tables ---
+        var tableData = new GoldenData();
+        tableData.root = 60;
+        tableData.mode = 0;
+        tableData.chordSequence = "1";
+        var table = tableData.makeCorrectionTable(100, null);
+        tester.testit("Correction: lookup table has 128 entries", table.length, 128, "Lookup table should cover MIDI notes 0..127");
+        tester.testit("Correction: lookup table corrects C#", table[61], 60, "C# should correct to C in C major");
+        tester.testit("Correction: lookup table leaves scale note", table[60], 60, "C should remain C in C major");
+        var chord0Table = tableData.makeCorrectionTableAtChordIndex(0, null);
+        tester.testit("Correction: chord-index lookup table has 128 entries", chord0Table.length, 128, "Chord-index lookup table should cover MIDI notes 0..127");
+        tester.testit("Correction: correctAtChordIndex works", tableData.correctAtChordIndex(61, 0, null), 60, "Chord-index correction should match time-based correction");
+
+        // The table builder must honour the current correction target.
+        tableData.correctionTarget = 1; // pentatonic (key): C major pentatonic = C D E G A
+        var pentaTable = tableData.makeCorrectionTable(100, null);
+        tester.testit("Correction: lookup table honours pentatonic target", pentaTable[65], 64, "F4 should map to E4 in C major pentatonic");
+
+        tableData.correctionTarget = 2; // chord tones: C major triad = C E G
+        var chordToneTable = tableData.makeCorrectionTable(100, null);
+        tester.testit("Correction: lookup table honours chord-tone target", chordToneTable[69], 67, "A4 should map to G4 in C major triad");
+
+        tableData.correctionTarget = 3; // per-chord pentatonic: chord 1 = C major pentatonic
+        var chordPentaTable = tableData.makeCorrectionTable(100, null);
+        tester.testit("Correction: lookup table honours chord-pentatonic target", chordPentaTable[65], 64, "F4 should map to E4 in C major pentatonic");
+
+        // Every table entry must agree with single-note correct() for all four targets.
+        for (target in 0...4) {
+            tableData.correctionTarget = target;
+            var t = tableData.makeCorrectionTable(100, null);
+            var allMatch = true;
+            for (note in 0...128) {
+                if (t[note] != tableData.correct(note, 100, null)) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            tester.testit("Correction: table matches single-note correct for target " + target, allMatch, true, "Table builder should agree with correct() for every MIDI note");
+        }
+
+        // --- Bidirectional (two-column) tables: ascending vs descending phrases ---
+        var biData = new GoldenData();
+        biData.root = 69; // A
+        biData.mode = 3;  // melodic minor
+        biData.chordSequence = "1";
+        biData.chordDuration = 4;
+        biData.ppq = 960;
+
+        var biTable = biData.makeBidirectionalCorrectionTable(100);
+        tester.testit("Correction: bidirectional table has 256 entries", biTable.length, 256, "Bidirectional table should be 2 x 128 entries");
+        tester.testit("Correction: bidirectional ascending column keeps F#5", biTable[78], 78, "Ascending melodic minor keeps F#5");
+        tester.testit("Correction: bidirectional descending column lowers F#5", biTable[128 + 78], 77, "Descending melodic minor lowers F#5 to F5");
+
+        // Each column must match single-note correct() with a forced direction.
+        var allAscMatch = true;
+        var allDescMatch = true;
+        for (note in 0...128) {
+            if (biTable[note] != biData.correct(note, 100, -1000)) allAscMatch = false;
+            if (biTable[128 + note] != biData.correct(note, 100, 1000)) allDescMatch = false;
+        }
+        tester.testit("Correction: bidirectional ascending column matches correct()", allAscMatch, true, "Ascending column should match correct() with a low previous note");
+        tester.testit("Correction: bidirectional descending column matches correct()", allDescMatch, true, "Descending column should match correct() with a high previous note");
+
+        // Tie-break direction matters even for non-melodic-minor targets (chord tones).
+        biData.root = 60;
+        biData.mode = 0;
+        biData.chordSequence = "1";
+        biData.correctionTarget = 2; // chord tones: C E G
+        var biChordTones = biData.makeBidirectionalCorrectionTable(100);
+        tester.testit("Correction: bidirectional ascending snaps D4 up to E4", biChordTones[62], 64, "Ascending tie-break prefers the higher chord tone");
+        tester.testit("Correction: bidirectional descending snaps D4 down to C4", biChordTones[128 + 62], 60, "Descending tie-break prefers the lower chord tone");
+
+        // Chord-index variant.
+        var biByChord = biData.makeBidirectionalCorrectionTableAtChordIndex(0);
+        tester.testit("Correction: bidirectional chord-index table has 256 entries", biByChord.length, 256, "Chord-index bidirectional table should be 2 x 128 entries");
+        tester.testit("Correction: bidirectional chord-index ascending matches", biByChord[62], 64, "Chord-index ascending column should match time-based ascending column");
+
+        // Invalid input returns identity in both columns.
+        var biEmpty = new GoldenData();
+        biEmpty.chordSequence = "";
+        var biEmptyTable = biEmpty.makeBidirectionalCorrectionTable(100);
+        tester.testit("Correction: bidirectional empty progression returns identity", (biEmptyTable[61] == 61 && biEmptyTable[128 + 61] == 61), true, "Empty progression should leave notes unchanged in both columns");
+
+        // --- Correction key lifecycle ---
+        var keyData = new GoldenData();
+        keyData.root = 60;
+        keyData.mode = 0;
+        keyData.chordSequence = "1,6";
+        keyData.chordDuration = 4;
+        keyData.ppq = 960; // chordTicks = 3840, progression length = 7680
+
+        var keyChord0 = keyData.getCorrectionKey(100);
+        tester.testit("Correction: key stable within same chord", keyData.getCorrectionKey(200), keyChord0, "Same chord at different times should give the same key");
+        tester.testit("Correction: key changes across chord boundary", keyData.getCorrectionKey(4000) != keyChord0, true, "Different chord should give a different key");
+        tester.testit("Correction: key wraps consistently", keyData.getCorrectionKey(100 + 7680), keyChord0, "Wrapped time should give the same key as the equivalent chord");
+
+        var keyBeforeEdit = keyData.getCorrectionKey(100);
+        keyData.root = 61;
+        var keyAfterEdit = keyData.getCorrectionKey(100);
+        tester.testit("Correction: key changes on project state change", keyAfterEdit != keyBeforeEdit, true, "Changing root should change the key even at the same time");
+
+        var keyBeforeTarget = keyData.getCorrectionKey(100);
+        keyData.correctionTarget = 1;
+        var keyAfterTarget = keyData.getCorrectionKey(100);
+        tester.testit("Correction: key changes on correction target change", keyAfterTarget != keyBeforeTarget, true, "Changing correctionTarget should change the key even at the same time");
+
+        // Numeric key layout: revision packed in bits 16..30, chord slot (index + 1) in bits 0..15.
+        var layoutData = new GoldenData();
+        layoutData.root = 60;
+        layoutData.mode = 0;
+        layoutData.chordSequence = "1,6";
+        layoutData.chordDuration = 4;
+        layoutData.ppq = 960; // chordTicks = 3840
+        tester.testit("Correction: key layout for chord 0", layoutData.getCorrectionKey(0), (1 << 16) | 1, "Chord 0 should be revision 1 + slot 1");
+        tester.testit("Correction: key layout for chord 1", layoutData.getCorrectionKey(3840), (1 << 16) | 2, "Chord 1 should be revision 1 + slot 2");
+
+        var emptyKeyData = new GoldenData();
+        emptyKeyData.chordSequence = "";
+        tester.testit("Correction: key for empty progression", emptyKeyData.getCorrectionKey(0), 1 << 16, "Empty progression should produce revision 1 with chord slot 0 (invalid input)");
     }
    
 }

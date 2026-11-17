@@ -4,7 +4,7 @@ version = "0.5.0"
 description = "A Python library for interpreting the GoldenPond DSLs for making musical chord progressions and rhythmic musical lines."
 readme = "README.md"
 authors = ["Phil Jones <interstar@gmail.com>"]
-license = "GPL-3.0-or-later"
+license = "AGPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = "^3.6"

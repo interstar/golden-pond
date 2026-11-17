@@ -78,6 +78,12 @@ fi
 echo "==> Build Signal"
 (cd "$SIGNAL_DIR" && npm run build)
 
+# Signal's webpack build names the main editor entrypoint edit.html. Keep the
+# deployed application usable at the directory root as well.
+if [[ ! -f "$SIGNAL_DIR/dist/index.html" && -f "$SIGNAL_DIR/dist/edit.html" ]]; then
+  cp "$SIGNAL_DIR/dist/edit.html" "$SIGNAL_DIR/dist/index.html"
+fi
+
 if [[ "$INSTALL" == true ]]; then
   echo "==> Install Strudel dependencies"
   STRUDEL_INSTALL=(--install)

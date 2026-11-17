@@ -10,7 +10,7 @@ Files:
 |------|--------|------|
 | `goldenpond-soundfont-presets.js` | `GoldenpondSoundfontPresets` | Preset list, default line presets (3 lines), MIDI program map |
 | `goldenpond-playback.js` | `GoldenpondPlayback` | Load GM presets, schedule note lists from `goldenpond.js`, Tone.js MIDI helpers |
-| `goldenpond-embed.js` | `GoldenpondEmbed` | Initialise `.goldenpond-embed` blocks (HTML from `py/goldenpond_fences.py`) |
+| `goldenpond-embed.js` | `GoldenpondEmbed` | Initialise `.goldenpond-embed` blocks (HTML from `websupport/goldenpond_fences.py`) |
 | `goldenpond-embed.css` | — | Scoped styles for embeds |
 | `goldenpond-form.js` | `GoldenpondFormWidget` | Full chord + N-line UI |
 | `goldenpond-form.css` | — | Form widget layout |
@@ -26,7 +26,7 @@ Suggested load order (embed only):
 
 Add for the form (+ MIDI download): `@tonejs/midi`, `goldenpond-form.css`, `goldenpond-form.js`.
 
-**Python:** the canonical fence helper is **`../py/goldenpond_fences.py`**. Consumers (e.g. PianoSlides and the Gilbert Lister site) vendor it beside their `generate.py` / `build.py` via their **shell build script**, then plain `from goldenpond_fences import …` — no hard-coded repo paths in Python.
+**Python:** the canonical fence helper is **`goldenpond/websupport/goldenpond_fences.py`** (at the top of the goldenpond repo, not under `for-distribution/`). Sites built with conjunto use it through the kit beside it, `websupport/conjunto_kit.py`. Other consumers (e.g. PianoSlides) copy it beside their `generate.py` via their **shell build script**, then plain `from goldenpond_fences import …` — no hard-coded repo paths in Python.
 
 Fenced blocks emit a `.goldenpond-meta` area whose rows (`Global`, progression, chord names, rhythm) are controlled by **`display=a,b,...`** on the fence line (`global`, `progression`, `chordnames`, `rhythm`; case-insensitive; comma-separated order). Omit `display=` to show all rows. The `<script type="application/json" class="goldenpond-data">` payload includes **`embedDisplay`** as the canonical row list used at build time; `GoldenpondEmbed` tolerates omitted rows.
 

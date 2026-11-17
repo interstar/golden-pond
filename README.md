@@ -34,7 +34,7 @@ The status of the Haxe->Python code is that :
 
 The status of the Haxe->JS code is that :
 - it successfully transpiles and runs as JS
-- it runs in the browser and is integrated into the Signal online studio (play with the fork that integrates GoldenPond here: https://gilbertlisterresearch.com/assets/signal/index.html)
+- it runs in the browser and is integrated into the Signal online studio (play with the fork that integrates GoldenPond here: https://gilbertlisterresearch.com/apps/signal/index.html)
 - it has an integration with the Strudel live-coding environment, including optional source visualisation for GoldenPond chord and rhythm patterns
 - `current/haxe/for-distribution/web-app/` contains a static example web app; the build scripts copy the current Haxe JavaScript output and supporting files into it
 
@@ -189,3 +189,17 @@ print("MIDI file saved as gp_example.mid")
 The experiment with Haxe has been a success. It's great having the same code available in a number of languages and environments. I am definitely interested in the GoldenPond as a VST (or other plugin) via C++ route. And, to a certain extent, the Java on Android option.
 
 As far as the language is concerned, the next goals are to add more interesting voicings of the chords. Rather than simple triads and extensions. There's been some experimentation with automatic voice-leading but this often sounds horrible so it's not encouraged. But now the consolidation on the Haxe codebase is finished, I'm looking forward to tackling this problem.
+
+## Licence
+
+Copyright (C) 2014–2026 Phil Jones.
+
+Golden Pond is free software: you can redistribute it and/or modify it under the terms of
+the GNU Affero General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version. It is
+distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+[LICENSE](LICENSE) for the full text.
+
+Third-party parts keep their own licences, e.g. the Signal editor that the Signal
+integration builds on (MIT, `current/haxe/for-distribution/signal/LICENSE`).
